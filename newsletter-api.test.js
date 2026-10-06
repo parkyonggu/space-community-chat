@@ -24,7 +24,7 @@ async function fixture(t, options = {}) {
   let clock = Date.parse('2026-10-06T03:00:00Z');
   let legacy = options.legacy || [];
   const config = { authenticate, mailer, siteUrl: 'https://withpluces.com', now: () => clock, dailyLimit: options.dailyLimit || 300, batchSize: 2,
-    legacySubscribers: async () => legacy, clearLegacySubscribers: async () => { legacy = []; }, senderName: '(주)테스트', contactEmail: 'help@example.com' };
+    legacySubscribers: async () => legacy, clearLegacySubscribers: async () => { legacy = []; }, senderName: '(주)테스트', contactEmail: 'help@example.com', ...(options.extra || {}) };
   let handler = createNewsletterApi(directory, config);
   const server = createServer((request, response) => handler(request, response, new URL(request.url, 'http://x').pathname));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -35,7 +35,7 @@ async function fixture(t, options = {}) {
   const get = (route, user) => fetch(origin + route, { redirect: 'manual', headers: user ? { 'x-test-user': user } : {} });
   const tokenFrom = (message, kind) => message.text.match(new RegExp(`${kind}=([a-f0-9]{48})`))[1];
   return { directory, sent, mailer, post, get, tokenFrom, legacy: () => legacy,
-    advance: ms => { clock += ms; }, restart: () => { handler = createNewsletterApi(directory, config); },
+    advance: ms => { clock += ms; }, now: () => clock, generate: options => handler.generateWeekly(options), restart: () => { handler = createNewsletterApi(directory, config); },
     drain: async () => { let result; do { result = await handler.processQueue(); } while (result.more && result.delay < 3600000); return result; },
     process: () => handler.processQueue() };
 }
@@ -178,4 +178,93 @@ test('cancel stops a running campaign', async t => {
   assert.equal(after.campaigns[0].status, 'cancelled');
   assert.equal(after.campaigns[0].remaining, 0);
   assert.equal((await f.process()).more, false);
+});
+
+test('weekly draft uses ECOS figures and community highlights, blocks unfinished sends and schedules for Monday 07:00 KST', async t => {
+  const series = {
+    '802Y001/0001000': [['20260925', '6800'], ['20260929', '6870.81'], ['20261002', '7003.74']],
+    '802Y001/0089000': [['20260925', '880'], ['20261002', '893.29']],
+    '731Y001/0000001': [['20260925', '1370'], ['20261002', '1358.5']],
+    '817Y002/010200000': [['20260925', '3.9'], ['20261002', '3.937']],
+    '722Y001/0101000': [['20260810', '2.75']],
+    '901Y009/0': [['202609', '120.43']],
+  };
+  const requested = [];
+  const fetchImpl = async url => {
+    requested.push(url);
+    const parts = new URL(url).pathname.split('/');
+    const code = parts[8]; const item = parts[12]; const start = parts[10];
+    let rows = series[`${code}/${item}`] || [];
+    if (code === '901Y009' && start === '202509') rows = [['202509', '118.0']];
+    return { ok: true, json: async () => ({ StatisticSearch: { row: rows.map(([TIME, DATA_VALUE]) => ({ TIME, DATA_VALUE })) } }) };
+  };
+  const highlights = async () => ({ policy: [{ category: 'education', text: '교육 정책 제안 내용', likes: 4 }], voice: [{ category: '이 정책, 이상해요', text: '시민의 소리 내용' }], community: [], researchCount: 2 });
+  const f = await fixture(t, { extra: { fetchImpl, highlights, adminEmails: ['admin@example.com'], ecosKey: 'TESTKEY' } });
+  // Sunday 2026-10-04 18:00 KST
+  f.advance(Date.parse('2026-10-04T09:00:00Z') - f.now());
+  const draft = await f.generate({ source: 'auto' });
+  assert.ok(requested.every(url => url.includes('/TESTKEY/')));
+  assert.match(draft.subject, /10월 5일 주간 경제·정책 브리핑/);
+  assert.ok(draft.body.includes('**KOSPI** 7,003.74 (1주 전 대비 +3.00%)'));
+  assert.ok(draft.body.includes('**원/달러 환율** 1,358.5원 (1주 전 대비 −11.5원)'));
+  assert.ok(draft.body.includes('**국고채 3년 금리** 3.937% (1주 전 대비 +0.037%p)'));
+  assert.ok(draft.body.includes('연 2.75%'));
+  assert.ok(draft.body.includes('전년 동월 대비 +2.1%'));
+  assert.ok(draft.body.includes('**[정책 제안 · 교육부]** 교육 정책 제안 내용 (추천 4)'));
+  assert.ok(draft.body.includes('새 글 2편'));
+  assert.ok(draft.body.includes('[직접 작성]'));
+  assert.ok(draft.body.includes('매매를 권유하지 않습니다'));
+  const notice = f.sent.at(-1);
+  assert.equal(notice.to, 'admin@example.com');
+  assert.match(notice.text, /10월 5일\(월\) 07:00/);
+
+  let summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
+  assert.equal(summary.drafts.length, 1);
+  assert.equal(summary.nextMonday, '2026-10-04T22:00:00.000Z');
+  const loaded = await (await f.post('/api/admin/newsletter/draft/get', { id: summary.drafts[0].id }, 'admin')).json();
+  assert.equal(loaded.draft.body, draft.body);
+
+  // a subscriber confirms
+  await f.post('/api/newsletter', { email: 'reader@example.com', consent: true });
+  await f.post('/api/newsletter/confirm', { token: f.tokenFrom(f.sent.at(-1), 'confirm') });
+
+  // unfinished draft cannot be sent or scheduled; test send is allowed
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: draft.body }, 'admin')).status, 400);
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: draft.body, schedule: 'monday' }, 'admin')).status, 400);
+  assert.equal((await f.post('/api/admin/newsletter/test', { subject: draft.subject, body: draft.body }, 'admin')).status, 200);
+
+  const finished = draft.body.replaceAll('[직접 작성]', '');
+  const scheduled = await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: finished, schedule: 'monday' }, 'admin');
+  assert.equal(scheduled.status, 201);
+  assert.match((await scheduled.json()).message, /10월 5일\(월\) 07:00/);
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: 'x', body: 'y' }, 'admin')).status, 409);
+  const before = f.sent.length;
+  const waiting = await f.process();
+  assert.equal(waiting.more, true);
+  assert.ok(Math.abs(waiting.delay - 13 * 60 * 60 * 1000) < 1000, 'waits until Monday 07:00 KST');
+  assert.equal(f.sent.length, before);
+  // a late subscriber before Monday is included
+  await f.post('/api/newsletter', { email: 'late@example.com', consent: true });
+  await f.post('/api/newsletter/confirm', { token: f.tokenFrom(f.sent.at(-1), 'confirm') });
+  f.advance(13 * 60 * 60 * 1000);
+  await f.drain();
+  const delivered = f.sent.slice(before + 1).filter(message => message.subject === draft.subject);
+  assert.deepEqual(delivered.map(message => message.to).sort(), ['late@example.com', 'reader@example.com']);
+  summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
+  assert.equal(summary.campaigns[0].status, 'done');
+  assert.equal(summary.campaigns[0].sent, 2);
+
+  // scheduling can be cancelled
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: 's2', body: 'b2', schedule: 'monday' }, 'admin')).status, 201);
+  summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
+  const pending = summary.campaigns.find(entry => entry.status === 'scheduled');
+  assert.equal((await f.post('/api/admin/newsletter/cancel', { id: pending.id }, 'admin')).status, 200);
+  assert.equal((await f.process()).more, false);
+});
+
+test('draft generation degrades gracefully when ECOS is unavailable', async t => {
+  const f = await fixture(t, { extra: { fetchImpl: async () => ({ ok: false, status: 500, json: async () => ({}) }) } });
+  const draft = await f.generate({ notify: false });
+  assert.ok(draft.body.includes('**KOSPI** 자료를 불러오지 못했습니다'));
+  assert.ok(draft.body.includes('새로 올라온 글이 없습니다'));
 });

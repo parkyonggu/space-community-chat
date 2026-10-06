@@ -96,7 +96,7 @@ export class CommunityService extends DurableObject {
     });
     this.requireVerifiedEmail = requireVerifiedEmail;
     this.newsletter = newsletter.createNewsletterApi('/private', {
-      storage: new SqlStore(state, 'newsletter', ['subscribers', 'campaigns', 'meta']), rateLimit,
+      storage: new SqlStore(state, 'newsletter', ['subscribers', 'campaigns', 'meta', 'drafts']), rateLimit,
       authenticate: this.auth.authenticate, mailer, siteUrl: env.SITE_URL,
       dailyLimit: Number(env.NEWSLETTER_DAILY_LIMIT) || 300,
       legacySubscribers: () => this.community.legacySubscribers(),
@@ -107,6 +107,7 @@ export class CommunityService extends DurableObject {
         if (!current || current > at) await state.storage.setAlarm(at);
       },
       senderName: env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: env.CONTACT_EMAIL || '',
+      adminEmails, ecosKey: env.ECOS_API_KEY || '', highlights: since => this.board.highlights(since),
     });
   }
 
@@ -142,6 +143,10 @@ export class CommunityService extends DurableObject {
       },
       end(body) { resolve(new Response(body, { status, headers: responseHeaders })); },
     };
+    if (pathname === '/internal/newsletter-weekly') {
+      const draft = await this.newsletter.generateWeekly({ source: 'auto' });
+      return json({ id: draft.id });
+    }
     if (pathname === '/internal/chat-identity') {
       const { user } = await this.auth.authenticate(source);
       const canSend = Boolean(user && (!this.requireVerifiedEmail || user.emailVerified));
@@ -204,6 +209,11 @@ export class ChatRoom extends DurableObject {
 }
 
 export default {
+  async scheduled(event, env, ctx) {
+    const stub = env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1'));
+    ctx.waitUntil(stub.fetch('https://internal.invalid/internal/newsletter-weekly', { method: 'POST' })
+      .catch(error => console.error('Weekly newsletter draft failed:', error)));
+  },
   async fetch(request, env) {
     try {
       const url = new URL(request.url);

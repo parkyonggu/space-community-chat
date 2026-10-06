@@ -224,6 +224,21 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     }
   }
 
+  handleBoardApi.highlights = async since => {
+    const store = await readStore();
+    const recent = store.posts.filter(post => !post.hiddenAt && post.createdAt >= since);
+    const likes = id => store.likes.filter(entry => entry.postId === id).length;
+    const newest = (board, count) => recent.filter(post => post.board === board)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, count)
+      .map(post => ({ category: post.category, text: post.text }));
+    return {
+      policy: recent.filter(post => post.board === 'policy').map(post => ({ category: post.category, text: post.text, likes: likes(post.id), createdAt: post.createdAt }))
+        .sort((left, right) => right.likes - left.likes || right.createdAt.localeCompare(left.createdAt)).slice(0, 3),
+      voice: newest('voice', 3),
+      community: newest('community', 2),
+      researchCount: recent.filter(post => post.board === 'research').length,
+    };
+  };
   handleBoardApi.anonymizeUser = userId => updateStore(store => {
     for (const post of store.posts) {
       if (post.authorId === userId) {

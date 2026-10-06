@@ -48,6 +48,8 @@
     .badge.sending { background:#1958e8; color:#fff; }
     .badge.done { background:#1e5b45; }
     .badge.cancelled { background:#5a2630; }
+    .badge.scheduled { background:#7a5b12; color:#fff; }
+    .warn { color:#ffc857; }
     .help { font-size:13px; color:var(--muted); background:var(--card); border-radius:8px; padding:10px 12px; }
     .help code { color:#c8dbff; }
     #gate { text-align:center; padding:40px 16px; }
@@ -69,6 +71,15 @@
       </div>
       <p class="status" id="ops-status" role="status"></p>
       <div class="table-wrap" id="subscriber-list" hidden></div>
+    </section>
+
+    <section>
+      <h2>주간 경제·정책 브리핑 (자동 초안)</h2>
+      <p class="muted">매주 <b>일요일 18:00</b>에 한국은행 경제 지표와 지난 한 주 커뮤니티 인기 글로 초안이 자동으로 만들어지고 운영자 메일로 알려 드립니다. 초안을 불러와 <b>[직접 작성]</b> 칸을 채운 뒤 <b>월요일 07:00 예약 발송</b>을 누르세요. [직접 작성] 표시가 남아 있으면 발송되지 않습니다.</p>
+      <p class="muted" id="ecos-note"></p>
+      <div class="row"><button type="button" id="generate">지금 초안 만들기</button></div>
+      <div class="table-wrap" id="drafts"></div>
+      <p class="status" id="draft-status" role="status"></p>
     </section>
 
     <section>
@@ -98,7 +109,8 @@
           <p class="help">서식: <code># 큰 제목</code> · <code>## 소제목</code> · <code>**굵게**</code> · <code>[글자](https://주소)</code> · <code>![설명](https://이미지주소)</code> · <code>- 목록</code> · <code>---</code> 구분선. 작성 중인 글은 이 브라우저에 자동 저장됩니다.</p>
           <div class="row">
             <button type="button" id="test">나에게 시험 발송</button>
-            <button type="button" class="primary" id="send">구독자 전체에게 발송</button>
+            <button type="button" class="primary" id="schedule">월요일 07:00 예약 발송</button>
+            <button type="button" id="send">지금 바로 전체 발송</button>
           </div>
           <p class="status" id="compose-status" role="status"></p>
         </div>

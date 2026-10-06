@@ -36,7 +36,9 @@
   const percent = (part, total) => (total ? `${Math.round((part / total) * 1000) / 10}%` : '-');
   const date = value => (value ? new Date(value).toLocaleString('ko-KR') : '-');
   const kindLabel = { newsletter: '뉴스레터', confirm: '구독 확인', notice: '수신동의 안내' };
-  const statusLabel = { sending: '발송 중', done: '완료', cancelled: '취소됨' };
+  const statusLabel = { sending: '발송 중', done: '완료', cancelled: '취소됨', scheduled: '예약됨' };
+  const MANUAL = '[직접 작성]';
+  const kstText = value => new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
   function render() {
     const s = summary.subscribers;
@@ -57,8 +59,27 @@
     $('mail-note').textContent = summary.mailConfigured
       ? `메일은 하루 ${summary.dailyLimit}통 이내로, 1분에 20통씩 나누어 발송됩니다. 한도를 넘는 분량은 다음 날 이어서 보냅니다.`
       : '메일 발송이 설정되지 않아 발송할 수 없습니다.';
-    const sending = summary.campaigns.some(c => c.status === 'sending');
+    const sending = summary.campaigns.some(c => c.status === 'sending' || c.status === 'scheduled');
     $('send').disabled = !summary.mailConfigured || sending || !s.confirmed;
+    $('schedule').disabled = !summary.mailConfigured || sending;
+    $('schedule').textContent = `${kstText(summary.nextMonday)} 예약 발송`;
+    $('ecos-note').textContent = summary.ecosKey ? '경제 지표: 한국은행 ECOS 인증키로 불러옵니다.' : '경제 지표: 한국은행 ECOS 시험용 키로 불러오는 중입니다. 정식 인증키(무료)를 등록하면 안정적으로 받을 수 있습니다.';
+    const draftTable = document.createElement('table');
+    const draftHead = document.createElement('tr');
+    ['만든 시각', '방식', '제목', ''].forEach(text => { const th = document.createElement('th'); th.textContent = text; draftHead.appendChild(th); });
+    draftTable.appendChild(draftHead);
+    for (const draft of summary.drafts) {
+      const tr = document.createElement('tr');
+      const action = document.createElement('td');
+      const open = document.createElement('button');
+      open.textContent = '편집기로 불러오기';
+      open.addEventListener('click', () => loadDraft(draft.id));
+      action.appendChild(open);
+      tr.append(cell(date(draft.createdAt)), cell(draft.source === 'auto' ? '자동(일요일)' : '수동'), cell(draft.subject), action);
+      draftTable.appendChild(tr);
+    }
+    if (!summary.drafts.length) { const tr = document.createElement('tr'); const td = cell('아직 초안이 없습니다. "지금 초안 만들기"로 바로 만들어 볼 수 있습니다.'); td.colSpan = 4; tr.appendChild(td); draftTable.appendChild(tr); }
+    $('drafts').replaceChildren(draftTable);
     $('reconfirm').disabled = !summary.mailConfigured || sending || !(s.legacy + s.pending);
     $('notice').disabled = !summary.mailConfigured || sending || !s.noticeDue;
     $('send').textContent = `구독자 전체(${s.confirmed}명)에게 발송`;
@@ -82,10 +103,11 @@
       statusCell.appendChild(badge);
       if (campaign.errors.length) statusCell.append(document.createElement('br'), `오류: ${campaign.errors.join(', ')}`);
       const actions = document.createElement('td');
-      if (campaign.status === 'sending') {
+      if (campaign.status === 'scheduled' && campaign.sendAt) statusCell.append(document.createElement('br'), kstText(campaign.sendAt));
+      if (campaign.status === 'sending' || campaign.status === 'scheduled') {
         const cancel = document.createElement('button');
         cancel.className = 'danger';
-        cancel.textContent = '남은 발송 취소';
+        cancel.textContent = campaign.status === 'scheduled' ? '예약 취소' : '남은 발송 취소';
         cancel.addEventListener('click', async () => {
           if (!confirm('남은 발송을 취소할까요? 이미 보낸 메일은 회수되지 않습니다.')) return;
           try { setStatus('ops-status', (await api('/api/admin/newsletter/cancel', { id: campaign.id })).message); load(); } catch (error) { setStatus('ops-status', error.message, true); }
@@ -94,7 +116,7 @@
       }
       const tracked = campaign.kind === 'newsletter';
       tr.append(cell(date(campaign.createdAt)), cell(kindLabel[campaign.kind] || campaign.kind),
-        cell(`${campaign.ad ? '(광고) ' : ''}${campaign.subject}`), statusCell, cell(campaign.total), cell(campaign.sent),
+        cell(`${campaign.ad ? '(광고) ' : ''}${campaign.subject}`), statusCell, cell(campaign.status === 'scheduled' ? '발송 시 확정' : campaign.total), cell(campaign.sent),
         cell(campaign.failed), cell(campaign.remaining), cell(tracked ? `${percent(campaign.opens, campaign.sent)} (${campaign.opens})` : '-'),
         cell(tracked ? `${percent(campaign.clicks, campaign.sent)} (${campaign.clicks})` : '-'), cell(tracked ? campaign.unsubscribes : '-'), actions);
       table.appendChild(tr);
@@ -128,8 +150,28 @@
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(content())); } catch { /* storage unavailable */ }
   }
 
+  async function loadDraft(id) {
+    if (($('body').value.trim() || $('subject').value.trim()) && !confirm('편집기의 현재 내용을 이 초안으로 바꿀까요?')) return;
+    try {
+      const { draft } = await api('/api/admin/newsletter/draft/get', { id });
+      $('subject').value = draft.subject;
+      $('body').value = draft.body;
+      $('ad').checked = false;
+      schedulePreview();
+      $('subject').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('draft-status', '초안을 편집기로 불러왔습니다. [직접 작성] 칸을 채워 주세요.');
+    } catch (error) { setStatus('draft-status', error.message, true); }
+  }
+
+  function manualWarning() {
+    const count = ($('body').value.match(/\[직접 작성\]/g) || []).length;
+    if (count) setStatus('compose-status', `아직 채우지 않은 [직접 작성] 칸이 ${count}곳 있습니다. 채우거나 지워야 발송할 수 있습니다.`, true);
+    else if ($('compose-status').dataset.error === 'true' && $('compose-status').textContent.includes(MANUAL)) setStatus('compose-status', '');
+  }
+
   function schedulePreview() {
     saveDraft();
+    manualWarning();
     clearTimeout(previewTimer);
     previewTimer = setTimeout(async () => {
       const draft = content();
@@ -240,6 +282,23 @@
       });
     }
     $('refresh').addEventListener('click', load);
+    $('generate').addEventListener('click', async () => {
+      $('generate').disabled = true;
+      setStatus('draft-status', '경제 지표와 커뮤니티 글을 모으고 있습니다.');
+      try { const result = await api('/api/admin/newsletter/draft/generate', {}); setStatus('draft-status', result.message); await load(); } catch (error) { setStatus('draft-status', error.message, true); }
+      $('generate').disabled = false;
+    });
+    $('schedule').addEventListener('click', async () => {
+      const draft = content();
+      if (draft.body.includes(MANUAL)) { manualWarning(); return; }
+      if (!confirm(`"${draft.ad ? '(광고) ' : ''}${draft.subject}"를 ${kstText(summary.nextMonday)}에 확인된 구독자 전체에게 보내도록 예약할까요?\n시험 발송으로 내용을 먼저 확인하셨나요?`)) return;
+      $('schedule').disabled = true;
+      try {
+        setStatus('compose-status', (await api('/api/admin/newsletter/send', { ...draft, schedule: 'monday' })).message);
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+      } catch (error) { setStatus('compose-status', error.message, true); }
+      load();
+    });
     $('show-subscribers').addEventListener('click', async () => {
       const box = $('subscriber-list');
       if (!box.hidden) { box.hidden = true; return; }

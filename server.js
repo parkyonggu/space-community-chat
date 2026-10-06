@@ -38,7 +38,17 @@ const newsletterApi = createNewsletterApi(dataDirectory, {
   clearLegacySubscribers: () => communityApi.clearLegacySubscribers(),
   schedule: delay => scheduleNewsletter(delay),
   senderName: process.env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: process.env.CONTACT_EMAIL || '',
+  adminEmails, ecosKey: process.env.ECOS_API_KEY || '', highlights: since => boardApi.highlights(since),
 });
+let lastWeeklyDraft = '';
+setInterval(() => {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const key = kst.toISOString().slice(0, 10);
+  if (kst.getUTCDay() === 0 && kst.getUTCHours() === 18 && lastWeeklyDraft !== key) {
+    lastWeeklyDraft = key;
+    newsletterApi.generateWeekly({ source: 'auto' }).catch(error => console.error('Weekly newsletter draft failed:', error));
+  }
+}, 10 * 60 * 1000);
 function scheduleNewsletter(delay) {
   clearTimeout(newsletterTimer);
   newsletterTimer = setTimeout(async () => {

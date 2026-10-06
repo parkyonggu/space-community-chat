@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID, randomBytes } = require('node:crypto');
+const { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK } = require('./weekly-brief');
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOTICE_INTERVAL = 2 * 365 * DAY - 14 * DAY;
@@ -86,7 +87,7 @@ function emailHtml({ title, bodyHtml, footerHtml, pixelUrl, button }) {
 function createNewsletterApi(dataDirectory, {
   storage, rateLimit, authenticate, mailer, siteUrl = 'https://withpluces.com', now = Date.now,
   dailyLimit = 300, batchSize = 20, batchDelay = 60000, legacySubscribers, clearLegacySubscribers, schedule,
-  senderName = '(주)위드플러시아', contactEmail = '',
+  senderName = '(주)위드플러시아', contactEmail = '', adminEmails = [], ecosKey = '', highlights, fetchImpl,
 } = {}) {
   if (typeof authenticate !== 'function') throw new Error('Newsletter API requires an authenticate function');
   const origin = new URL(siteUrl).origin;
@@ -100,10 +101,10 @@ function createNewsletterApi(dataDirectory, {
   async function readStore() {
     try {
       const store = storage ? await storage.read() : JSON.parse(await fs.readFile(filePath, 'utf8'));
-      for (const key of ['subscribers', 'campaigns', 'meta']) if (!Array.isArray(store[key])) store[key] = [];
+      for (const key of ['subscribers', 'campaigns', 'meta', 'drafts']) if (!Array.isArray(store[key])) store[key] = [];
       return store;
     } catch (error) {
-      if (error.code === 'ENOENT') return { subscribers: [], campaigns: [], meta: [] };
+      if (error.code === 'ENOENT') return { subscribers: [], campaigns: [], meta: [], drafts: [] };
       throw error;
     }
   }
@@ -215,6 +216,12 @@ function createNewsletterApi(dataDirectory, {
     return { subject, body, ad: input.ad === true };
   }
 
+  function assertFinished(content) {
+    if (content.body.includes(MANUAL_MARK) || content.subject.includes(MANUAL_MARK)) {
+      throw new NewsletterError(400, `"${MANUAL_MARK}" 표시가 남아 있습니다. 해당 칸을 채우거나 지운 뒤 발송해 주세요.`);
+    }
+  }
+
   const kst = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   function footer({ subscriber, ad, kind }) {
@@ -279,9 +286,12 @@ function createNewsletterApi(dataDirectory, {
         legacy: subscribers.filter(entry => entry.status === 'legacy').length,
         noticeDue,
       },
+      nextMonday: new Date(nextMondaySeven(now())).toISOString(), ecosKey: Boolean(ecosKey),
+      drafts: [...store.drafts].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 5)
+        .map(draft => ({ id: draft.id, subject: draft.subject, createdAt: draft.createdAt, source: draft.source })),
       campaigns: [...store.campaigns].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 50).map(campaign => ({
         id: campaign.id, kind: campaign.kind, subject: campaign.subject, ad: campaign.ad, status: campaign.status,
-        createdAt: campaign.createdAt, finishedAt: campaign.finishedAt || null, createdBy: campaign.createdBy,
+        createdAt: campaign.createdAt, finishedAt: campaign.finishedAt || null, createdBy: campaign.createdBy, sendAt: campaign.sendAt || null,
         total: campaign.recipients.length, sent: campaign.sent, failed: campaign.failed, skipped: campaign.skipped,
         remaining: campaign.queue.length, opens: campaign.opens.length, clicks: campaign.clicks.length,
         unsubscribes: campaign.unsubscribes, errors: campaign.errors.slice(-5),
@@ -289,29 +299,63 @@ function createNewsletterApi(dataDirectory, {
     };
   }
 
-  async function createCampaign(kind, user, content = {}) {
+  async function createCampaign(kind, user, content = {}, sendAt = null) {
     if (!mailReady()) throw new NewsletterError(503, '메일 발송이 설정되지 않았습니다.');
     const campaign = await updateStore(store => {
-      if (store.campaigns.some(entry => entry.status === 'sending')) throw new NewsletterError(409, '발송 중인 작업이 있습니다. 끝난 뒤 다시 시도하거나 취소해 주세요.');
+      if (store.campaigns.some(entry => entry.status === 'sending' || entry.status === 'scheduled')) throw new NewsletterError(409, '발송 중이거나 예약된 작업이 있습니다. 끝난 뒤 다시 시도하거나 취소해 주세요.');
       let recipients;
       if (kind === 'newsletter') recipients = store.subscribers.filter(entry => entry.status === 'confirmed');
       else if (kind === 'confirm') recipients = store.subscribers.filter(entry => entry.status !== 'confirmed');
       else recipients = store.subscribers.filter(entry => entry.status === 'confirmed' &&
         now() - Date.parse(entry.lastNoticeAt || entry.consentAt || entry.confirmedAt || iso()) >= NOTICE_INTERVAL);
-      if (!recipients.length) throw new NewsletterError(400, kind === 'newsletter' ? '구독을 확인한 구독자가 없습니다.' : '보낼 대상이 없습니다.');
+      if (!recipients.length && !sendAt) throw new NewsletterError(400, kind === 'newsletter' ? '구독을 확인한 구독자가 없습니다.' : '보낼 대상이 없습니다.');
       if (kind === 'confirm') recipients.forEach(entry => { entry.confirmToken = entry.confirmToken || newToken(); });
       const ids = recipients.map(entry => entry.id);
       const entry = {
         id: randomUUID(), kind, subject: kind === 'newsletter' ? content.subject : kind === 'confirm' ? '구독 확인 요청' : '수신동의 안내',
         body: content.body || '', ad: Boolean(content.ad), links: kind === 'newsletter' ? renderMarkup(content.body).links : [],
-        status: 'sending', createdAt: iso(), createdBy: user.nickname, recipients: ids, queue: [...ids],
+        status: sendAt ? 'scheduled' : 'sending', sendAt: sendAt ? new Date(sendAt).toISOString() : null,
+        createdAt: iso(), createdBy: user.nickname, recipients: sendAt ? [] : ids, queue: sendAt ? [] : [...ids],
         sent: 0, failed: 0, skipped: 0, opens: [], clicks: [], unsubscribes: 0, errors: [],
       };
       store.campaigns.push(entry);
       return entry;
     });
-    if (schedule) await schedule(500);
+    if (schedule) await schedule(sendAt ? Math.max(500, sendAt - now()) : 500);
     return campaign;
+  }
+
+  async function notifyAdmins(subject, markup) {
+    if (!mailReady()) return;
+    for (const email of adminEmails.map(entry => entry.trim().toLowerCase()).filter(entry => EMAIL.test(entry))) {
+      try {
+        const { html } = renderMarkup(markup);
+        await mailer.send({ to: email, subject, text: markupToText(markup), html: emailHtml({ title: subject, bodyHtml: html, footerHtml: '스페이스 커뮤니티 운영자 알림입니다.' }) });
+      } catch (error) {
+        console.error('Admin notification failed:', error.code || error.name || 'error');
+      }
+    }
+  }
+
+  async function generateWeekly({ source = 'auto', notify = true } = {}) {
+    const draft = await buildWeeklyDraft({ fetchImpl: fetchImpl || fetch, ecosKey, now: now(), siteUrl: origin, highlights });
+    const entry = { id: randomUUID(), subject: draft.subject, body: draft.body, createdAt: iso(), source };
+    await updateStore(store => {
+      store.drafts.push(entry);
+      store.drafts.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      store.drafts.splice(10);
+    });
+    if (notify) {
+      const when = kstText(nextMondaySeven(now()));
+      await notifyAdmins('[스페이스 레터] 이번 주 브리핑 초안이 준비되었습니다', `# 이번 주 브리핑 초안이 준비되었습니다\n\n경제 지표와 커뮤니티 글을 모아 초안을 만들었습니다. "${MANUAL_MARK}" 칸을 채운 뒤 시험 발송으로 확인하고 **${when}** 예약 발송을 눌러 주세요.\n\n[뉴스레터 관리 열기](${origin}/newsletter-admin)`);
+    }
+    return entry;
+  }
+
+  function kstText(timestamp) {
+    const date = new Date(timestamp + 9 * 60 * 60 * 1000);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일(${days[date.getUTCDay()]}) ${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
   }
 
   async function processQueue() {
@@ -324,8 +368,18 @@ function createNewsletterApi(dataDirectory, {
         state.day = day;
         state.sentToday = 0;
       }
+      const due = store.campaigns.find(entry => entry.status === 'scheduled' && Date.parse(entry.sendAt) <= now());
+      if (due) {
+        due.recipients = store.subscribers.filter(entry => entry.status === 'confirmed').map(entry => entry.id);
+        due.queue = [...due.recipients];
+        due.status = due.recipients.length ? 'sending' : 'done';
+        if (!due.recipients.length) due.finishedAt = iso();
+      }
       const campaign = store.campaigns.find(entry => entry.status === 'sending');
-      if (!campaign) return null;
+      if (!campaign) {
+        const upcoming = store.campaigns.filter(entry => entry.status === 'scheduled').map(entry => Date.parse(entry.sendAt)).sort()[0];
+        return upcoming ? { waitFor: upcoming } : null;
+      }
       const room = Math.min(batchSize, dailyLimit - state.sentToday);
       if (room <= 0) return { wait: true };
       const ids = campaign.queue.splice(0, room);
@@ -340,6 +394,7 @@ function createNewsletterApi(dataDirectory, {
       return { campaign: { id: campaign.id, kind: campaign.kind, subject: campaign.subject, body: campaign.body, ad: campaign.ad }, items };
     });
     if (!batch) return { more: false };
+    if (batch.waitFor) return { more: true, delay: Math.max(1000, batch.waitFor - now()) };
     if (batch.wait) {
       const nextDay = Date.parse(`${kst(now() + DAY)}T00:00:00+09:00`);
       return { more: true, delay: Math.max(60000, nextDay - now() + 60000) };
@@ -375,7 +430,7 @@ function createNewsletterApi(dataDirectory, {
           campaign.finishedAt = iso();
         }
       }
-      return store.campaigns.some(entry => entry.status === 'sending');
+      return store.campaigns.some(entry => entry.status === 'sending' || entry.status === 'scheduled');
     });
     return { more, delay: batchDelay };
   }
@@ -452,8 +507,28 @@ function createNewsletterApi(dataDirectory, {
         }
         if (action === 'send') {
           const content = compose(input);
+          assertFinished(content);
+          if (input.schedule === 'monday') {
+            const sendAt = nextMondaySeven(now());
+            await createCampaign('newsletter', user, content, sendAt);
+            sendJson(response, 201, { message: `${kstText(sendAt)}에 확인된 구독자 전체에게 발송하도록 예약했습니다. 그 전까지 발송 기록에서 취소할 수 있습니다.` });
+            return;
+          }
           const campaign = await createCampaign('newsletter', user, content);
           sendJson(response, 201, { message: `구독자 ${campaign.recipients.length}명에게 발송을 시작했습니다. 하루 ${dailyLimit}통 이내로 나누어 보냅니다.` });
+          return;
+        }
+        if (action === 'draft/generate') {
+          limit(`nl-draft:${user.id}`, 10, 60 * 60000);
+          const draft = await generateWeekly({ source: 'manual', notify: false });
+          sendJson(response, 201, { draft, message: '이번 주 초안을 새로 만들었습니다.' });
+          return;
+        }
+        if (action === 'draft/get') {
+          const store = await readStore();
+          const draft = store.drafts.find(entry => entry.id === input.id);
+          if (!draft) throw new NewsletterError(404, '초안을 찾을 수 없습니다.');
+          sendJson(response, 200, { draft });
           return;
         }
         if (action === 'reconfirm' || action === 'notice') {
@@ -464,7 +539,7 @@ function createNewsletterApi(dataDirectory, {
         if (action === 'cancel') {
           await updateStore(store => {
             const campaign = store.campaigns.find(entry => entry.id === input.id);
-            if (!campaign || campaign.status !== 'sending') throw new NewsletterError(404, '취소할 발송이 없습니다.');
+            if (!campaign || !['sending', 'scheduled'].includes(campaign.status)) throw new NewsletterError(404, '취소할 발송이 없습니다.');
             campaign.skipped += campaign.queue.length;
             campaign.queue = [];
             campaign.status = 'cancelled';
@@ -552,6 +627,7 @@ function createNewsletterApi(dataDirectory, {
   }
 
   handleNewsletterApi.processQueue = processQueue;
+  handleNewsletterApi.generateWeekly = generateWeekly;
   return handleNewsletterApi;
 }
 
