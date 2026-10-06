@@ -196,10 +196,11 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   };
   const reb = {
     tables: [{ STATBL_ID: 'X_MONTH', STATBL_NM: '(월) 아파트 매매가격지수', DTACYCLE_CD: 'MM', V_ORDER: 1 },
-      { STATBL_ID: 'W_SALE', STATBL_NM: '(주) 아파트 매매가격지수', DTACYCLE_CD: 'WK', V_ORDER: 5 },
-      { STATBL_ID: 'W_RENT', STATBL_NM: '(주) 아파트 전세가격지수', DTACYCLE_CD: 'WK', V_ORDER: 6 }],
-    W_SALE: [['2026W39', '전국', 100], ['2026W39', '서울', 100], ['2026W39', '수도권', 100], ['2026W39', '지방', 100],
-      ['2026W40', '전국', 100.05], ['2026W40', '서울', 100.2], ['2026W40', '수도권', 100.1], ['2026W40', '지방', 99.98], ['2026W40', '강남구', 101]],
+      { STATBL_ID: 'W_SIZE', STATBL_NM: '(주) 규모별 매매가격지수', DTACYCLE_CD: 'WK', V_ORDER: 4 },
+      { STATBL_ID: 'W_SALE', STATBL_NM: '(주) 매매가격지수', DTACYCLE_CD: 'WK', V_ORDER: 5 },
+      { STATBL_ID: 'W_RENT', STATBL_NM: '(주) 전세가격지수', DTACYCLE_CD: 'WK', V_ORDER: 6 }],
+    W_SALE: [['2026W39', '전국', 100], ['2026W39', '서울', 100], ['2026W39', '수도권', 100], ['2026W39', '지방권', 100],
+      ['2026W40', '전국', 100.05], ['2026W40', '서울', 100.2], ['2026W40', '수도권', 100.1], ['2026W40', '지방권', 99.98], ['2026W40', '강남구', 101]],
     W_RENT: [['2026W39', '전국', 100], ['2026W40', '전국', 100.03], ['2026W39', '서울', 100], ['2026W40', '서울', 100.08]],
   };
   const requested = [];
@@ -214,8 +215,11 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
       assert.equal(parsed.searchParams.get('KEY'), 'REBKEY');
       const service = parsed.pathname.split('/').pop().replace('.do', '');
       if (service === 'SttsApiTbl') return { ok: true, json: async () => ({ SttsApiTbl: [{ head: [{ list_total_count: 3 }] }, { row: reb.tables }] }) };
-      const rows = reb[parsed.searchParams.get('STATBL_ID')].map(([time, region, value]) => ({ WRTTIME_IDTFR_ID: time, WRTTIME_DESC: `${time.slice(0, 4)}년 ${time.slice(5)}주`, CLS_NM: region, CLS_FULLNM: region, DTA_VAL: value }));
-      return { ok: true, json: async () => ({ SttsApiTblData: [{ head: [{ list_total_count: rows.length }] }, { row: parsed.searchParams.get('pSize') === '1' ? rows.slice(0, 1) : rows }] }) };
+      assert.equal(parsed.searchParams.get('DTACYCLE_CD'), 'WK');
+      assert.equal(parsed.searchParams.get('START_WRTTIME'), '202633');
+      assert.equal(parsed.searchParams.get('END_WRTTIME'), '202653');
+      const rows = reb[parsed.searchParams.get('STATBL_ID')].map(([time, region, value]) => ({ WRTTIME_IDTFR_ID: time.replace('W', ''), WRTTIME_DESC: time === '2026W40' ? '2026-09-28' : '2026-09-21', CLS_NM: region, CLS_FULLNM: region, DTA_VAL: value }));
+      return { ok: true, json: async () => ({ SttsApiTblData: [{ head: [{ list_total_count: rows.length }] }, { row: rows }] }) };
     }
     const parts = new URL(url).pathname.split('/');
     const code = parts[8]; const item = parts[12]; const start = parts[10];
@@ -238,6 +242,7 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   assert.ok(draft.body.includes('**아파트 매매가격 (주간 변동률)** 전국 +0.05% · 수도권 +0.10% · 서울 +0.20% · 지방 −0.02%'));
   assert.ok(draft.body.includes('**아파트 전세가격 (주간 변동률)** 전국 +0.03% · 서울 +0.08%'));
   assert.ok(draft.body.includes('한국부동산원 부동산통계정보시스템(R-ONE)'));
+  assert.ok(draft.body.includes('주간 아파트 가격동향 (9월 28일 조사 기준)'));
   assert.ok(!draft.body.includes('강남구'));
   assert.match(draft.subject, /10월 5일 주간 경제·정책 브리핑/);
   assert.ok(draft.body.includes('**KOSPI** 7,003.74 (1주 전 대비 +3.00%)'));

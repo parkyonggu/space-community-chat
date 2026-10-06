@@ -141,9 +141,18 @@ async function imfOutlook(fetchImpl, now, notes = []) {
   }
 }
 
-const REB_REGIONS = ['전국', '수도권', '서울', '지방'];
+// 한국부동산원 주간아파트가격동향: 통계표 이름에는 '아파트'가 없고 '(주) 매매가격지수'처럼 표기된다.
+const REB_REGIONS = [['전국', '전국'], ['수도권', '수도권'], ['서울', '서울'], ['지방', '지방권']];
+const REB_WEEKLY_FALLBACK = { 매매: 'T244183132827305' };
 
-async function rebHousing(fetchImpl, key) {
+function rebWeekId(timestamp) {
+  const date = new Date(timestamp + 9 * 60 * 60 * 1000);
+  const year = date.getUTCFullYear();
+  const day = Math.floor((date - Date.UTC(year, 0, 1)) / DAY);
+  return `${year}${String(Math.max(1, Math.floor(day / 7))).padStart(2, '0')}`;
+}
+
+async function rebHousing(fetchImpl, key, now = Date.now()) {
   if (!key) return null;
   const base = 'https://www.reb.or.kr/r-one/openapi';
   const call = async (service, params) => {
@@ -152,8 +161,11 @@ async function rebHousing(fetchImpl, key) {
     if (!response.ok) throw new Error(`REB ${response.status}`);
     const data = await response.json();
     const body = data?.[service];
-    if (!Array.isArray(body)) throw new Error(`REB ${service} ${data?.RESULT?.CODE || ''} ${data?.RESULT?.MESSAGE || 'invalid response'}`.trim());
-    const total = body[0]?.head?.find(entry => entry.list_total_count !== undefined)?.list_total_count || 0;
+    if (!Array.isArray(body)) {
+      if (data?.RESULT?.CODE === 'INFO-200') return { total: 0, rows: [] };
+      throw new Error(`REB ${service} ${data?.RESULT?.CODE || ''} ${data?.RESULT?.MESSAGE || 'invalid response'}`.trim());
+    }
+    const total = Number(body[0]?.head?.find(entry => entry.list_total_count !== undefined)?.list_total_count || 0);
     return { total, rows: body[1]?.row || [] };
   };
   const tables = [];
@@ -162,34 +174,45 @@ async function rebHousing(fetchImpl, key) {
     tables.push(...rows);
     if (rows.length < 1000) break;
   }
-  const weekly = tables.filter(table => (String(table.DTACYCLE_CD || '').split(',').some(code => ['WK', 'WW'].includes(code.trim())) || /주/.test(table.DTACYCLE_NM || '') || /^\(주\)|주간/.test(table.STATBL_NM)) && /아파트/.test(table.STATBL_NM));
-  const pick = pattern => weekly.filter(table => pattern.test(table.STATBL_NM)).sort((left, right) => (left.V_ORDER || 0) - (right.V_ORDER || 0))[0];
-  const tableSets = [['매매', pick(/매매가격지수/)], ['전세', pick(/전세가격지수/)]].filter(([, table]) => table);
-  if (!tableSets.length) throw new Error(`주간 아파트 통계표를 찾지 못함 (전체 ${tables.length}개 중 주간 아파트 후보: ${weekly.map(table => table.STATBL_NM).slice(0, 5).join(', ') || '없음'})`);
+  const isWeekly = table => String(table.DTACYCLE_CD || '').split(',').some(code => ['WK', 'WW'].includes(code.trim()));
+  const weekly = tables.filter(table => isWeekly(table) && !/규모|연령|수급|거래|월세|매물|오피스텔|단독|연립/.test(table.STATBL_NM || ''));
+  const pick = (label, pattern) => weekly.filter(table => pattern.test(table.STATBL_NM))
+    .sort((left, right) => (/아파트|^\(주\)/.test(right.STATBL_NM) - /아파트|^\(주\)/.test(left.STATBL_NM)) || (left.V_ORDER || 0) - (right.V_ORDER || 0))[0]
+    || (REB_WEEKLY_FALLBACK[label] ? { STATBL_ID: REB_WEEKLY_FALLBACK[label], STATBL_NM: `(주) ${label}가격지수`, DTACYCLE_CD: 'WK' } : null);
+  const tableSets = [['매매', pick('매매', /매매가격지수/)], ['전세', pick('전세', /전세가격지수/)]].filter(([, table]) => table);
+  const startWeek = rebWeekId(now - 42 * DAY);
+  const endWeek = `${new Date(now + 9 * 60 * 60 * 1000).getUTCFullYear()}53`;
   const lines = [];
+  const problems = [];
   let week = '';
   for (const [label, table] of tableSets) {
-    const cycle = String(table.DTACYCLE_CD || 'WK').split(',').map(code => code.trim()).find(code => ['WK', 'WW'].includes(code)) || 'WK';
-    const first = await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: cycle, pIndex: '1', pSize: '1' });
-    const lastPage = Math.max(1, Math.ceil(first.total / 1000));
-    const rows = [];
-    for (const page of [lastPage - 1, lastPage].filter(page => page >= 1)) {
-      rows.push(...(await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: cycle, pIndex: String(page), pSize: '1000' })).rows);
+    try {
+      const rows = [];
+      for (let page = 1; page <= 5; page++) {
+        const result = await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: 'WK', START_WRTTIME: startWeek, END_WRTTIME: endWeek, pIndex: String(page), pSize: '1000' });
+        rows.push(...result.rows);
+        if (!result.rows.length || rows.length >= result.total) break;
+      }
+      const nameOf = row => row.CLS_FULLNM || row.CLS_NM;
+      const regional = rows.filter(row => REB_REGIONS.some(([, name]) => name === nameOf(row)) && Number.isFinite(Number(row.DTA_VAL)));
+      const times = [...new Set(regional.map(row => row.WRTTIME_IDTFR_ID))].sort();
+      if (times.length < 2) throw new Error(`지역(전국·서울 등) 자료가 2주 이상 없음 (${startWeek}~ 받은 행 ${rows.length}개)`);
+      const [previous, latest] = times.slice(-2);
+      week = regional.find(row => row.WRTTIME_IDTFR_ID === latest)?.WRTTIME_DESC || latest;
+      const parts = REB_REGIONS.map(([display, name]) => {
+        const current = regional.find(row => row.WRTTIME_IDTFR_ID === latest && nameOf(row) === name);
+        const before = regional.find(row => row.WRTTIME_IDTFR_ID === previous && nameOf(row) === name);
+        return current && before ? `${display} ${signed(((Number(current.DTA_VAL) - Number(before.DTA_VAL)) / Number(before.DTA_VAL)) * 100, 2, '%')}` : null;
+      }).filter(Boolean);
+      if (parts.length) lines.push(`- **아파트 ${label}가격 (주간 변동률)** ${parts.join(' · ')}`);
+    } catch (error) {
+      problems.push(`${table.STATBL_NM}(${table.STATBL_ID}): ${error.message}`);
     }
-    const regional = rows.filter(row => REB_REGIONS.includes(row.CLS_FULLNM || row.CLS_NM) && Number.isFinite(Number(row.DTA_VAL)));
-    const times = [...new Set(regional.map(row => row.WRTTIME_IDTFR_ID))].sort();
-    if (times.length < 2) throw new Error(`${table.STATBL_NM}: 지역(전국·서울 등) 자료가 2주 이상 없음 (받은 행 ${rows.length}개, 예: ${rows.slice(-2).map(row => `${row.WRTTIME_IDTFR_ID}/${row.CLS_FULLNM || row.CLS_NM}`).join(', ')})`);
-    const [previous, latest] = times.slice(-2);
-    week = regional.find(row => row.WRTTIME_IDTFR_ID === latest)?.WRTTIME_DESC || latest;
-    const parts = REB_REGIONS.map(region => {
-      const now = regional.find(row => row.WRTTIME_IDTFR_ID === latest && (row.CLS_FULLNM || row.CLS_NM) === region);
-      const before = regional.find(row => row.WRTTIME_IDTFR_ID === previous && (row.CLS_FULLNM || row.CLS_NM) === region);
-      return now && before ? `${region} ${signed(((Number(now.DTA_VAL) - Number(before.DTA_VAL)) / Number(before.DTA_VAL)) * 100, 2, '%')}` : null;
-    }).filter(Boolean);
-    if (parts.length) lines.push(`- **아파트 ${label}가격 (주간 변동률)** ${parts.join(' · ')}`);
   }
-  if (!lines.length) throw new Error('REB no regional rows');
-  return [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines];
+  if (!tableSets.some(([label]) => label === '전세')) problems.push(`주간 전세가격지수 통계표를 찾지 못함 (주간 통계표 후보: ${weekly.map(table => table.STATBL_NM).slice(0, 8).join(', ') || '없음'})`);
+  if (!lines.length) throw new Error(problems.join(' / ') || 'REB no regional rows');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(week)) week = `${Number(week.slice(5, 7))}월 ${Number(week.slice(8, 10))}일 조사`;
+  return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems };
 }
 
 function highlightLines(posts, siteUrl) {
@@ -216,7 +239,11 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
   const [figures, global, outlook] = await Promise.all([indicators(fetchImpl, key, now, notes), globalIndicators(fetchImpl, key, now, notes), imfOutlook(fetchImpl, now, notes)]);
   let housing;
   try {
-    housing = await rebHousing(fetchImpl, rebKey);
+    const result = await rebHousing(fetchImpl, rebKey, now);
+    if (result) {
+      housing = result.lines;
+      for (const problem of result.problems) notes.push(`한국부동산원: ${problem}`);
+    }
   } catch (error) {
     housing = null;
     notes.push(`한국부동산원: ${error.message}`);
