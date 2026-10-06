@@ -250,6 +250,12 @@
   function renderAccount(detail) {
     const user = detail?.user || null;
     state.user = user;
+    // Came here from 스페이스 톡 to log in: go back once the login succeeds.
+    if (user) {
+      let next = null;
+      try { next = sessionStorage.getItem('space-after-login'); sessionStorage.removeItem('space-after-login'); } catch { next = null; }
+      if (next && /^\/chat(#[\w=-]*)?$/.test(next)) { location.href = next; return; }
+    }
     const actions = $('me-actions');
     if (!user) {
       $('me-title').textContent = '함께 이야기해요';
@@ -279,7 +285,9 @@
       voice.type = 'button';
       voice.addEventListener('click', () => focusComposer('voice'));
       row.append(policy, voice);
-      actions.replaceChildren(write, row);
+      const talk = make('a', 'btn btn-outline', '스페이스 톡 열기');
+      talk.href = '/chat';
+      actions.replaceChildren(write, row, talk);
       if (user.admin) {
         const admin = make('a', 'btn btn-outline', '뉴스레터 관리');
         admin.href = '/newsletter-admin';

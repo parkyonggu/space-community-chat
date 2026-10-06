@@ -15,12 +15,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "COMMUNITY", "class_name": "CommunityService" },
-      { "name": "CHAT", "class_name": "ChatRoom" }
+      { "name": "CHAT", "class_name": "ChatRoom" },
+      { "name": "TALK", "class_name": "ChatService" }
     ]
   },
   "triggers": { "crons": ["0 9 * * SUN"] },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["CommunityService", "ChatRoom"] }
+    { "tag": "v1", "new_sqlite_classes": ["CommunityService", "ChatRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["ChatService"] }
   ],
   // 인증·비밀번호 재설정 메일 (Cloudflare Email Service)
   // Workers Paid 요금제 가입과 withpluces.com 발신 도메인 인증을 마친 뒤

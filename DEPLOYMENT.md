@@ -344,3 +344,13 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 공식 참고:
 - [Cloudflare Pages custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/)
 - [Cloudflare DNS records](https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/)
+
+## 스페이스 톡 (단체 대화방 · 1:1 대화 · 웹 알림) — 2026-10-06
+
+- 주소: `https://withpluces.com/chat` (홈 메뉴 "스페이스 톡"). 이메일 인증을 마친 회원만 이용합니다.
+- 서버: Durable Object `ChatService` (바인딩 `TALK`, 마이그레이션 `v2`). `npx wrangler deploy` 한 번이면 새 저장소가 자동으로 만들어집니다. 추가 시크릿·키 등록은 필요 없습니다.
+- 웹 알림 키(VAPID)는 첫 사용 때 서버가 스스로 만들어 저장합니다. 푸시에는 메시지 내용을 싣지 않고, 기기가 `/api/chat/unread`에서 직접 읽어 알림을 띄웁니다(`public/sw.js`).
+- 보관: 메시지·사진·신고 기록은 90일 뒤 매일 자동 삭제(`chat-core.js` `RETENTION_DAYS`). 방 최대 인원 100명(`MAX_ROOM_MEMBERS`).
+- 신고된 메시지: 운영자 계정으로 스페이스 톡 → 메뉴 → "신고된 메시지 관리".
+- 아이폰 알림: Safari 공유 → "홈 화면에 추가"로 설치한 뒤 앱 안에서 "알림 켜기" (iOS 16.4 이상).
+- 로컬 테스트: `npm run dev:worker` 실행 후 `npm run test:worker` (스페이스 톡 종단 테스트 포함).

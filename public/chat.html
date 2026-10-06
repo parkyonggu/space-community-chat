@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>스페이스 톡 · 스페이스 커뮤니티</title>
+  <meta name="description" content="스페이스 커뮤니티 회원끼리 단체 대화방과 1:1 대화를 나누는 스페이스 톡">
+  <meta name="robots" content="noindex">
+  <link rel="manifest" href="/talk-manifest.json">
+  <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icons/icon-512.png">
+  <meta name="theme-color" content="#0e1730">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="스페이스 톡">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="/chat.css">
+</head>
+<body>
+  <div class="app" id="app" data-view="list">
+    <!-- 대화 목록 -->
+    <section class="pane list-pane" aria-labelledby="list-title">
+      <header class="bar">
+        <a class="bar-home" href="/" aria-label="스페이스 커뮤니티 홈"><img src="/icons/icon-512.png" alt="" width="30" height="30"></a>
+        <h1 id="list-title">스페이스 톡</h1>
+        <button type="button" class="icon" id="btn-new" aria-label="새 대화방 만들기" title="새 대화방"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button type="button" class="icon" id="btn-menu" aria-label="메뉴" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </header>
+      <div class="notice-bar" id="push-bar" hidden>
+        <span id="push-text">새 메시지 알림을 받아 보세요.</span>
+        <button type="button" id="btn-push">알림 켜기</button>
+      </div>
+      <div class="notice-bar install" id="install-bar" hidden>
+        <span>홈 화면에 스페이스 톡을 추가하면 앱처럼 쓸 수 있어요.</span>
+        <button type="button" id="btn-install">설치</button>
+      </div>
+      <div class="search"><label class="sr-only" for="room-filter">대화방 검색</label><input id="room-filter" type="search" placeholder="대화방 이름 검색" autocomplete="off"></div>
+      <ul class="rooms" id="rooms" aria-label="대화방 목록"></ul>
+      <div class="list-empty" id="rooms-empty" hidden>
+        <p><strong>아직 대화방이 없어요.</strong></p>
+        <p>단체 대화방을 만들고 초대 링크를 보내거나, 내 1:1 링크를 친구에게 보내 대화를 시작해 보세요.</p>
+        <div class="row"><button type="button" class="btn gold" id="empty-new">대화방 만들기</button><button type="button" class="btn" id="empty-link">내 1:1 링크</button></div>
+      </div>
+      <div class="gate" id="gate" hidden>
+        <img src="/icons/icon-512.png" alt="" width="64" height="64">
+        <h2 id="gate-title">로그인이 필요해요</h2>
+        <p id="gate-text">스페이스 톡은 이메일 인증을 마친 스페이스 커뮤니티 회원만 이용할 수 있습니다.</p>
+        <button type="button" class="btn gold" id="gate-login">로그인하러 가기</button>
+        <a class="btn" href="/#signup" id="gate-signup">회원가입</a>
+      </div>
+      <p class="conn" id="conn" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- 대화방 -->
+    <section class="pane room-pane" aria-labelledby="room-title">
+      <div class="room-empty" id="room-empty"><img src="/icons/icon-512.png" alt="" width="72" height="72"><p>대화방을 선택하세요.</p></div>
+      <header class="bar room-bar" id="room-bar" hidden>
+        <button type="button" class="icon" id="btn-back" aria-label="대화 목록으로"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="room-head"><h2 id="room-title"></h2><span id="room-sub"></span></div>
+        <button type="button" class="icon" id="btn-room-menu" aria-label="대화방 메뉴" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </header>
+      <div class="messages" id="messages" aria-live="polite" hidden>
+        <button type="button" class="more" id="btn-older" hidden>이전 대화 더 보기</button>
+        <div id="message-list"></div>
+      </div>
+      <button type="button" class="jump" id="btn-jump" hidden>새 메시지 ↓</button>
+      <p class="typing" id="typing" aria-live="polite"></p>
+      <form class="composer" id="composer" hidden>
+        <label class="icon attach" for="file" aria-label="사진 보내기" title="사진"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></label>
+        <input type="file" id="file" accept="image/*" hidden>
+        <label class="sr-only" for="input">메시지</label>
+        <textarea id="input" rows="1" maxlength="2000" placeholder="메시지 입력" enterkeyhint="send"></textarea>
+        <button type="submit" class="send" id="btn-send" aria-label="보내기" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14-7-5 14-2.5-5.5L5 12z"/></svg></button>
+      </form>
+    </section>
+  </div>
+
+  <!-- 공용 시트(팝업) -->
+  <dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-head"><h2 id="sheet-title"></h2><button type="button" class="icon" id="sheet-close" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/chat.js" defer></script>
+</body>
+</html>

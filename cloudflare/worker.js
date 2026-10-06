@@ -5,6 +5,7 @@ import community from '../community-api.js';
 import board from '../board-api.js';
 import newsletter from '../newsletter-api.js';
 import portal from '../portal-api.js';
+export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
@@ -81,7 +82,8 @@ export class CommunityService extends DurableObject {
       siteUrl: env.SITE_URL,
       mailer,
       adminEmails,
-      onAccountDeleted: userId => Promise.all([this.board.anonymizeUser(userId), this.community.anonymizeUser(userId)]),
+      onAccountDeleted: userId => Promise.all([this.board.anonymizeUser(userId), this.community.anonymizeUser(userId),
+        env.TALK ? env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null]),
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,
@@ -159,7 +161,9 @@ export class CommunityService extends DurableObject {
     if (pathname === '/internal/chat-identity') {
       const { user } = await this.auth.authenticate(source);
       const canSend = Boolean(user && (!this.requireVerifiedEmail || user.emailVerified));
-      return json({ name: canSend ? user.nickname : null, signedIn: Boolean(user) });
+      const csrfOk = headers['x-csrf-token'] ? !(await this.auth.authenticate(source, { csrf: true })).error : false;
+      return json({ name: canSend ? user.nickname : null, signedIn: Boolean(user), csrfOk,
+        user: user ? { id: user.id, nickname: user.nickname, verified: canSend, admin: Boolean(user.admin) } : null });
     }
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
@@ -232,6 +236,22 @@ export default {
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
           url.pathname === '/api/comments' || url.pathname === '/api/portal') {
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
+      }
+      if (url.pathname === '/ws/talk' || url.pathname === '/api/chat' || url.pathname.startsWith('/api/chat/')) {
+        const isSocket = url.pathname === '/ws/talk';
+        const writes = !isSocket && request.method !== 'GET' && request.method !== 'HEAD';
+        if ((isSocket || writes) && request.headers.get('Origin') !== env.SITE_URL) return json({ error: '이 사이트에서만 이용할 수 있습니다.' }, 403);
+        const identityRequest = new Request(new URL('/internal/chat-identity', url), {
+          headers: { cookie: request.headers.get('cookie') || '', host: url.host, origin: request.headers.get('Origin') || '',
+            'x-csrf-token': writes ? request.headers.get('X-CSRF-Token') || '' : '', 'CF-Connecting-IP': request.headers.get('CF-Connecting-IP') || '' },
+        });
+        const identity = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(identityRequest)).json();
+        if (writes && identity.user && !identity.csrfOk) return json({ error: '세션이 만료되었거나 요청을 확인할 수 없습니다. 새로고침 후 다시 시도해 주세요.' }, 403);
+        const target = new URL(isSocket ? '/ws' : url.pathname + url.search, url);
+        const forwarded = new Request(target, request);
+        forwarded.headers.delete('X-Talk-User');
+        if (identity.user) forwarded.headers.set('X-Talk-User', encodeURIComponent(JSON.stringify(identity.user)));
+        return await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch(forwarded);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);
       if (url.pathname === '/ws/chat') {

@@ -1,0 +1,996 @@
+// 스페이스 톡 클라이언트: 대화 목록·대화방·실시간 전송·읽음 표시·사진·초대·1:1·웹 알림
+(() => {
+  const $ = id => document.getElementById(id);
+  const make = (tag, className, text) => {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined && text !== null) element.textContent = text;
+    return element;
+  };
+  const COLORS = ['#3346d3', '#0f6b5c', '#9a3412', '#6b3fa0', '#0e7490', '#b45309', '#be123c', '#4d7c0f', '#1d4ed8', '#7c2d12'];
+  const colorOf = key => COLORS[[...String(key)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+  const initial = name => (String(name || '?').trim()[0] || '?').toUpperCase();
+
+  const state = {
+    me: null, csrf: '', rooms: [], current: null, room: null, messages: [], hasMore: false, socket: null, retry: 1000,
+    pending: new Map(), typingTimer: null, lastTypingSent: 0, vapidKey: '', retentionDays: 90, maxMembers: 100, filter: '', admin: false,
+  };
+
+  // ---------- helpers ----------
+  function toast(message) {
+    const element = $('toast');
+    element.textContent = message;
+    element.hidden = false;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { element.hidden = true; }, 2600);
+  }
+  function setConn(text, error = false) {
+    $('conn').textContent = text;
+    $('conn').dataset.error = String(error);
+  }
+  async function api(path, { method = 'GET', body, raw, type } = {}) {
+    const headers = {};
+    if (method !== 'GET') headers['X-CSRF-Token'] = state.csrf;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (raw) headers['Content-Type'] = type;
+    const response = await fetch(path, { method, credentials: 'same-origin', cache: 'no-store', headers, body: raw || (body !== undefined ? JSON.stringify(body) : undefined) });
+    const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : {};
+    if (!response.ok) {
+      const error = new Error(data.error || `오류가 발생했습니다 (${response.status})`);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+  const kst = iso => new Date(iso);
+  function timeLabel(iso) {
+    const date = kst(iso);
+    const hours = date.getHours();
+    return `${hours < 12 ? '오전' : '오후'} ${hours % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+  function dayLabel(iso) {
+    const date = kst(iso);
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${'일월화수목금토'[date.getDay()]}요일`;
+  }
+  function listTime(iso) {
+    if (!iso) return '';
+    const date = kst(iso);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) return timeLabel(iso);
+    const yesterday = new Date(now.getTime() - 86400000);
+    if (date.toDateString() === yesterday.toDateString()) return '어제';
+    return date.getFullYear() === now.getFullYear() ? `${date.getMonth() + 1}월 ${date.getDate()}일` : `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
+  }
+  function linkify(text) {
+    const fragment = document.createDocumentFragment();
+    const pattern = /https?:\/\/[^\s<>"']+/g;
+    let last = 0;
+    let match;
+    while ((match = pattern.exec(text))) {
+      fragment.append(text.slice(last, match.index));
+      const url = match[0].replace(/[.,!?)\]]+$/, '');
+      const link = make('a', '', url);
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      fragment.append(link);
+      last = match.index + url.length;
+      pattern.lastIndex = last;
+    }
+    fragment.append(text.slice(last));
+    return fragment;
+  }
+  function avatar(name, key, small = false) {
+    const element = make('span', `avatar${small ? ' small' : ''}`, initial(name));
+    element.style.background = colorOf(key || name);
+    element.setAttribute('aria-hidden', 'true');
+    return element;
+  }
+  function updateTitle() {
+    const total = state.rooms.reduce((sum, room) => sum + (room.muted ? 0 : room.unread), 0);
+    document.title = `${total ? `(${total}) ` : ''}스페이스 톡`;
+    if (navigator.setAppBadge) navigator.setAppBadge(total).catch(() => {});
+  }
+
+  // ---------- sheet (dialogs) ----------
+  const sheet = $('sheet');
+  function openSheet(title, build) {
+    $('sheet-title').textContent = title;
+    const body = $('sheet-body');
+    body.replaceChildren();
+    build(body);
+    if (!sheet.open) sheet.showModal();
+  }
+  function closeSheet() { if (sheet.open) sheet.close(); }
+  $('sheet-close').addEventListener('click', closeSheet);
+  sheet.addEventListener('click', event => { if (event.target === sheet) closeSheet(); });
+
+  function linkBox(url) {
+    const box = make('div', 'link-box');
+    const input = make('input');
+    input.readOnly = true;
+    input.value = url;
+    input.setAttribute('aria-label', '링크');
+    const copy = make('button', 'btn navy', '복사');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); toast('링크를 복사했어요.'); } catch { input.select(); toast('링크를 길게 눌러 복사해 주세요.'); }
+    });
+    box.append(input, copy);
+    return box;
+  }
+  function shareButton(url, text) {
+    if (!navigator.share) return null;
+    const button = make('button', 'btn gold block', '카톡·문자로 공유하기');
+    button.type = 'button';
+    button.addEventListener('click', () => navigator.share({ title: '스페이스 톡', text, url }).catch(() => {}));
+    return button;
+  }
+
+  // ---------- room list ----------
+  function renderRooms() {
+    const list = $('rooms');
+    const keyword = state.filter.toLowerCase();
+    const rooms = state.rooms.filter(room => !keyword || room.name.toLowerCase().includes(keyword));
+    $('rooms-empty').hidden = Boolean(state.rooms.length) || !state.me;
+    list.replaceChildren(...rooms.map(room => {
+      const item = make('li');
+      const button = make('button', 'room-item');
+      button.type = 'button';
+      if (room.id === state.current) button.setAttribute('aria-current', 'true');
+      const face = avatar(room.name, room.id);
+      if (room.kind === 'group') face.appendChild(make('span', 'count', String(room.memberCount)));
+      const main = make('div', 'room-main');
+      const name = make('div', 'room-name');
+      name.appendChild(make('span', '', room.name));
+      if (room.kind === 'group') name.appendChild(make('span', 'members', String(room.memberCount)));
+      if (room.muted) {
+        const muted = make('span', 'muted');
+        muted.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M11 5L6 9H3v6h3l5 4V5z"/></svg>';
+        muted.setAttribute('aria-label', '알림 꺼짐');
+        name.appendChild(muted);
+      }
+      main.append(name, make('div', 'room-preview', room.lastPreview || (room.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '')));
+      const side = make('div', 'room-side');
+      side.appendChild(make('span', 'room-time', listTime(room.lastAt)));
+      if (room.unread) side.appendChild(make('span', 'badge', room.unread > 999 ? '999+' : String(room.unread)));
+      button.append(face, main, side);
+      button.setAttribute('aria-label', `${room.name}${room.unread ? `, 읽지 않은 메시지 ${room.unread}개` : ''}`);
+      button.addEventListener('click', () => { state.fromList = true; location.hash = `room=${room.id}`; });
+      item.appendChild(button);
+      return item;
+    }));
+    updateTitle();
+  }
+  async function loadRooms() {
+    const { rooms } = await api('/api/chat/rooms');
+    state.rooms = rooms;
+    renderRooms();
+  }
+  $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
+
+  // ---------- open a room ----------
+  async function openRoom(roomId) {
+    state.current = roomId;
+    $('app').dataset.view = 'room';
+    renderRooms();
+    $('room-empty').hidden = true;
+    $('room-bar').hidden = false;
+    $('messages').hidden = false;
+    $('composer').hidden = false;
+    $('message-list').replaceChildren();
+    $('typing').textContent = '';
+    try {
+      const [{ room }, data] = await Promise.all([api(`/api/chat/rooms/${roomId}`), api(`/api/chat/rooms/${roomId}/messages`)]);
+      if (state.current !== roomId) return;
+      state.room = room;
+      state.messages = data.messages;
+      state.hasMore = data.hasMore;
+      state.room.members = data.members;
+      renderRoomHead();
+      renderMessages(true);
+      markRead();
+      setTimeout(() => { if (matchMedia('(min-width:761px)').matches) $('input').focus(); }, 50);
+    } catch (error) {
+      toast(error.message);
+      closeRoom();
+    }
+  }
+  function closeRoom() {
+    state.current = null;
+    state.room = null;
+    $('app').dataset.view = 'list';
+    $('room-empty').hidden = false;
+    $('room-bar').hidden = true;
+    $('messages').hidden = true;
+    $('composer').hidden = true;
+    renderRooms();
+  }
+  function renderRoomHead() {
+    const room = state.room;
+    $('room-title').textContent = room.name;
+    const online = (room.online || []).filter(id => id !== state.me.id).length;
+    $('room-sub').textContent = room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
+    $('btn-send').disabled = !$('input').value.trim();
+  }
+
+  // ---------- messages ----------
+  function unreadFor(message) {
+    if (!state.room?.members || message.kind === 'system') return 0;
+    return state.room.members.filter(member => member.id !== message.userId && member.joinedSeq < message.seq && member.lastReadSeq < message.seq).length;
+  }
+  function messageNode(message, previous) {
+    if (message.kind === 'system') {
+      const wrap = make('div', 'system');
+      wrap.appendChild(make('span', '', message.text));
+      return wrap;
+    }
+    const mine = message.userId === state.me.id;
+    const cont = previous && previous.kind !== 'system' && previous.userId === message.userId &&
+      new Date(message.createdAt) - new Date(previous.createdAt) < 60000 && timeLabel(previous.createdAt) === timeLabel(message.createdAt);
+    const row = make('div', `msg${mine ? ' mine' : ''}${cont ? ' cont' : ''}${message.pending ? ' pending' : ''}`);
+    row.dataset.id = message.id;
+    if (!mine) row.appendChild(avatar(message.nickname, message.userId, true));
+    const body = make('div', 'msg-body');
+    if (!mine) body.appendChild(make('div', 'msg-name', message.nickname || '알 수 없음'));
+    const line = make('div', 'msg-line');
+    let bubble;
+    if (message.deletedAt) {
+      bubble = make('div', 'bubble deleted', '삭제된 메시지입니다.');
+    } else if (message.kind === 'image') {
+      bubble = make('div', 'bubble photo');
+      const image = make('img');
+      image.src = message.localUrl || `/api/chat/images/${message.imageId}`;
+      image.alt = `${message.nickname || ''}님이 보낸 사진`;
+      image.loading = 'lazy';
+      image.addEventListener('load', () => keepBottom());
+      image.addEventListener('click', () => viewImage(image.src));
+      bubble.appendChild(image);
+    } else {
+      bubble = make('div', 'bubble');
+      bubble.appendChild(linkify(message.text));
+    }
+    if (!message.deletedAt && !message.pending) {
+      bubble.tabIndex = 0;
+      bubble.setAttribute('aria-haspopup', 'dialog');
+      bubble.title = '눌러서 메뉴 열기';
+      bubble.addEventListener('contextmenu', event => { event.preventDefault(); messageMenu(message); });
+      let press;
+      bubble.addEventListener('touchstart', () => { press = setTimeout(() => messageMenu(message), 550); }, { passive: true });
+      ['touchend', 'touchmove', 'touchcancel'].forEach(name => bubble.addEventListener(name, () => clearTimeout(press), { passive: true }));
+      bubble.addEventListener('keydown', event => { if (event.key === 'Enter') messageMenu(message); });
+      bubble.addEventListener('dblclick', () => messageMenu(message));
+    }
+    const meta = make('div', 'meta');
+    if (message.failed) {
+      const retry = make('button', 'fail', '전송 실패 · 다시 보내기');
+      retry.type = 'button';
+      retry.style.border = '0';
+      retry.style.background = 'none';
+      retry.addEventListener('click', () => resend(message));
+      meta.appendChild(retry);
+    } else {
+      const unread = message.pending ? 0 : unreadFor(message);
+      if (unread) meta.appendChild(make('span', 'unread', String(unread)));
+      meta.appendChild(make('span', '', message.pending ? '보내는 중' : timeLabel(message.createdAt)));
+    }
+    line.append(bubble, meta);
+    body.appendChild(line);
+    row.appendChild(body);
+    return row;
+  }
+  function nearBottom() {
+    const box = $('messages');
+    return box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  }
+  function keepBottom(force = false) {
+    const box = $('messages');
+    if (force || nearBottom()) box.scrollTop = box.scrollHeight;
+  }
+  function renderMessages(scroll = false) {
+    const list = $('message-list');
+    const box = $('messages');
+    const stick = scroll || nearBottom();
+    const nodes = [];
+    let previous = null;
+    for (const message of state.messages) {
+      if (!previous || kst(previous.createdAt).toDateString() !== kst(message.createdAt).toDateString()) {
+        const day = make('div', 'day');
+        day.appendChild(make('span', '', dayLabel(message.createdAt)));
+        nodes.push(day);
+        previous = null;
+      }
+      nodes.push(messageNode(message, previous));
+      previous = message;
+    }
+    if (!state.messages.length) {
+      const empty = make('div', 'system');
+      empty.appendChild(make('span', '', state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
+      nodes.push(empty);
+    }
+    list.replaceChildren(...nodes);
+    $('btn-older').hidden = !state.hasMore;
+    if (stick) box.scrollTop = box.scrollHeight;
+    $('btn-jump').hidden = true;
+  }
+  $('btn-older').addEventListener('click', async () => {
+    const first = state.messages.find(message => message.seq);
+    if (!first) return;
+    const box = $('messages');
+    const before = box.scrollHeight;
+    try {
+      const data = await api(`/api/chat/rooms/${state.current}/messages?before=${first.seq}`);
+      state.messages = [...data.messages, ...state.messages];
+      state.hasMore = data.hasMore;
+      renderMessages();
+      box.scrollTop = box.scrollHeight - before;
+    } catch (error) { toast(error.message); }
+  });
+  $('messages').addEventListener('scroll', () => {
+    if (nearBottom()) { $('btn-jump').hidden = true; markRead(); }
+  });
+  $('btn-jump').addEventListener('click', () => { keepBottom(true); $('btn-jump').hidden = true; markRead(); });
+
+  function markRead() {
+    if (!state.current || document.visibilityState !== 'visible' || !nearBottom()) return;
+    const last = [...state.messages].reverse().find(message => message.seq);
+    if (!last) return;
+    const room = state.rooms.find(entry => entry.id === state.current);
+    if (room && room.unread) { room.unread = 0; renderRooms(); }
+    send({ type: 'read', roomId: state.current, seq: last.seq });
+  }
+
+  function viewImage(src) {
+    const viewer = make('dialog', 'viewer');
+    const image = make('img');
+    image.src = src;
+    image.alt = '사진 크게 보기';
+    viewer.appendChild(image);
+    viewer.addEventListener('click', () => viewer.close());
+    viewer.addEventListener('close', () => viewer.remove());
+    document.body.appendChild(viewer);
+    viewer.showModal();
+  }
+
+  function messageMenu(message) {
+    if (message.kind === 'system' || message.deletedAt) return;
+    const mine = message.userId === state.me.id;
+    openSheet('메시지', body => {
+      const menu = make('div', 'menu-list');
+      const add = (label, action, danger) => {
+        const button = make('button', danger ? 'danger' : '', label);
+        button.type = 'button';
+        button.addEventListener('click', action);
+        menu.appendChild(button);
+      };
+      if (message.kind === 'text') add('복사', async () => {
+        try { await navigator.clipboard.writeText(message.text); toast('복사했어요.'); } catch { toast('복사하지 못했어요.'); }
+        closeSheet();
+      });
+      if (!mine && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
+      const canDelete = (mine && Date.now() - new Date(message.createdAt) < 5 * 60 * 1000) || state.room.isOwner || state.me.admin;
+      if (canDelete) add('삭제 (모두에게서)', async () => {
+        if (!confirm('이 메시지를 모두에게서 삭제할까요?')) return;
+        try { await api(`/api/chat/rooms/${state.current}/messages/${message.id}/delete`, { method: 'POST', body: {} }); closeSheet(); } catch (error) { toast(error.message); }
+      }, true);
+      if (!mine && message.userId) add('신고하기', () => reportSheet(message), true);
+      body.appendChild(menu);
+    });
+  }
+  function reportSheet(message) {
+    openSheet('메시지 신고', body => {
+      body.appendChild(make('p', '', '욕설, 허위사실, 개인정보 노출, 광고·불법 내용이면 신고해 주세요. 신고된 메시지는 운영자가 검토합니다.'));
+      const label = make('label', '', '신고 사유');
+      const select = make('select');
+      ['욕설·비방', '허위사실·명예훼손', '개인정보 노출', '광고·스팸', '음란·불법', '기타'].forEach(value => select.appendChild(make('option', '', value)));
+      label.appendChild(select);
+      const submit = make('button', 'btn navy block', '신고하기');
+      submit.type = 'button';
+      submit.addEventListener('click', async () => {
+        submit.disabled = true;
+        try { const result = await api(`/api/chat/rooms/${state.current}/messages/${message.id}/report`, { method: 'POST', body: { reason: select.value } }); toast(result.message); closeSheet(); } catch (error) { toast(error.message); submit.disabled = false; }
+      });
+      body.append(label, submit);
+    });
+  }
+
+  // ---------- sending ----------
+  const input = $('input');
+  function autosize() {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(140, input.scrollHeight)}px`;
+    $('btn-send').disabled = !input.value.trim();
+  }
+  input.addEventListener('input', () => {
+    autosize();
+    if (state.current && input.value.trim() && Date.now() - state.lastTypingSent > 2500) {
+      state.lastTypingSent = Date.now();
+      send({ type: 'typing', roomId: state.current });
+    }
+  });
+  input.addEventListener('keydown', event => {
+    const desktop = matchMedia('(pointer:fine)').matches;
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && desktop) {
+      event.preventDefault();
+      $('composer').requestSubmit();
+    }
+  });
+  function pushPending(message) {
+    state.pending.set(message.clientId, message);
+    state.messages.push(message);
+    renderMessages(true);
+  }
+  async function transmit(message) {
+    if (send({ type: 'send', roomId: message.roomId, clientId: message.clientId, text: message.text, imageId: message.imageId })) return;
+    // Realtime connection is down: send over plain HTTPS instead so nothing is lost.
+    try {
+      const result = await api(`/api/chat/rooms/${message.roomId}/messages`, { method: 'POST', body: { text: message.text, imageId: message.imageId } });
+      handle({ type: 'sent', clientId: message.clientId, message: result.message });
+    } catch (error) {
+      message.failed = true;
+      message.pending = false;
+      toast(error.message);
+      if (message.roomId === state.current) renderMessages();
+    }
+  }
+  $('composer').addEventListener('submit', event => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text || !state.current) return;
+    if (text.length > 2000) { toast('메시지는 2,000자까지 보낼 수 있어요.'); return; }
+    const message = { id: `local-${crypto.randomUUID()}`, clientId: crypto.randomUUID(), roomId: state.current, userId: state.me.id, nickname: state.me.nickname,
+      kind: 'text', text, createdAt: new Date().toISOString(), pending: true };
+    input.value = '';
+    autosize();
+    pushPending(message);
+    transmit(message);
+    input.focus();
+  });
+  function resend(message) {
+    message.failed = false;
+    message.pending = true;
+    message.createdAt = new Date().toISOString();
+    renderMessages();
+    transmit(message);
+  }
+
+  // photos: shrink on the device before upload
+  async function shrink(file) {
+    if (file.type === 'image/gif' && file.size <= 2 * 1024 * 1024) return file;
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) throw new Error('사진을 읽을 수 없습니다.');
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.82, 0.7, 0.55]) {
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= 2 * 1024 * 1024) return blob;
+    }
+    throw new Error('사진이 너무 큽니다.');
+  }
+  $('file').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file || !state.current) return;
+    const roomId = state.current;
+    const message = { id: `local-${crypto.randomUUID()}`, clientId: crypto.randomUUID(), roomId, userId: state.me.id, nickname: state.me.nickname,
+      kind: 'image', text: '', createdAt: new Date().toISOString(), pending: true, localUrl: URL.createObjectURL(file) };
+    pushPending(message);
+    try {
+      const blob = await shrink(file);
+      const { imageId } = await api(`/api/chat/rooms/${roomId}/images`, { method: 'POST', raw: blob, type: blob.type || 'image/jpeg' });
+      message.imageId = imageId;
+      transmit(message);
+    } catch (error) {
+      toast(error.message);
+      message.failed = true;
+      message.pending = false;
+      renderMessages();
+    }
+  });
+
+  // ---------- realtime ----------
+  function send(payload) {
+    if (state.socket?.readyState !== WebSocket.OPEN) return false;
+    state.socket.send(JSON.stringify(payload));
+    return true;
+  }
+  function connect() {
+    clearTimeout(connect.timer);
+    setConn('연결 중…');
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/talk`);
+    state.socket = socket;
+    socket.addEventListener('open', () => {
+      state.retry = 1000;
+      setConn('실시간 연결됨');
+      send({ type: 'presence', visible: document.visibilityState === 'visible' });
+      // catch up on anything missed while disconnected
+      loadRooms().catch(() => {});
+      if (state.current) refreshCurrent();
+    });
+    socket.addEventListener('message', event => {
+      let data;
+      try { data = JSON.parse(event.data); } catch { return; }
+      handle(data);
+    });
+    socket.addEventListener('close', event => {
+      if (event.code === 4001) { setConn('계정이 삭제되어 연결을 끊었습니다.', true); return; }
+      setConn('연결이 끊겼습니다. 다시 연결하는 중…', true);
+      for (const message of state.pending.values()) if (message.pending) { message.pending = false; message.failed = true; }
+      if (state.current) renderMessages();
+      connect.timer = setTimeout(connect, state.retry);
+      state.retry = Math.min(state.retry * 2, 20000);
+    });
+  }
+  setInterval(() => send({ type: 'ping' }), 45000);
+
+  async function refreshCurrent() {
+    const roomId = state.current;
+    try {
+      const [{ room }, data] = await Promise.all([api(`/api/chat/rooms/${roomId}`), api(`/api/chat/rooms/${roomId}/messages`)]);
+      if (state.current !== roomId) return;
+      const failed = state.messages.filter(message => message.failed);
+      state.room = { ...room, members: data.members };
+      state.messages = [...data.messages, ...failed];
+      state.hasMore = data.hasMore;
+      renderRoomHead();
+      renderMessages();
+      markRead();
+    } catch (error) {
+      if (error.status === 403 || error.status === 404) { toast('대화방에 더 이상 참여하고 있지 않아요.'); closeRoom(); history.replaceState(null, '', '/chat'); }
+    }
+  }
+
+  function handle(data) {
+    if (data.type === 'hello') return;
+    if (data.type === 'sent') {
+      const local = state.pending.get(data.clientId);
+      state.pending.delete(data.clientId);
+      if (local) {
+        const index = state.messages.indexOf(local);
+        if (local.localUrl) URL.revokeObjectURL(local.localUrl);
+        if (index >= 0 && !state.messages.some(message => message.id === data.message.id)) state.messages[index] = data.message;
+        else if (index >= 0) state.messages.splice(index, 1);
+        if (local.roomId === state.current) renderMessages();
+      }
+      return;
+    }
+    if (data.type === 'error') {
+      const local = data.clientId && state.pending.get(data.clientId);
+      if (local) { local.pending = false; local.failed = true; if (local.roomId === state.current) renderMessages(); }
+      toast(data.error);
+      return;
+    }
+    if (data.type === 'message') {
+      const { message } = data;
+      const room = state.rooms.find(entry => entry.id === data.roomId);
+      if (room) {
+        room.lastAt = message.createdAt;
+        room.lastPreview = message.kind === 'image' ? '사진' : message.text.slice(0, 80);
+        if (message.userId !== state.me.id && message.kind !== 'system' && !(data.roomId === state.current && document.visibilityState === 'visible' && nearBottom())) room.unread += 1;
+        state.rooms.sort((left, right) => right.lastAt.localeCompare(left.lastAt));
+        renderRooms();
+      } else {
+        loadRooms().catch(() => {});
+      }
+      if (data.roomId === state.current) {
+        if (state.messages.some(entry => entry.id === message.id)) return;
+        const atBottom = nearBottom();
+        state.messages.push(message);
+        if (message.userId === state.me.id) {
+          const member = state.room.members.find(entry => entry.id === state.me.id);
+          if (member) member.lastReadSeq = message.seq;
+        }
+        renderMessages();
+        if (atBottom) { keepBottom(true); markRead(); } else if (message.userId !== state.me.id) $('btn-jump').hidden = false;
+        if (message.userId !== state.me.id && message.kind !== 'system') $('typing').textContent = '';
+      }
+      return;
+    }
+    if (data.type === 'read' && data.roomId === state.current && state.room) {
+      const member = state.room.members.find(entry => entry.id === data.userId);
+      if (member && data.seq > member.lastReadSeq) { member.lastReadSeq = data.seq; renderMessages(); }
+      return;
+    }
+    if (data.type === 'deleted') {
+      if (data.roomId === state.current) {
+        const message = state.messages.find(entry => entry.id === data.messageId);
+        if (message) { message.deletedAt = new Date().toISOString(); message.text = ''; renderMessages(); }
+      }
+      loadRooms().catch(() => {});
+      return;
+    }
+    if (data.type === 'typing' && data.roomId === state.current) {
+      $('typing').textContent = `${data.nickname}님이 입력 중…`;
+      clearTimeout(state.typingTimer);
+      state.typingTimer = setTimeout(() => { $('typing').textContent = ''; }, 3500);
+      return;
+    }
+    if (data.type === 'room') {
+      loadRooms().catch(() => {});
+      if (data.roomId === state.current) api(`/api/chat/rooms/${data.roomId}`).then(({ room }) => {
+        if (state.current === data.roomId) { state.room = { ...room }; renderRoomHead(); renderMessages(); }
+      }).catch(() => refreshCurrent());
+      return;
+    }
+    if (data.type === 'removed') {
+      if (data.roomId === state.current) { toast('대화방에서 내보내졌어요.'); closeRoom(); history.replaceState(null, '', '/chat'); }
+      loadRooms().catch(() => {});
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    send({ type: 'presence', visible: document.visibilityState === 'visible' });
+    if (document.visibilityState === 'visible') { markRead(); if (navigator.clearAppBadge && !state.rooms.some(room => room.unread)) navigator.clearAppBadge().catch(() => {}); }
+  });
+
+  // ---------- room menu ----------
+  $('btn-back').addEventListener('click', () => {
+    if (state.fromList) { state.fromList = false; history.back(); return; }
+    history.replaceState(null, '', '/chat');
+    route();
+  });
+  $('btn-room-menu').addEventListener('click', () => roomMenu());
+  function roomMenu() {
+    const room = state.room;
+    if (!room) return;
+    openSheet(room.kind === 'group' ? room.name : `${room.name}님과의 대화`, body => {
+      const online = new Set(room.online || []);
+      if (room.kind === 'group') {
+        body.appendChild(make('div', 'section-title', `참여자 ${room.memberCount}명 / 최대 ${room.maxMembers}명`));
+        for (const member of room.members) {
+          const row = make('div', 'member');
+          row.appendChild(avatar(member.nickname, member.id, true));
+          const who = make('div', 'who');
+          who.appendChild(make('strong', '', `${member.nickname}${member.id === state.me.id ? ' (나)' : ''}`));
+          const sub = make('span');
+          if (online.has(member.id)) sub.appendChild(make('span', 'dot-online'));
+          sub.append(member.role === 'owner' ? '방장' : online.has(member.id) ? '접속 중' : '');
+          who.appendChild(sub);
+          const acts = make('div', 'acts');
+          if (member.id !== state.me.id) {
+            const dm = make('button', '', '1:1 대화');
+            dm.type = 'button';
+            dm.addEventListener('click', () => { closeSheet(); startDm({ userId: member.id }); });
+            acts.appendChild(dm);
+            if (room.isOwner) {
+              const kick = make('button', '', '내보내기');
+              kick.type = 'button';
+              kick.addEventListener('click', async () => {
+                if (!confirm(`${member.nickname}님을 대화방에서 내보낼까요?`)) return;
+                try { await api(`/api/chat/rooms/${room.id}/kick`, { method: 'POST', body: { userId: member.id } }); closeSheet(); } catch (error) { toast(error.message); }
+              });
+              acts.appendChild(kick);
+            }
+          }
+          row.append(who, acts);
+          body.appendChild(row);
+        }
+        body.appendChild(make('div', 'section-title', '초대 링크'));
+        const url = `${location.origin}/chat#join=${room.inviteCode}`;
+        body.appendChild(make('p', '', '링크를 받은 회원은 바로 이 방에 들어올 수 있습니다. 링크가 퍼졌다면 방장이 새 링크로 바꿀 수 있습니다.'));
+        body.appendChild(linkBox(url));
+        const share = shareButton(url, `스페이스 톡 '${room.name}' 대화방에 초대합니다.`);
+        if (share) body.appendChild(share);
+      }
+      const menu = make('div', 'menu-list');
+      const add = (label, action, danger) => {
+        const button = make('button', danger ? 'danger' : '', label);
+        button.type = 'button';
+        button.addEventListener('click', action);
+        menu.appendChild(button);
+      };
+      add(room.muted ? '이 방 알림 켜기' : '이 방 알림 끄기', async () => {
+        try {
+          const result = await api(`/api/chat/rooms/${room.id}/mute`, { method: 'POST', body: { muted: !room.muted } });
+          room.muted = result.muted;
+          const entry = state.rooms.find(item => item.id === room.id);
+          if (entry) entry.muted = result.muted;
+          renderRooms();
+          toast(result.muted ? '이 방의 알림을 껐어요.' : '이 방의 알림을 켰어요.');
+          closeSheet();
+        } catch (error) { toast(error.message); }
+      });
+      if (room.kind === 'group' && room.isOwner) {
+        add('대화방 이름 바꾸기', () => renameSheet(room));
+        add('초대 링크 새로 만들기', async () => {
+          if (!confirm('기존 초대 링크는 더 이상 쓸 수 없게 됩니다. 새 링크를 만들까요?')) return;
+          try { const result = await api(`/api/chat/rooms/${room.id}/update`, { method: 'POST', body: { resetInvite: true } }); state.room = result.room; toast('새 초대 링크를 만들었어요.'); roomMenu(); } catch (error) { toast(error.message); }
+        });
+      }
+      add('대화방 나가기', async () => {
+        if (!confirm(room.kind === 'group' ? '대화방을 나가면 대화 내용이 내 목록에서 사라집니다. 나갈까요?' : '1:1 대화방을 나갈까요? 상대는 더 이상 메시지를 보낼 수 없습니다.')) return;
+        try {
+          await api(`/api/chat/rooms/${room.id}/leave`, { method: 'POST', body: {} });
+          closeSheet();
+          state.rooms = state.rooms.filter(entry => entry.id !== room.id);
+          closeRoom();
+          history.replaceState(null, '', '/chat');
+        } catch (error) { toast(error.message); }
+      }, true);
+      body.appendChild(menu);
+    });
+  }
+  function renameSheet(room) {
+    openSheet('대화방 이름 바꾸기', body => {
+      const label = make('label', '', '새 이름');
+      const field = make('input');
+      field.type = 'text';
+      field.maxLength = 40;
+      field.value = room.name;
+      label.appendChild(field);
+      const save = make('button', 'btn navy block', '저장');
+      save.type = 'button';
+      save.addEventListener('click', async () => {
+        try { const result = await api(`/api/chat/rooms/${room.id}/update`, { method: 'POST', body: { name: field.value } }); state.room = result.room; renderRoomHead(); closeSheet(); } catch (error) { toast(error.message); }
+      });
+      body.append(label, save);
+      field.focus();
+    });
+  }
+
+  // ---------- create / join / 1:1 ----------
+  function createSheet() {
+    openSheet('새 대화방 만들기', body => {
+      body.appendChild(make('p', '', '만든 뒤 초대 링크를 보내면 회원들이 들어올 수 있어요. 대화는 참여자만 볼 수 있습니다.'));
+      const nameLabel = make('label', '', '대화방 이름');
+      const name = make('input');
+      name.type = 'text';
+      name.maxLength = 40;
+      name.placeholder = '예: 우리 동네 정책 모임';
+      nameLabel.appendChild(name);
+      const sizeLabel = make('label', '', '최대 인원');
+      const size = make('select');
+      [5, 10, 20, 30, 50, state.maxMembers].filter((value, index, list) => list.indexOf(value) === index).forEach(value => {
+        const option = make('option', '', `${value}명`);
+        option.value = String(value);
+        size.appendChild(option);
+      });
+      size.value = '20';
+      sizeLabel.appendChild(size);
+      const create = make('button', 'btn gold block', '만들기');
+      create.type = 'button';
+      create.addEventListener('click', async () => {
+        if (!name.value.trim()) { toast('대화방 이름을 입력해 주세요.'); name.focus(); return; }
+        create.disabled = true;
+        try {
+          const { room } = await api('/api/chat/rooms', { method: 'POST', body: { name: name.value, maxMembers: Number(size.value) } });
+          await loadRooms();
+          location.hash = `room=${room.id}`;
+          inviteSheet(room);
+        } catch (error) { toast(error.message); create.disabled = false; }
+      });
+      body.append(nameLabel, sizeLabel, create);
+      name.focus();
+    });
+  }
+  function inviteSheet(room) {
+    const url = `${location.origin}/chat#join=${room.inviteCode}`;
+    openSheet('친구 초대하기', body => {
+      body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 아래 링크를 카카오톡·문자로 보내 초대하세요. 받은 사람은 스페이스 커뮤니티에 로그인하면 바로 들어옵니다.`));
+      body.appendChild(linkBox(url));
+      const share = shareButton(url, `스페이스 톡 '${room.name}' 대화방에 초대합니다.`);
+      if (share) body.appendChild(share);
+    });
+  }
+  async function joinFlow(code) {
+    try {
+      const preview = await api(`/api/chat/invite/${encodeURIComponent(code)}`);
+      openSheet('대화방 초대', body => {
+        body.appendChild(make('p', '', `'${preview.name}' 대화방에 초대받았어요. 현재 ${preview.memberCount}명 / 최대 ${preview.maxMembers}명`));
+        const join = make('button', 'btn gold block', '들어가기');
+        join.type = 'button';
+        join.addEventListener('click', async () => {
+          join.disabled = true;
+          try { const { room } = await api('/api/chat/join', { method: 'POST', body: { code } }); closeSheet(); await loadRooms(); location.hash = `room=${room.id}`; } catch (error) { toast(error.message); join.disabled = false; }
+        });
+        body.appendChild(join);
+      });
+    } catch (error) { toast(error.message); }
+  }
+  async function startDm(target) {
+    try {
+      const { room } = await api('/api/chat/dm', { method: 'POST', body: target });
+      await loadRooms();
+      location.hash = `room=${room.id}`;
+    } catch (error) { toast(error.message); }
+  }
+  function myLinkSheet() {
+    const url = `${location.origin}/chat#dm=${state.me.code}`;
+    openSheet('내 1:1 대화 링크', body => {
+      body.appendChild(make('p', '', '이 링크를 받은 회원은 나와 바로 1:1 대화를 시작할 수 있어요. 링크를 아는 회원만 대화를 걸 수 있습니다.'));
+      body.appendChild(linkBox(url));
+      const share = shareButton(url, `${state.me.nickname}님과 스페이스 톡에서 대화해요.`);
+      if (share) body.appendChild(share);
+    });
+  }
+  $('btn-new').addEventListener('click', createSheet);
+  $('empty-new').addEventListener('click', createSheet);
+  $('empty-link').addEventListener('click', myLinkSheet);
+  $('btn-menu').addEventListener('click', () => {
+    openSheet('메뉴', body => {
+      const menu = make('div', 'menu-list');
+      const add = (label, action) => {
+        const button = make('button', '', label);
+        button.type = 'button';
+        button.addEventListener('click', action);
+        menu.appendChild(button);
+      };
+      add('새 대화방 만들기', createSheet);
+      add('내 1:1 대화 링크', myLinkSheet);
+      add(pushEnabled() ? '이 기기 알림 끄기' : '이 기기 알림 켜기', () => { closeSheet(); pushEnabled() ? disablePush() : enablePush(); });
+      if (state.me.admin) add('신고된 메시지 관리 (운영자)', reportsSheet);
+      const home = make('a', '', '스페이스 커뮤니티 홈');
+      home.href = '/';
+      menu.appendChild(home);
+      body.appendChild(menu);
+      body.appendChild(make('p', '', `대화 내용은 ${state.retentionDays}일 동안 보관된 뒤 자동으로 삭제됩니다. 대화는 참여자만 볼 수 있고, 신고된 메시지만 운영자가 확인합니다.`));
+    });
+  });
+  async function reportsSheet() {
+    try {
+      const { reports } = await api('/api/chat/admin/reports');
+      openSheet('신고된 메시지', body => {
+        if (!reports.length) { body.appendChild(make('p', '', '처리할 신고가 없습니다.')); return; }
+        for (const report of reports) {
+          const item = make('div', 'report-item');
+          item.appendChild(make('strong', '', `${report.roomName} · ${report.nickname} · 신고 ${report.count}건`));
+          item.appendChild(make('div', 'quote', report.text));
+          item.appendChild(make('p', '', `사유: ${report.reason} · ${new Date(report.createdAt).toLocaleString('ko-KR')}`));
+          const row = make('div', 'row');
+          for (const [label, action] of [['메시지 삭제', 'delete'], ['문제 없음', 'keep']]) {
+            const button = make('button', `btn${action === 'delete' ? ' danger' : ''}`, label);
+            button.type = 'button';
+            button.addEventListener('click', async () => {
+              try { await api('/api/chat/admin/reports', { method: 'POST', body: { messageId: report.messageId, action } }); item.remove(); toast('처리했습니다.'); } catch (error) { toast(error.message); }
+            });
+            row.appendChild(button);
+          }
+          item.appendChild(row);
+          body.appendChild(item);
+        }
+      });
+    } catch (error) { toast(error.message); }
+  }
+
+  // ---------- web push ----------
+  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let registration = null;
+  let subscription = null;
+  const pushEnabled = () => Boolean(subscription) && Notification.permission === 'granted';
+  function keyBytes(base64) {
+    const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+  }
+  function updatePushBar() {
+    const bar = $('push-bar');
+    if (!state.me) { bar.hidden = true; return; }
+    if (!pushSupported) {
+      bar.hidden = !isIos;
+      $('push-text').textContent = '아이폰은 Safari 공유 버튼 → "홈 화면에 추가"로 설치한 뒤 알림을 켤 수 있어요.';
+      $('btn-push').hidden = true;
+      return;
+    }
+    $('btn-push').hidden = false;
+    if (Notification.permission === 'denied') {
+      bar.hidden = false;
+      $('push-text').textContent = '알림이 차단되어 있어요. 브라우저 설정에서 이 사이트의 알림을 허용해 주세요.';
+      $('btn-push').hidden = true;
+      return;
+    }
+    bar.hidden = pushEnabled() || localStorageGet('talk-push-dismissed') === '1';
+    $('push-text').textContent = '새 메시지가 오면 휴대폰·PC로 알려 드릴까요?';
+  }
+  function localStorageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+  function localStorageSet(key, value) { try { localStorage.setItem(key, value); } catch { /* storage unavailable */ } }
+  async function enablePush() {
+    if (!pushSupported) { toast(isIos ? '홈 화면에 추가한 뒤 알림을 켤 수 있어요.' : '이 브라우저는 웹 알림을 지원하지 않아요.'); return; }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { toast('알림이 허용되지 않았어요.'); updatePushBar(); return; }
+      registration = registration || await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(state.vapidKey) });
+      await api('/api/chat/push', { method: 'POST', body: { endpoint: subscription.endpoint } });
+      toast('이 기기에서 새 메시지 알림을 받습니다.');
+    } catch (error) {
+      console.error('Push subscribe failed:', error);
+      toast('알림을 켜지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
+    updatePushBar();
+  }
+  async function disablePush() {
+    try {
+      if (subscription) {
+        await api('/api/chat/push/remove', { method: 'POST', body: { endpoint: subscription.endpoint } }).catch(() => {});
+        await subscription.unsubscribe();
+      }
+      subscription = null;
+      toast('이 기기의 알림을 껐어요.');
+    } catch (error) { toast('알림을 끄지 못했어요.'); }
+    updatePushBar();
+  }
+  $('btn-push').addEventListener('click', enablePush);
+  async function initPush() {
+    if (!pushSupported) { updatePushBar(); return; }
+    try {
+      registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      subscription = await registration.pushManager.getSubscription();
+      // re-register the endpoint so the server always knows this device (endpoints can rotate)
+      if (subscription && Notification.permission === 'granted') await api('/api/chat/push', { method: 'POST', body: { endpoint: subscription.endpoint } });
+    } catch (error) { console.error('Service worker failed:', error); }
+    updatePushBar();
+  }
+  navigator.serviceWorker?.addEventListener('message', event => {
+    if (event.data?.type === 'open' && typeof event.data.url === 'string') location.hash = new URL(event.data.url, location.origin).hash.slice(1);
+  });
+
+  // install prompt (Android/desktop Chrome)
+  let installEvent = null;
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installEvent = event;
+    if (!standalone) $('install-bar').hidden = false;
+  });
+  $('btn-install').addEventListener('click', async () => {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => null);
+    installEvent = null;
+    $('install-bar').hidden = true;
+  });
+
+  // ---------- routing ----------
+  function route() {
+    if (!state.me) return;
+    const params = new URLSearchParams(location.hash.slice(1));
+    if (params.get('join')) { const code = params.get('join'); history.replaceState(null, '', '/chat'); if (state.current) closeRoom(); joinFlow(code); return; }
+    if (params.get('dm')) { const code = params.get('dm'); history.replaceState(null, '', '/chat'); startDm({ code }); return; }
+    const roomId = params.get('room');
+    if (roomId && roomId !== state.current) openRoom(roomId);
+    else if (!roomId && state.current) closeRoom();
+  }
+  window.addEventListener('hashchange', route);
+
+  // ---------- start ----------
+  async function start() {
+    let session;
+    try { session = await (await fetch('/api/auth/session', { cache: 'no-store', credentials: 'same-origin' })).json(); } catch { session = null; }
+    const gate = (title, text) => {
+      $('gate').hidden = false;
+      $('gate-title').textContent = title;
+      $('gate-text').textContent = text;
+      $('rooms-empty').hidden = true;
+      $('room-filter').parentElement.hidden = true;
+      setConn('');
+    };
+    $('gate-login').addEventListener('click', () => {
+      try { sessionStorage.setItem('space-after-login', `/chat${location.hash}`); } catch { /* storage unavailable */ }
+      location.href = '/#login';
+    });
+    if (!session?.user) { gate('로그인이 필요해요', '스페이스 톡은 스페이스 커뮤니티 회원끼리 대화하는 공간입니다. 로그인하면 단체 대화방과 1:1 대화를 이용할 수 있어요.'); return; }
+    if (!session.user.emailVerified && session.mailConfigured) {
+      gate('이메일 인증이 필요해요', '가입한 이메일로 받은 인증 링크를 눌러 인증을 마치면 스페이스 톡을 이용할 수 있어요. 메일이 없다면 홈 상단의 "인증 메일 보내기"를 눌러 주세요.');
+      $('gate-login').textContent = '홈으로 가기';
+      $('gate-signup').hidden = true;
+      return;
+    }
+    state.csrf = session.csrfToken;
+    try {
+      const me = await api('/api/chat/me');
+      state.me = { ...me.user, admin: Boolean(session.user.admin) };
+      state.vapidKey = me.vapidPublicKey;
+      state.retentionDays = me.retentionDays;
+      state.maxMembers = me.maxMembers;
+    } catch (error) { gate('스페이스 톡을 열 수 없어요', error.message); return; }
+    await loadRooms().catch(error => toast(error.message));
+    connect();
+    initPush();
+    route();
+  }
+  start();
+})();

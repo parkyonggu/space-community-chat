@@ -10,10 +10,10 @@
     "build:worker": "node build-worker.js",
     "dev:worker": "wrangler dev --port 3003 --local-upstream localhost:3003 --var SITE_URL:http://localhost:3003 --var MAIL_FROM:",
     "deploy:worker": "wrangler deploy",
-    "test:worker": "node --test cloudflare/integration.test.cjs",
+    "test:worker": "node --test cloudflare/integration.test.cjs cloudflare/talk.integration.test.cjs",
     "start": "node server.js",
     "check:mail": "node check-mail.js",
-    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js newsletter-api.test.js portal-api.test.js"
+    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js newsletter-api.test.js portal-api.test.js chat-core.test.js web-push.test.mjs"
   },
   "keywords": [],
   "author": "",

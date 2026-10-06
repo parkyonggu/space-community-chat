@@ -1,0 +1,16 @@
+{
+  "id": "/chat",
+  "name": "스페이스 톡",
+  "short_name": "스페이스 톡",
+  "description": "스페이스 커뮤니티 회원끼리 나누는 단체 대화방과 1:1 대화",
+  "start_url": "/chat",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0e1730",
+  "theme_color": "#0e1730",
+  "lang": "ko",
+  "icons": [
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
