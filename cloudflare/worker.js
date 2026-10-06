@@ -107,7 +107,7 @@ export class CommunityService extends DurableObject {
         if (!current || current > at) await state.storage.setAlarm(at);
       },
       senderName: env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: env.CONTACT_EMAIL || '',
-      adminEmails, ecosKey: env.ECOS_API_KEY || '', highlights: since => this.board.highlights(since),
+      adminEmails, ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', highlights: since => this.board.highlights(since),
     });
   }
 

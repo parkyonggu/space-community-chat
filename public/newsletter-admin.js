@@ -63,7 +63,7 @@
     $('send').disabled = !summary.mailConfigured || sending || !s.confirmed;
     $('schedule').disabled = !summary.mailConfigured || sending;
     $('schedule').textContent = `${kstText(summary.nextMonday)} 예약 발송`;
-    $('ecos-note').textContent = summary.ecosKey ? '경제 지표: 한국은행 ECOS 인증키로 불러옵니다.' : '경제 지표: 한국은행 ECOS 시험용 키로 불러오는 중입니다. 정식 인증키(무료)를 등록하면 안정적으로 받을 수 있습니다.';
+    $('ecos-note').textContent = `자료 연결: 한국은행 ECOS ${summary.ecosKey ? '인증키 사용 ✔' : '시험용 키(정식 키 등록 권장)'} · IMF 전망 ✔ · 한국부동산원 ${summary.rebKey ? '인증키 사용 ✔' : '미연결(REB_API_KEY 등록 시 주간 아파트 동향 자동 작성)'}`;
     const draftTable = document.createElement('table');
     const draftHead = document.createElement('tr');
     ['만든 시각', '방식', '제목', ''].forEach(text => { const th = document.createElement('th'); th.textContent = text; draftHead.appendChild(th); });

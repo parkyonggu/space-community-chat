@@ -188,10 +188,34 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
     '817Y002/010200000': [['20260925', '3.9'], ['20261002', '3.937']],
     '722Y001/0101000': [['20260810', '2.75']],
     '901Y009/0': [['202609', '120.43']],
+    '902Y006/US': [['202607', '4.25'], ['202608', '4.0']],
+    '902Y006/XM': [['202608', '2.0']], '902Y006/JP': [['202608', '0.75']], '902Y006/CN': [['202608', '3.0']],
+    '902Y003/010102': [['202607', '70'], ['202608', '72.1']], '902Y003/010101': [['202608', '68.4']],
+    '902Y003/040101': [['202607', '4300'], ['202608', '4418.54']],
+    '902Y002/USA': [['202607', '224.2'], ['202608', '230.7']],
+  };
+  const reb = {
+    tables: [{ STATBL_ID: 'X_MONTH', STATBL_NM: '(월) 아파트 매매가격지수', DTACYCLE_CD: 'MM', V_ORDER: 1 },
+      { STATBL_ID: 'W_SALE', STATBL_NM: '(주) 아파트 매매가격지수', DTACYCLE_CD: 'WK', V_ORDER: 5 },
+      { STATBL_ID: 'W_RENT', STATBL_NM: '(주) 아파트 전세가격지수', DTACYCLE_CD: 'WK', V_ORDER: 6 }],
+    W_SALE: [['2026W39', '전국', 100], ['2026W39', '서울', 100], ['2026W39', '수도권', 100], ['2026W39', '지방', 100],
+      ['2026W40', '전국', 100.05], ['2026W40', '서울', 100.2], ['2026W40', '수도권', 100.1], ['2026W40', '지방', 99.98], ['2026W40', '강남구', 101]],
+    W_RENT: [['2026W39', '전국', 100], ['2026W40', '전국', 100.03], ['2026W39', '서울', 100], ['2026W40', '서울', 100.08]],
   };
   const requested = [];
   const fetchImpl = async url => {
     requested.push(url);
+    if (url.startsWith('https://www.imf.org/')) {
+      return { ok: true, json: async () => ({ values: { NGDP_RPCH: { WEOWORLD: { 2026: 3.1, 2027: 3.2 }, KOR: { 2026: 1.9, 2027: 2.1 }, USA: { 2026: 2.3, 2027: 2.1 } } } }) };
+    }
+    if (url.startsWith('https://www.reb.or.kr/')) {
+      const parsed = new URL(url);
+      assert.equal(parsed.searchParams.get('KEY'), 'REBKEY');
+      const service = parsed.pathname.split('/').pop().replace('.do', '');
+      if (service === 'SttsApiTbl') return { ok: true, json: async () => ({ SttsApiTbl: [{ head: [{ list_total_count: 3 }] }, { row: reb.tables }] }) };
+      const rows = reb[parsed.searchParams.get('STATBL_ID')].map(([time, region, value]) => ({ WRTTIME_IDTFR_ID: time, WRTTIME_DESC: `${time.slice(0, 4)}년 ${time.slice(5)}주`, CLS_NM: region, CLS_FULLNM: region, DTA_VAL: value }));
+      return { ok: true, json: async () => ({ SttsApiTblData: [{ head: [{ list_total_count: rows.length }] }, { row: parsed.searchParams.get('pSize') === '1' ? rows.slice(0, 1) : rows }] }) };
+    }
     const parts = new URL(url).pathname.split('/');
     const code = parts[8]; const item = parts[12]; const start = parts[10];
     let rows = series[`${code}/${item}`] || [];
@@ -199,11 +223,21 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
     return { ok: true, json: async () => ({ StatisticSearch: { row: rows.map(([TIME, DATA_VALUE]) => ({ TIME, DATA_VALUE })) } }) };
   };
   const highlights = async () => ({ policy: [{ category: 'education', text: '교육 정책 제안 내용', likes: 4 }], voice: [{ category: '이 정책, 이상해요', text: '시민의 소리 내용' }], community: [], researchCount: 2 });
-  const f = await fixture(t, { extra: { fetchImpl, highlights, adminEmails: ['admin@example.com'], ecosKey: 'TESTKEY' } });
+  const f = await fixture(t, { extra: { fetchImpl, highlights, adminEmails: ['admin@example.com'], ecosKey: 'TESTKEY', rebKey: 'REBKEY' } });
   // Sunday 2026-10-04 18:00 KST
   f.advance(Date.parse('2026-10-04T09:00:00Z') - f.now());
   const draft = await f.generate({ source: 'auto' });
-  assert.ok(requested.every(url => url.includes('/TESTKEY/')));
+  assert.ok(requested.filter(url => url.includes('ecos.bok.or.kr')).every(url => url.includes('/TESTKEY/json/kr/1/1000/')));
+  assert.ok(draft.body.includes('**주요국 정책금리** 미국 4.00% · 유로 2.00% · 일본 0.75% · 중국 3.00% · 2026년 8월 기준'));
+  assert.ok(draft.body.includes('두바이 72.1달러 (전월 대비 +3.0%)'));
+  assert.ok(draft.body.includes('**금 시세** 온스당 4,418.5달러 (전월 대비 +2.8%)'));
+  assert.ok(draft.body.includes('**미국 주가지수(OECD 종합)** 230.7 (전월 대비 +2.9%)'));
+  assert.ok(draft.body.includes('**세계** 2026년 3.1% → 2027년 3.2%'));
+  assert.ok(draft.body.includes('**한국** 2026년 1.9% → 2027년 2.1%'));
+  assert.ok(draft.body.includes('**아파트 매매가격 (주간 변동률)** 전국 +0.05% · 수도권 +0.10% · 서울 +0.20% · 지방 −0.02%'));
+  assert.ok(draft.body.includes('**아파트 전세가격 (주간 변동률)** 전국 +0.03% · 서울 +0.08%'));
+  assert.ok(draft.body.includes('한국부동산원 부동산통계정보시스템(R-ONE)'));
+  assert.ok(!draft.body.includes('강남구'));
   assert.match(draft.subject, /10월 5일 주간 경제·정책 브리핑/);
   assert.ok(draft.body.includes('**KOSPI** 7,003.74 (1주 전 대비 +3.00%)'));
   assert.ok(draft.body.includes('**원/달러 환율** 1,358.5원 (1주 전 대비 −11.5원)'));
@@ -267,4 +301,7 @@ test('draft generation degrades gracefully when ECOS is unavailable', async t =>
   const draft = await f.generate({ notify: false });
   assert.ok(draft.body.includes('**KOSPI** 자료를 불러오지 못했습니다'));
   assert.ok(draft.body.includes('새로 올라온 글이 없습니다'));
+  assert.ok(draft.body.includes('IMF 전망 자료를 불러오지 못했습니다'));
+  assert.ok(draft.body.includes('REB_API_KEY'));
+  assert.ok(!draft.body.includes('R-ONE)'));
 });

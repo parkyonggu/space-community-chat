@@ -38,7 +38,7 @@ const newsletterApi = createNewsletterApi(dataDirectory, {
   clearLegacySubscribers: () => communityApi.clearLegacySubscribers(),
   schedule: delay => scheduleNewsletter(delay),
   senderName: process.env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: process.env.CONTACT_EMAIL || '',
-  adminEmails, ecosKey: process.env.ECOS_API_KEY || '', highlights: since => boardApi.highlights(since),
+  adminEmails, ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', highlights: since => boardApi.highlights(since),
 });
 let lastWeeklyDraft = '';
 setInterval(() => {
