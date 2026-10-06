@@ -297,6 +297,11 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
   assert.equal(summary.campaigns[0].status, 'done');
   assert.equal(summary.campaigns[0].sent, 2);
+  const archive = await (await f.get('/api/newsletter/archive')).json();
+  assert.deepEqual(archive.letters.map(entry => entry.subject), [draft.subject]);
+  const letter = (await (await f.get(`/api/newsletter/archive?id=${archive.letters[0].id}`)).json()).letter;
+  assert.match(letter.html, /<strong>KOSPI<\/strong>/);
+  assert.equal((await f.get('/api/newsletter/archive?id=00000000-0000-0000-0000-000000000000')).status, 404);
 
   // scheduling can be cancelled
   assert.equal((await f.post('/api/admin/newsletter/send', { subject: 's2', body: 'b2', schedule: 'monday' }, 'admin')).status, 201);

@@ -4,6 +4,7 @@ import auth from '../auth-api.js';
 import community from '../community-api.js';
 import board from '../board-api.js';
 import newsletter from '../newsletter-api.js';
+import portal from '../portal-api.js';
 
 const json = (body, status = 200) => Response.json(body, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
@@ -109,6 +110,14 @@ export class CommunityService extends DurableObject {
       senderName: env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: env.CONTACT_EMAIL || '',
       adminEmails, ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', highlights: since => this.board.highlights(since),
     });
+    this.portal = portal.createPortalApi({
+      ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', rateLimit,
+      cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
+      onlineCount: async () => {
+        const response = await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/status');
+        return (await response.json()).online;
+      },
+    });
   }
 
   async alarm() {
@@ -154,7 +163,8 @@ export class CommunityService extends DurableObject {
     }
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
-      pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/') ? this.newsletter : this.community;
+      pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/') ? this.newsletter :
+      pathname === '/api/portal' ? this.portal : this.community;
     await handler(source, target, pathname);
     return completed;
   }
@@ -162,6 +172,7 @@ export class CommunityService extends DurableObject {
 
 export class ChatRoom extends DurableObject {
   async fetch(request) {
+    if (new URL(request.url).pathname === '/status') return json({ online: this.ctx.getWebSockets().length });
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'WebSocket 연결이 필요합니다.' }, 426);
     if (request.headers.get('Origin') !== this.env.SITE_URL) return json({ error: '이 사이트에서만 채팅할 수 있습니다.' }, 403);
     if (this.ctx.getWebSockets().length >= 100) return json({ error: '채팅 접속자가 많습니다. 잠시 후 다시 시도해 주세요.' }, 503);
@@ -219,7 +230,7 @@ export default {
       const url = new URL(request.url);
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
-          url.pathname === '/api/comments') {
+          url.pathname === '/api/comments' || url.pathname === '/api/portal') {
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);

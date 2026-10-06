@@ -96,6 +96,7 @@
 
   function renderPost(post) {
     const item = make('article', 'post-item');
+    item.id = `post-${post.id}`;
     if (post.hidden) item.style.opacity = '0.6';
     const head = make('div');
     if (post.category && post.board !== 'policy') head.appendChild(make('strong', '', `[${post.category}] `));
@@ -123,6 +124,7 @@
           post.likes = result.likes;
           post.liked = result.liked;
           render(post.board);
+          announce(post.board);
         } catch (error) {
           setStatus(post.board, error.message, true);
           like.disabled = false;
@@ -206,14 +208,17 @@
     if (board === 'research' && !state.user) {
       state.posts.research = [];
       $('researchPosts').replaceChildren();
+      announce(board);
       return;
     }
     try {
       const { posts } = await api(`/api/board?board=${board}`);
       state.posts[board] = posts;
       render(board);
+      announce(board);
     } catch (error) {
       setStatus(board, error.message, true);
+      announce(board);
     }
   }
 
@@ -245,6 +250,7 @@
       state.posts[board].unshift(post);
       clear();
       render(board);
+      announce(board);
       setStatus(board, message);
     } catch (error) {
       setStatus(board, error.message, true);
@@ -281,13 +287,15 @@
     button.classList.add('active');
     render('policy');
   }));
-  function runSearch() {
-    state.keyword = $('searchInput').value.trim();
-    render('policy');
-    $('policy-section').scrollIntoView({ behavior: 'smooth' });
+  // The portal front page (portal.js) reads the loaded posts through this read-only view.
+  function announce(board) {
+    window.dispatchEvent(new CustomEvent('space-boards', { detail: { board } }));
   }
-  $('searchBtn').addEventListener('click', runSearch);
-  $('searchInput').addEventListener('keydown', event => { if (event.key === 'Enter') runSearch(); });
+  window.spaceBoards = {
+    posts: board => [...(state.posts[board] || [])],
+    user: () => state.user,
+    reload: board => load(board),
+  };
 
   function applyAuth(detail) {
     const previous = state.ready ? `${state.user?.id || ''}:${state.user?.admin || false}` : null;

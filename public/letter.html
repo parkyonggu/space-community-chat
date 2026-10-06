@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스페이스 레터 · 지난 경제·정책 브리핑 | 스페이스 커뮤니티</title>
+  <meta name="description" content="스페이스 커뮤니티가 매주 월요일 발행하는 경제·정책 브리핑 '스페이스 레터'의 지난 호를 모아 볼 수 있습니다.">
+  <link rel="canonical" href="https://withpluces.com/letter">
+  <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512">
+  <meta name="theme-color" content="#0e1730">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="/portal.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485" crossorigin="anonymous"></script>
+  <style>
+    .letter-wrap { max-width:820px; margin:0 auto; padding:0 20px; }
+    .letter-head { background:var(--navy); color:#fff; padding:22px 0 30px; }
+    .letter-head a.back { color:#c9d0e3; text-decoration:none; font-size:14px; font-weight:700; }
+    .letter-head a.back:hover { color:#fff; }
+    .letter-head h1 { margin:12px 0 6px; font-size:clamp(24px,4vw,34px); letter-spacing:-.03em; }
+    .letter-head p { margin:0; color:#c9d0e3; }
+    .letter-body { margin:-16px auto 0; position:relative; }
+    .letter-card { background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); padding:28px 30px; }
+    .letter-card h1, .letter-card h2 { color:var(--ink); }
+    .letter-card a { color:var(--primary); }
+    .letter-meta { color:var(--muted); font-size:14px; margin:0 0 6px; }
+    .archive-list { list-style:none; margin:0; padding:0; }
+    .archive-list li { border-bottom:1px solid var(--line-soft); }
+    .archive-list li:last-child { border-bottom:0; }
+    .archive-list a { display:flex; gap:16px; padding:14px 0; color:var(--ink); text-decoration:none; font-size:16px; }
+    .archive-list a:hover span:last-child { color:var(--primary); text-decoration:underline; }
+    .archive-list .date { flex:none; color:var(--muted); font-variant-numeric:tabular-nums; width:96px; }
+    .letter-cta { margin-top:18px; display:flex; flex-wrap:wrap; gap:10px; }
+    @media (max-width:520px) { .letter-card { padding:20px 18px; } .archive-list .date { width:auto; } .archive-list a { flex-direction:column; gap:2px; } }
+  </style>
+</head>
+<body>
+  <header class="letter-head">
+    <div class="letter-wrap">
+      <a class="back" href="/">← 스페이스 커뮤니티 홈</a>
+      <h1 id="page-title">스페이스 레터</h1>
+      <p id="page-sub">매주 월요일 아침 7시에 발행하는 경제·정책 브리핑입니다. 지난 레터를 모두 읽을 수 있습니다.</p>
+    </div>
+  </header>
+  <main class="letter-wrap letter-body">
+    <article class="letter-card" id="letter-card" aria-live="polite"><p class="letter-meta">불러오는 중입니다.</p></article>
+    <div class="letter-cta">
+      <a class="btn btn-primary" href="/#newsletter-section">이메일로 구독하기</a>
+      <a class="btn btn-outline" href="/letter" id="all-letters" hidden>지난 레터 전체 보기</a>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div><p class="footer-brand">스페이스 커뮤니티</p><p>운영: (주)위드플러시아 · 문의: <a href="mailto:dragon600120@gmail.com" style="color:#fff">dragon600120@gmail.com</a></p></div>
+      <nav class="footer-links" aria-label="사이트 정보"><a href="/privacy"><strong>개인정보처리방침</strong></a><a href="/#guide-section">이용 안내</a></nav>
+    </div>
+  </footer>
+  <script>
+    (async () => {
+      const card = document.getElementById('letter-card');
+      const id = new URLSearchParams(location.search).get('id');
+      const make = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
+      const day = iso => { const date = new Date(iso); return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`; };
+      try {
+        const response = await fetch(`/api/newsletter/archive${id ? `?id=${encodeURIComponent(id)}` : ''}`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '레터를 불러오지 못했습니다.');
+        if (id) {
+          document.title = `${data.letter.subject} | 스페이스 커뮤니티`;
+          document.getElementById('page-title').textContent = data.letter.subject;
+          document.getElementById('page-sub').textContent = `${day(data.letter.sentAt)} 발행 · 스페이스 레터`;
+          document.getElementById('all-letters').hidden = false;
+          const template = document.createElement('template');
+          template.innerHTML = data.letter.html; // 서버에서 이스케이프한 레터 본문 HTML
+          card.replaceChildren(template.content);
+          card.querySelectorAll('a[href^="http"]').forEach(link => { link.target = '_blank'; link.rel = 'noopener'; });
+          return;
+        }
+        if (!data.letters.length) {
+          card.replaceChildren(make('p', 'letter-meta', '아직 발행된 레터가 없습니다. 첫 레터는 다가오는 월요일 아침 7시에 발행됩니다.'));
+          return;
+        }
+        const list = make('ul', 'archive-list');
+        data.letters.forEach(letter => {
+          const item = make('li');
+          const link = make('a');
+          link.href = `/letter?id=${encodeURIComponent(letter.id)}`;
+          link.append(make('span', 'date', day(letter.sentAt)), make('span', '', letter.subject));
+          item.appendChild(link);
+          list.appendChild(item);
+        });
+        card.replaceChildren(make('h2', '', '지난 레터'), list);
+      } catch (error) {
+        card.replaceChildren(make('p', 'letter-meta', error.message));
+        document.getElementById('all-letters').hidden = false;
+      }
+    })();
+  </script>
+</body>
+</html>

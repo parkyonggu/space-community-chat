@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+Allow: /api/board
+Allow: /api/newsletter/archive
+Allow: /api/portal
+Allow: /api/comments
 Disallow: /api/
 Disallow: /ws/
 Disallow: /n/

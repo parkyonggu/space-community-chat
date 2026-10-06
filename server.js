@@ -8,6 +8,7 @@ const { createAuthApi } = require('./auth-api');
 const { createMailer } = require('./mailer');
 const { createBoardApi } = require('./board-api');
 const { createNewsletterApi } = require('./newsletter-api');
+const { createPortalApi } = require('./portal-api');
 
 require('@next/env').loadEnvConfig(__dirname, process.env.NODE_ENV !== 'production');
 
@@ -40,6 +41,8 @@ const newsletterApi = createNewsletterApi(dataDirectory, {
   senderName: process.env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: process.env.CONTACT_EMAIL || '',
   adminEmails, ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', highlights: since => boardApi.highlights(since),
 });
+let chatOnline = 0;
+const portalApi = createPortalApi({ ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', onlineCount: async () => chatOnline });
 let lastWeeklyDraft = '';
 setInterval(() => {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -90,6 +93,10 @@ app.prepare().then(() => {
       });
       return;
     }
+    if (pathname === '/api/portal') {
+      portalApi(request, response, pathname);
+      return;
+    }
     if (pathname === '/api/comments') {
       communityApi(request, response, pathname);
       return;
@@ -116,7 +123,7 @@ app.prepare().then(() => {
           html = html.replaceAll('https://withpluces.com/', `${siteUrl}/`);
         }
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
-        response.setHeader('Referrer-Policy', 'no-referrer');
+        response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         response.setHeader('Cache-Control', 'no-store');
         response.end(html);
       });
@@ -157,6 +164,7 @@ app.prepare().then(() => {
 
   io.on('connection', (socket) => {
     console.log('사용자 접속');
+    chatOnline = io.engine.clientsCount;
 
     socket.on('chat message', (message) => {
       if (typeof message === 'string' && message.trim()) {
@@ -166,6 +174,7 @@ app.prepare().then(() => {
 
     socket.on('disconnect', () => {
       console.log('사용자 연결 종료');
+      chatOnline = io.engine.clientsCount;
     });
   });
 

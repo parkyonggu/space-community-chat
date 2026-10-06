@@ -184,6 +184,7 @@ async function rebHousing(fetchImpl, key, now = Date.now()) {
   const endWeek = `${new Date(now + 9 * 60 * 60 * 1000).getUTCFullYear()}53`;
   const lines = [];
   const problems = [];
+  const series = [];
   let week = '';
   for (const [label, table] of tableSets) {
     try {
@@ -199,11 +200,13 @@ async function rebHousing(fetchImpl, key, now = Date.now()) {
       if (times.length < 2) throw new Error(`지역(전국·서울 등) 자료가 2주 이상 없음 (${startWeek}~ 받은 행 ${rows.length}개)`);
       const [previous, latest] = times.slice(-2);
       week = regional.find(row => row.WRTTIME_IDTFR_ID === latest)?.WRTTIME_DESC || latest;
-      const parts = REB_REGIONS.map(([display, name]) => {
+      const changes = REB_REGIONS.map(([display, name]) => {
         const current = regional.find(row => row.WRTTIME_IDTFR_ID === latest && nameOf(row) === name);
         const before = regional.find(row => row.WRTTIME_IDTFR_ID === previous && nameOf(row) === name);
-        return current && before ? `${display} ${signed(((Number(current.DTA_VAL) - Number(before.DTA_VAL)) / Number(before.DTA_VAL)) * 100, 2, '%')}` : null;
+        return current && before ? { region: display, change: ((Number(current.DTA_VAL) - Number(before.DTA_VAL)) / Number(before.DTA_VAL)) * 100 } : null;
       }).filter(Boolean);
+      if (changes.length) series.push({ label, regions: changes.map(entry => ({ ...entry, change: Math.round(entry.change * 100) / 100 })) });
+      const parts = changes.map(entry => `${entry.region} ${signed(entry.change, 2, '%')}`);
       if (parts.length) lines.push(`- **아파트 ${label}가격 (주간 변동률)** ${parts.join(' · ')}`);
     } catch (error) {
       problems.push(`${table.STATBL_NM}(${table.STATBL_ID}): ${error.message}`);
@@ -212,7 +215,7 @@ async function rebHousing(fetchImpl, key, now = Date.now()) {
   if (!tableSets.some(([label]) => label === '전세')) problems.push(`주간 전세가격지수 통계표를 찾지 못함 (주간 통계표 후보: ${weekly.map(table => table.STATBL_NM).slice(0, 8).join(', ') || '없음'})`);
   if (!lines.length) throw new Error(problems.join(' / ') || 'REB no regional rows');
   if (/^\d{4}-\d{2}-\d{2}$/.test(week)) week = `${Number(week.slice(5, 7))}월 ${Number(week.slice(8, 10))}일 조사`;
-  return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems };
+  return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems, data: { week, series } };
 }
 
 function highlightLines(posts, siteUrl) {
@@ -304,4 +307,4 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
   return { subject: `스페이스 레터 · ${title} 주간 경제·정책 브리핑`, body, sendAt, notes: notes.map(note => note.slice(0, 300)) };
 }
 
-module.exports = { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK };
+module.exports = { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK, ecos, rebHousing, HEADERS };

@@ -468,6 +468,24 @@ function createNewsletterApi(dataDirectory, {
         return;
       }
 
+      // Public archive of letters that finished sending (the same content subscribers received).
+      if (pathname === '/api/newsletter/archive') {
+        if (request.method !== 'GET') throw new NewsletterError(405, '지원하지 않는 요청 방식입니다.');
+        limit(`newsletter-archive:${ip}`, 120, 60000);
+        const id = new URL(request.url, 'http://localhost').searchParams.get('id');
+        const store = await readStore();
+        const letters = store.campaigns.filter(entry => entry.kind === 'newsletter' && entry.status === 'done')
+          .sort((left, right) => (right.finishedAt || right.createdAt).localeCompare(left.finishedAt || left.createdAt));
+        if (id) {
+          const letter = letters.find(entry => entry.id === id);
+          if (!letter) throw new NewsletterError(404, '레터를 찾을 수 없습니다.');
+          sendJson(response, 200, { letter: { id: letter.id, subject: letter.subject, sentAt: letter.finishedAt || letter.createdAt, html: renderMarkup(letter.body).html } });
+          return;
+        }
+        sendJson(response, 200, { letters: letters.slice(0, 20).map(entry => ({ id: entry.id, subject: entry.subject, sentAt: entry.finishedAt || entry.createdAt })) });
+        return;
+      }
+
       if (pathname === '/api/admin/newsletter' || pathname === '/api/admin/newsletter/subscribers') {
         if (request.method !== 'GET') {
           response.setHeader('Allow', 'GET');

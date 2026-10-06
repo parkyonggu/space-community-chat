@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스페이스 커뮤니티 (스페이스커뮤니티) | 시민 소통·시민의 소리·정책 제안</title>
-  <meta name="description" content="스페이스 커뮤니티(스페이스커뮤니티)는 시민이 일상을 나누고, 부당한 행정을 공론화하며, 정부 정책을 비평·제안하는 열린 공론장입니다. 실시간 채팅, 소통·나눔 광장, 시민의 소리, 정책 제안, 학술·논문 게시판을 운영합니다.">
+  <meta name="description" content="스페이스 커뮤니티(스페이스커뮤니티)는 시민이 일상을 나누고, 부당한 행정을 공론화하며, 정부 정책을 비평·제안하는 열린 공론장입니다. 실시간 채팅, 소통·나눔 광장, 시민의 소리, 정책 제안, 학술·논문 게시판과 매주 경제·정책 브리핑 '스페이스 레터'를 운영합니다.">
   <link rel="canonical" href="https://withpluces.com/">
   <meta name="naver-site-verification" content="153af3ebdc42b9c0258c046e51ca6b607860a9b5" />
   <meta property="og:url" content="https://withpluces.com/">
@@ -17,218 +17,249 @@
   <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/icons/icon-512.png" sizes="512x512">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#1958E8">
-  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0e1730">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
   <link rel="stylesheet" href="/signup.css">
+  <link rel="stylesheet" href="/portal.css">
   <script defer src="/signup.js"></script>
-
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485"
-       crossorigin="anonymous"></script>
-
-  <style>
-    :root { --ink:#e8eef7; --muted:#aebdd0; --blue:#5f8dff; --line:#3a4b63; --paper:#182333; --soft:#263852; --green:#55c99a; --surface:#223044; --card:#293a4f; }
-    * { box-sizing:border-box; } html { scroll-behavior:smooth; }
-    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Noto Sans KR","Pretendard",sans-serif; line-height:1.65; }
-    button,input,textarea { font:inherit; } button { cursor:pointer; }
-    .site-header { background:linear-gradient(135deg,#101b2b,#1c3552); color:var(--ink); padding:24px 20px 28px; }
-    .header-inner,main,.site-footer-inner { max-width:1180px; margin:0 auto; }
-    .brand { display:flex; align-items:center; gap:12px; } .brand-mark { width:42px; height:42px; border:1px solid #8bb4ff; border-radius:50%; display:grid; place-items:center; font-size:22px; background:#0a1933; }
-    .brand h1 { margin:0; font-size:clamp(23px,4vw,32px); } .brand p { margin:2px 0 0; color:#c8dbff; font-size:13px; }
-    nav { display:flex; flex-wrap:wrap; gap:8px; } .section-nav-bar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:20px 0 8px; padding:12px 14px; background:rgba(24,35,51,.94); backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:10px; } .section-nav button { border:1px solid #4a6285; border-radius:6px; background:#22344d; color:#e8eef7; padding:8px 13px; font-weight:600; } .section-nav button:hover { background:#2d4566; border-color:#6d8fc4; } .section-nav button.active { background:#1958e8; border-color:#1958e8; color:#ffffff; box-shadow:0 0 0 2px rgba(95,141,255,.35); } .section-nav button:focus-visible { outline:2px solid #ffc857; outline-offset:2px; } .section-nav button { white-space:nowrap; } #chat-section,#community-section,#voice-section,#policy-section,#research-section,#reader-section,#newsletter-section,#guide-section { scroll-margin-top:150px; } @media (max-width:760px) { .section-nav-bar { position:static; padding:10px; } .section-nav { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; } .section-nav button { flex:0 0 auto; } .search-bar { max-width:none; } #chat-section,#community-section,#voice-section,#policy-section,#research-section,#reader-section,#newsletter-section,#guide-section { scroll-margin-top:12px; } }
-    .search-bar { display:flex; flex:1 1 260px; max-width:420px; } .search-bar input { flex:1; min-width:0; padding:9px 12px; border:1px solid #4a6285; border-radius:6px 0 0 6px; background:#152031; color:#e8eef7; } .search-bar input::placeholder { color:#8fa1ba; } .search-bar button { border:0; border-radius:0 6px 6px 0; padding:0 16px; background:#ffc857; color:#172333; font-weight:700; }
-    main { padding:32px 20px 64px; } section { margin-bottom:34px; } .hero { display:grid; grid-template-columns:1.5fr 1fr; gap:28px; align-items:end; padding:20px 0 34px; }
-    .eyebrow,.label { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; } h2,h3 { line-height:1.3; } h2 { margin:6px 0 12px; font-size:clamp(25px,4vw,38px); } h3 { margin:0 0 8px; font-size:20px; } p { margin:8px 0; }
-    .lead { max-width:720px; font-size:18px; color:var(--muted); } .hero-note { border-left:3px solid var(--blue); padding:10px 0 10px 18px; color:var(--muted); }
-    .section-head { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:18px; } .section-head h2 { margin-bottom:0; } .surface { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.18); } .intro { color:var(--muted); max-width:850px; }
-    #community-section,#voice-section,#policy-section,#chat-section,#research-section { display:none; } #chat-section.tab-visible,#community-section.tab-visible,#voice-section.tab-visible,#policy-section.tab-visible,#research-section.tab-visible { display:block; }
-    .section-panel { display:none; } .section-panel.active { display:block; }
-    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; } .card { border:1px solid var(--line); border-radius:8px; padding:20px; background:var(--card); } .card p { color:var(--muted); } .tag { display:inline-block; padding:2px 8px; border-radius:4px; background:var(--soft); color:var(--blue); font-size:12px; font-weight:700; }
-    .notice { background:#fff8e6; border:1px solid #f0d58a; border-radius:8px; padding:18px 20px; } .notice strong { color:#785400; }
-    .guide { display:grid; grid-template-columns:1.1fr .9fr; gap:20px; } .guide ol,.policy-list { margin:10px 0 0; padding-left:22px; } .guide li,.policy-list li { margin:8px 0; }
-    .external-link { display:inline-flex; margin-top:12px; padding:10px 14px; color:white; background:var(--blue); border-radius:4px; text-decoration:none; font-weight:700; }
-    .sort-bar { display:flex; justify-content:flex-end; gap:6px; margin-bottom:12px; } .sort-bar button,.policy-actions button { padding:7px 11px; border:1px solid var(--line); border-radius:4px; background:#2a3b50; color:var(--ink); } .sort-bar button.active { background:var(--ink); color:#172333; }
-    .category-group { margin:18px 0; padding:18px; border:1px solid #486589; border-radius:8px; background:#1d2c40; } .category-group h3 { color:#a9c8ff; } .policy-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; } .policy-category { padding:16px; border:1px solid var(--line); border-radius:6px; background:var(--card); } .policy-category h4 { margin:0 0 10px; font-size:16px; }
-    textarea,input,select { background:#172333; color:var(--ink); } textarea { width:100%; min-height:92px; resize:vertical; padding:10px; border:1px solid #526783; border-radius:4px; } textarea:focus,input:focus,select:focus { outline:2px solid var(--blue); outline-offset:1px; } .submitPolicy { margin:8px 0; padding:8px 13px; border:0; border-radius:4px; background:var(--green); color:#10251f; font-weight:700; }
-    .policy-output { max-height:170px; overflow-y:auto; } .opinion { display:flex; justify-content:space-between; gap:8px; padding:9px 0; border-top:1px solid var(--line); } .opinion-text { min-width:0; overflow-wrap:anywhere; } .like-btn { flex:0 0 auto; border:1px solid var(--blue); border-radius:12px; background:white; color:var(--blue); padding:2px 8px; }
-    .post-composer { margin-top:20px; padding-top:20px; border-top:1px solid var(--line); } .post-composer textarea { min-height:120px; } .post-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; } .post-controls select { padding:8px 10px; border:1px solid #cbd5e1; border-radius:4px; background:white; } .post-list { margin-top:18px; } .post-item { padding:14px 0; border-top:1px solid var(--line); } .post-item strong { display:block; } .post-item p { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--muted); }
-    .policy-actions { display:flex; justify-content:space-between; gap:12px; margin-top:20px; color:var(--muted); } .policy-actions a { color:var(--blue); font-weight:700; }
-    .chat-box { height:220px; overflow-y:auto; padding:14px; margin-bottom:10px; border:1px solid #428b9b; background:#192d3d; } .chat-message { padding:5px 0; border-bottom:1px solid #304d60; white-space:pre-wrap; overflow-wrap:anywhere; } .chat-input { display:flex; align-items:stretch; gap:8px; } .chat-input textarea { flex:1; min-width:0; min-height:72px; resize:vertical; padding:10px; border:1px solid #52778b; border-radius:4px; } .chat-input button { align-self:stretch; border:0; border-radius:4px; padding:0 16px; background:#48b8c6; color:#10252e; font-weight:700; }
-    #chat-section { border-top:3px solid #48b8c6; } #chat-section .eyebrow,#chat-section h2 { color:#75e1e4; } #chat-section .tag { color:#75e1e4; background:#1c4b55; }
-    #community-section { border-top:3px solid #55c99a; } #community-section .eyebrow,#community-section h2 { color:#72dda9; } #community-section .tag { color:#72dda9; background:#1d4a3d; } #community-section .submitPolicy { background:#55c99a; }
-    #voice-section { border-top:3px solid #e7b85c; } #voice-section .eyebrow,#voice-section h2 { color:#f0c86d; } #voice-section .tag { color:#f0c86d; background:#4b3d25; } #voice-section .submitPolicy { background:#e7b85c; }
-    #policy-section { border-top:3px solid #7097ff; } #policy-section .eyebrow,#policy-section h2 { color:#88a7ff; } #policy-section .tag { color:#88a7ff; background:#273b70; } #policy-section .submitPolicy { background:#7097ff; }
-    #research-section { border-top:3px solid #c78cff; } #research-section .eyebrow,#research-section h2 { color:#d5a8ff; } #research-section .tag { color:#d5a8ff; background:#432c5d; } #research-section .submitPolicy { background:#b778e8; }
-    .policy-columns { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; } .policy-columns h3 { font-size:17px; } .policy-columns ul { padding-left:19px; color:var(--muted); }
-    .site-footer { display:block; width:100%; padding:28px 20px; background:#1958e8 !important; color:#ffffff !important; } .site-footer-inner { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; } .site-footer p { margin:0; font-size:13px; color:#ffffff !important; } .site-footer p:last-child { color:#dce9ff !important; }
-    body.dark-mode { --paper:#101827; --ink:#edf3ff; --muted:#b7c4d8; --line:#34445d; --soft:#1e3154; background:var(--paper); } body.dark-mode .surface,body.dark-mode .card,body.dark-mode .policy-category { background:#172235; } body.dark-mode .category-group { background:#14223a; border-color:#38598f; } body.dark-mode .category-group h3 { color:#c8dbff; } body.dark-mode .chat-box,body.dark-mode .sort-bar button,body.dark-mode .like-btn,body.dark-mode input,body.dark-mode textarea,body.dark-mode select { background:#101827; color:var(--ink); border-color:#526783; } body.dark-mode .notice { background:#332d1e; border-color:#8e7330; } body.dark-mode .hero-note,body.dark-mode .post-item p,body.dark-mode .policy-actions { color:var(--muted); }
-    @media (max-width:760px) { .hero,.guide,.grid,.policy-columns { grid-template-columns:1fr; } main { padding:22px 14px 44px; } .surface { padding:18px; } .section-head { display:block; } .section-head .sort-bar { justify-content:flex-start; margin-top:12px; } }
-
-    .home-link { display:inline-block; margin-bottom:12px; color:#c8dbff; text-decoration:none; font-weight:700; }
-    .home-link:hover { text-decoration:underline; }
-
-    /* ===== 광고 영역 스타일 ===== */
-    .ad-slot { margin:24px 0; padding:8px; text-align:center; border:1px dashed var(--line); border-radius:8px; background:rgba(255,255,255,.03); min-height:90px; }
-    .ad-slot .ad-label { display:block; font-size:11px; color:var(--muted); letter-spacing:.05em; margin-bottom:6px; }
-    .editorial-figure { margin:0 0 28px; }
-    .editorial-cover { position:relative; overflow:hidden; border:1px solid #426289; border-radius:24px; background:#09182e; box-shadow:0 20px 55px rgba(0,0,0,.25); isolation:isolate; }
-    .editorial-figure img { display:block; width:100%; height:460px; object-fit:cover; object-position:center; }
-    .editorial-cover::after { content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(90deg,rgba(4,13,29,.94),rgba(4,13,29,.65) 42%,rgba(4,13,29,.06) 78%),linear-gradient(0deg,rgba(4,13,29,.5),transparent 70%); }
-    .editorial-cover-content { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:40px; max-width:650px; color:#f5f9ff; }
-    .editorial-kicker { display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:.18em; color:#b5d9ff; }
-    .editorial-kicker::before { content:""; width:24px; height:2px; background:#82bdff; }
-    .editorial-cover-content h2 { margin:20px 0 14px; font-size:clamp(28px,3.2vw,44px); line-height:1.25; letter-spacing:-.035em; word-break:keep-all; }
-    .editorial-cover-content p { max-width:400px; margin:0; color:#c5d5eb; font-size:15px; line-height:1.8; word-break:keep-all; }
-    .editorial-figure figcaption { margin:12px 8px 0; font-size:12px; line-height:1.7; color:var(--muted); text-align:center; word-break:keep-all; }
-    .editorial-figure figcaption strong { color:#a7caff; margin-right:6px; }
-    .reader-form { display:grid; gap:12px; }
-    .reader-form input:not([type="checkbox"]) { width:100%; min-width:0; padding:10px 14px; border:1px solid var(--line); border-radius:4px; }
-    .reader-form button { justify-self:start; }
-    .reader-meta { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    .reader-meta time { color:var(--muted); font-size:13px; }
-    .reader-comment { border-left:3px solid var(--blue); padding:16px; margin-top:14px; background:var(--card); border-radius:8px; }
-    .reader-comment p { white-space:pre-wrap; overflow-wrap:anywhere; }
-    .form-status { min-height:1.65em; color:var(--muted); }
-    .form-status[data-error="true"] { color:#ffb4ab; }
-    .reader-consent { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--muted); }
-    .reader-consent input { margin-top:6px; }
-    .reader-shortcuts { display:flex; flex-wrap:wrap; gap:10px; margin:24px 0 0; }
-    .reader-shortcuts a { display:inline-flex; align-items:center; gap:8px; padding:11px 16px; border:1px solid #708ba9; border-radius:10px; color:#eff6ff; background:rgba(16,34,57,.8); font-size:13px; font-weight:700; text-decoration:none; transition:background .2s,border-color .2s; }
-    .reader-shortcuts a:first-child { background:#2d5bff; border-color:#5f83ff; color:#fff; }
-    .reader-shortcuts a:hover { background:#244366; border-color:#bddcff; }
-    .reader-shortcuts a:first-child:hover { background:#1946e8; }
-    .reader-shortcuts a:focus-visible { outline:3px solid #c5e3ff; outline-offset:4px; }
-    .reader-shortcuts a span { font-size:17px; }
-    @media (max-width:760px) {
-      .editorial-cover { border-radius:18px; }
-      .editorial-figure img { height:240px; }
-      .editorial-cover::after { background:linear-gradient(0deg,#09182e,transparent 30%); bottom:auto; height:240px; }
-      .editorial-cover-content { position:relative; padding:8px 22px 26px; }
-      .editorial-cover-content h2 { margin-top:16px; font-size:28px; }
-      .reader-shortcuts { flex-direction:column; width:100%; }
-      .reader-shortcuts a { justify-content:space-between; }
-    }
-  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485" crossorigin="anonymous"></script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"Organization","name":"(주)위드플러시아","url":"https://withpluces.com/","email":"dragon600120@gmail.com","logo":"https://withpluces.com/icons/icon-512.png"},
+    {"@type":"WebSite","name":"스페이스 커뮤니티","alternateName":"스페이스커뮤니티","url":"https://withpluces.com/","inLanguage":"ko-KR","publisher":{"@type":"Organization","name":"(주)위드플러시아"}}
+  ]}
+  </script>
 </head>
-<body>
-  <div class="site-header" style="padding-bottom:0"><div class="header-inner"><a class="home-link" href="/article.html">기존 아티클 보기 →</a></div></div>
-  <header class="site-header"><div class="header-inner"><div class="brand"><img class="brand-mark" src="/icons/icon-512.png" alt="스페이스 커뮤니티 로고"><div><h1>스페이스 커뮤니티</h1><p>사람과 생각이 만나 서로를 존중하는 열린 공론장</p></div></div></div></header>
-  <main>
-    <figure class="editorial-figure">
-      <div class="editorial-cover">
-      <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J" alt="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 모듈러 구조" width="1200" height="420">
-        <div class="editorial-cover-content">
-          <div class="editorial-kicker">SPACE · CONNECTING IDEAS</div>
-          <h2>생각이 연결되는 곳,<br>새로운 이야기가 시작됩니다.</h2>
-          <p>기술과 일상, 시민의 목소리까지.<br>당신의 생각을 나누고 함께 더 나은 내일을 만드세요.</p>
-          <nav class="reader-shortcuts" aria-label="독자 참여 메뉴"><a href="#reader-section">독자 소통 공간 · 댓글 등록 <span aria-hidden="true">↗</span></a><a href="#newsletter-section">뉴스레터 구독 <span aria-hidden="true">→</span></a></nav>
+<body id="top">
+  <a class="sr-only" href="#main">본문 바로가기</a>
+  <header class="site-top">
+    <div class="wrap top-row">
+      <div class="logo">
+        <a class="logo-link" href="/" aria-label="스페이스 커뮤니티 홈">
+          <img class="logo-mark" src="/icons/icon-512.png" alt="" width="44" height="44">
+          <span><h1>스페이스 커뮤니티</h1><span class="logo-tagline">사람과 생각이 만나 서로를 존중하는 열린 공론장</span></span>
+        </a>
+      </div>
+      <form class="search-bar" role="search" id="searchForm">
+        <label class="sr-only" for="searchInput">게시글 검색</label>
+        <input id="searchInput" type="search" placeholder="게시글·정책 제안·시민의 소리 검색" autocomplete="off" maxlength="60">
+        <button id="searchBtn" type="submit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>검색</span></button>
+      </form>
+      <div class="brand" aria-label="회원 메뉴"></div>
+    </div>
+  </header>
+  <div class="nav-bar">
+    <nav class="wrap section-nav" aria-label="주요 메뉴">
+      <a href="#top" class="active" data-home>홈</a>
+      <a href="#chat-section" data-target="chat-section">실시간 채팅<span class="nav-count" id="nav-online" hidden></span></a>
+      <a href="#community-section" data-target="community-section">소통·나눔</a>
+      <a href="#voice-section" data-target="voice-section">시민의 소리</a>
+      <a href="#policy-section" data-target="policy-section">정책 제안</a>
+      <a href="#research-section" data-target="research-section">학술·이야기</a>
+      <a href="#newsletter-section">스페이스 레터</a>
+      <a href="#guide-section">이용 안내</a>
+    </nav>
+  </div>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="kicker">SPACE · CONNECTING IDEAS</div>
+        <h2 id="hero-title">생각이 연결되는 곳,<br>새로운 이야기가 시작됩니다.</h2>
+        <p class="lead">가까이 있든 멀리 있든, 우리는 서로의 이야기를 나눕니다. 안부와 소식, 가벼운 잡담부터 진지한 의견과 유용한 정책 제안까지 — 자유 시민 누구나 목소리를 내고 서로의 생각을 존중하는 공간입니다.</p>
+        <div class="hero-actions">
+          <button type="button" class="btn btn-gold" id="hero-write">지금 이야기 쓰기</button>
+          <a class="btn btn-ghost" href="#newsletter-section">스페이스 레터 구독</a>
         </div>
       </div>
-    </figure>
-    <div class="section-nav-bar"><nav class="section-nav" aria-label="주요 메뉴"><button class="section-tab active" data-target="chat-section">1. 실시간 채팅</button><button class="section-tab" data-target="community-section">2. 소통·나눔 광장</button><button class="section-tab" data-target="voice-section">3. 시민의 소리</button><button class="section-tab" data-target="policy-section">4. 정책비평·제안</button><button class="section-tab" data-target="research-section">5. 학술·논문·소고·이야기</button><button id="darkModeBtn">다크모드</button></nav><div class="search-bar"><input id="searchInput" aria-label="의견 검색" placeholder="정책 의견을 검색하세요"><button id="searchBtn">검색</button></div></div>
-    <section class="hero" aria-labelledby="hero-title"><div><div class="eyebrow">SPACE COMMUNITY</div><h2 id="hero-title">가까이 있든 멀리 있든,<br>우리는 서로의 이야기를 나눕니다.</h2><p class="lead">안부와 소식, 가벼운 잡담부터 진지한 의견과 유용한 정책 제안까지. 자유 시민 누구나 목소리를 내고 서로의 생각을 존중하는 공간입니다.</p></div><p class="hero-note">대한민국 헌법이 보장하는 국민 참여 정신을 바탕으로, 사실에 기반한 대화와 함께 만드는 변화를 지향합니다.</p></section>
+      <div class="hero-side" aria-label="커뮤니티 현황">
+        <div class="stat"><span class="stat-label">오늘 올라온 글</span><span class="stat-value" id="stat-today">–</span></div>
+        <div class="stat"><span class="stat-label">이번 주 정책 제안</span><span class="stat-value" id="stat-policy">–</span></div>
+        <div class="stat"><span class="stat-label">지금 채팅 중</span><span class="stat-value" id="stat-online">–</span></div>
+        <p class="hero-note">대한민국 헌법이 보장하는 국민 참여 정신을 바탕으로, 사실에 기반한 대화와 함께 만드는 변화를 지향합니다.</p>
+      </div>
+    </div>
+  </section>
 
-    <!-- ===== 광고 1: 히어로 하단 배너 (전체 방문자 공통 노출) ===== -->
-    <div class="ad-slot">
-      <span class="ad-label">광고</span>
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-           data-ad-slot="1111111111"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  <main id="main" class="wrap">
+    <div class="ticker" id="ticker" aria-label="공지">
+      <span class="ticker-tag" id="ticker-tag">공지</span>
+      <div class="ticker-text" id="ticker-text" aria-live="off">
+        <a href="#newsletter-section">스페이스 레터 — 매주 월요일 아침 7시, 경제·정책 브리핑을 이메일로 보내 드립니다.</a>
+      </div>
+      <span class="ticker-pos" id="ticker-pos"></span>
+      <button type="button" class="icon-btn" id="ticker-prev" aria-label="이전 공지"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+      <button type="button" class="icon-btn" id="ticker-next" aria-label="다음 공지"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+    </div>
+    <ul id="ticker-items" hidden>
+      <li data-tag="공지" data-href="#newsletter-section">스페이스 레터 — 매주 월요일 아침 7시, 경제·정책 브리핑을 이메일로 보내 드립니다.</li>
+      <li data-tag="안내" data-href="#guide-section">글쓰기·댓글·채팅은 이메일 인증을 마친 회원만 할 수 있습니다. 읽기는 누구나 가능합니다.</li>
+      <li data-tag="안내" data-href="#research-section">학술·논문·소고·이야기 게시판은 가입한 회원만 읽고 쓸 수 있습니다.</li>
+      <li data-tag="운영" data-href="#guide-section">회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김 처리됩니다.</li>
+      <li data-tag="시민의 소리" data-href="#voice-section">공론화 후 주민감사·조례 청구는 행정안전부 '주민e직접'에서 정식으로 진행해 주세요.</li>
+    </ul>
+
+    <div class="dash">
+      <div class="dash-main">
+        <section class="panel" aria-labelledby="feed-title">
+          <div class="feed-head panel-head">
+            <h2 id="feed-title">지금 올라온 글</h2>
+            <span class="hint" id="feed-hint">새 글이 올라오면 자동으로 바뀝니다</span>
+          </div>
+          <div class="feed-tabs" role="tablist" aria-label="게시판 선택">
+            <button type="button" class="chip" role="tab" data-feed="all" aria-selected="true">전체</button>
+            <button type="button" class="chip" role="tab" data-feed="community" aria-selected="false">소통·나눔</button>
+            <button type="button" class="chip" role="tab" data-feed="voice" aria-selected="false">시민의 소리</button>
+            <button type="button" class="chip" role="tab" data-feed="policy" aria-selected="false">정책 제안</button>
+            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">학술·이야기<span class="lock">회원</span></button>
+          </div>
+          <ul class="feed-list" id="feed-list" aria-live="polite">
+            <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+          </ul>
+          <div class="feed-foot">
+            <span class="search-note" id="search-note"></span>
+            <button type="button" class="more-link" id="feed-more">게시판으로 가기 ›</button>
+          </div>
+        </section>
+
+        <div class="ad-slot panel" data-ad="feed" hidden><span class="ad-label">광고</span></div>
+
+        <div class="panel-row">
+          <section class="panel panel-pad" aria-labelledby="rank-title">
+            <div class="panel-head"><h2 id="rank-title">많이 공감한 정책 제안</h2><span class="hint">최근 30일 추천 순</span></div>
+            <ol class="rank-list" id="rank-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
+            <a class="more-link" href="#policy-section">정책 제안 전체 보기 ›</a>
+          </section>
+          <section class="panel panel-pad" aria-labelledby="voice-title-mini">
+            <div class="panel-head"><h2 id="voice-title-mini">시민의 소리</h2><span class="hint">행정·정책에 대한 의견과 고발</span></div>
+            <ul class="rank-list" id="voice-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+            <a class="more-link" href="#voice-section">시민의 소리 전체 보기 ›</a>
+          </section>
+        </div>
+
+        <section class="letter-band" aria-labelledby="letter-title">
+          <div class="copy">
+            <div class="eyebrow">스페이스 레터 · 매주 월요일 07:00</div>
+            <h2 id="letter-title">이번 주 경제·정책 브리핑</h2>
+            <p>금리·환율·주식·부동산 지표와 정부 정책, 커뮤니티에서 나온 목소리를 한 번에 정리해 보내 드립니다. 지난 레터는 누구나 읽을 수 있습니다.</p>
+          </div>
+          <ul class="letter-list" id="letter-list"><li class="letter-empty">지난 레터를 불러오는 중입니다.</li></ul>
+        </section>
+      </div>
+
+      <aside class="dash-side" aria-label="요약 정보">
+        <section class="panel panel-pad me-box" id="me-box" aria-labelledby="me-title">
+          <h2 id="me-title">함께 이야기해요</h2>
+          <p id="me-text">로그인하면 글쓰기, 정책 추천, 실시간 채팅에 참여할 수 있습니다.</p>
+          <div class="me-actions" id="me-actions">
+            <button type="button" class="btn btn-primary" data-auth-open="login">로그인</button>
+            <div class="row"><button type="button" class="btn btn-outline" data-auth-open="signup">회원가입</button><button type="button" class="btn btn-outline" data-auth-open="forgot">비밀번호 찾기</button></div>
+          </div>
+        </section>
+
+        <section class="panel panel-pad" aria-labelledby="eco-title">
+          <div class="panel-head"><h2 id="eco-title">오늘의 경제 지표</h2><span class="hint" id="eco-updated"></span></div>
+          <div id="eco-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비 · 투자 권유가 아닌 참고 자료입니다.</p>
+        </section>
+
+        <div class="ad-slot panel" data-ad="side" hidden><span class="ad-label">광고</span></div>
+
+        <section class="panel panel-pad" aria-labelledby="house-title" id="house-panel">
+          <div class="panel-head"><h2 id="house-title">아파트 주간 동향</h2><span class="hint" id="house-week"></span></div>
+          <div id="house-body"><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source">출처: 한국부동산원 부동산통계정보(R-ONE) · 가격지수 전주 대비 변동률</p>
+        </section>
+
+        <section class="panel panel-pad chat-preview" aria-labelledby="chat-mini-title">
+          <div class="panel-head"><h2 id="chat-mini-title">실시간 채팅</h2><span class="online"><span class="dot" aria-hidden="true"></span><span id="chat-online">연결 중</span></span></div>
+          <ul class="chat-lines" id="chat-lines"><li class="empty">새 대화가 오면 여기에 바로 보입니다.</li></ul>
+          <a class="btn btn-outline" style="width:100%" href="#chat-section">채팅방 들어가기</a>
+        </section>
+
+        <section class="sub-box" aria-labelledby="sub-title">
+          <h2 id="sub-title">스페이스 레터 구독</h2>
+          <p>매주 월요일 아침, 경제·정책 브리핑을 무료로 받아 보세요. 확인 메일의 버튼을 눌러야 구독이 완료됩니다.</p>
+          <a class="btn btn-primary" style="width:100%" href="#newsletter-section" id="sub-go">구독 신청하기</a>
+        </section>
+      </aside>
     </div>
 
-    <section id="community-section" class="surface" aria-labelledby="community-title"><div class="section-head"><div><div class="eyebrow">01 · OPEN COMMUNITY</div><h2 id="community-title">소통·나눔 광장</h2></div><span class="tag">자유로운 이야기</span></div><p class="intro">안부, 일상, 취미, 고민 상담 등 우리 곁의 이야기를 나누는 공간입니다. 실명 또는 닉네임으로 참여할 수 있으며, 서로 다른 생각에도 예의를 지키는 대화를 약속합니다.</p><div class="grid"><article class="card"><h3>안부와 일상</h3><p>오늘 있었던 일, 이웃에게 전하고 싶은 소식을 편하게 나눠보세요.</p></article><article class="card"><h3>취미와 정보</h3><p>함께 즐길 수 있는 활동과 생활에 도움이 되는 정보를 공유하세요.</p></article><article class="card"><h3>고민 상담</h3><p>혼자 고민하지 않도록 경험과 응원의 말을 건네는 공간입니다.</p></article></div>
-
-      <!-- ===== 광고 2: 소통·나눔 광장 카드와 글쓰기 사이 ===== -->
-      <div class="ad-slot">
-        <span class="ad-label">광고</span>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-             data-ad-slot="2222222222"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <section class="boards" id="boards" aria-labelledby="boards-title">
+      <div class="boards-head">
+        <h2 id="boards-title">게시판</h2>
+        <div class="board-tabs" aria-label="게시판 선택">
+          <button type="button" class="section-tab" data-target="community-section">소통·나눔 광장</button>
+          <button type="button" class="section-tab" data-target="voice-section">시민의 소리</button>
+          <button type="button" class="section-tab" data-target="policy-section">정책비평·제안</button>
+          <button type="button" class="section-tab" data-target="research-section">학술·논문·소고·이야기</button>
+          <button type="button" class="section-tab" data-target="chat-section">실시간 채팅</button>
+        </div>
       </div>
 
-      <div class="post-composer"><h3>새 이야기 쓰기</h3><textarea id="communityInput" placeholder="안부, 일상, 취미, 고민을 자유롭게 적어주세요."></textarea><div class="post-controls"><span class="label">존중하는 대화</span><button class="submitPolicy" id="communitySubmit">이야기 등록</button></div><div id="communityPosts" class="post-list"></div></div></section>
+      <section id="community-section" class="board-section surface" aria-labelledby="community-title"><div class="section-head"><div><div class="eyebrow">01 · OPEN COMMUNITY</div><h2 id="community-title">소통·나눔 광장</h2></div><span class="tag">자유로운 이야기</span></div><p class="intro">안부, 일상, 취미, 고민 상담 등 우리 곁의 이야기를 나누는 공간입니다. 실명 또는 닉네임으로 참여할 수 있으며, 서로 다른 생각에도 예의를 지키는 대화를 약속합니다.</p><div class="grid"><article class="card"><h3>안부와 일상</h3><p>오늘 있었던 일, 이웃에게 전하고 싶은 소식을 편하게 나눠보세요.</p></article><article class="card"><h3>취미와 정보</h3><p>함께 즐길 수 있는 활동과 생활에 도움이 되는 정보를 공유하세요.</p></article><article class="card"><h3>고민 상담</h3><p>혼자 고민하지 않도록 경험과 응원의 말을 건네는 공간입니다.</p></article></div>
+        <div class="post-composer"><h3>새 이야기 쓰기</h3><textarea id="communityInput" placeholder="안부, 일상, 취미, 고민을 자유롭게 적어주세요." aria-label="새 이야기 내용"></textarea><div class="post-controls"><span class="label">존중하는 대화</span><button class="submitPolicy" id="communitySubmit">이야기 등록</button></div><div id="communityPosts" class="post-list"></div></div></section>
 
-    <!-- ⚠️ 시민의 소리(voice-section)에는 광고를 넣지 않았습니다.
-         행정고발·민원 관련 민감 콘텐츠 옆에 광고가 붙으면 애드센스 정책 위반으로
-         계정 전체가 정지될 위험이 있어, 의도적으로 제외했습니다. -->
-    <section id="voice-section" aria-labelledby="voice-title"><div class="section-head"><div><div class="eyebrow">02 · CIVIC VOICE</div><h2 id="voice-title">시민의 소리</h2></div><span class="tag">목소리가 힘이 되는 곳</span></div><div class="surface"><p class="intro">우리 동네와 행정 안에서 무언가 이상하다고 느낀 적이 있으신가요? 부당한 민원 처리, 석연치 않은 정책, 제 역할을 하지 않는 의정활동을 사실에 기반해 함께 이야기하는 공간입니다.</p><div class="grid"><article class="card"><h3>민원이 불편했어요</h3><p>담당 공무원의 불친절, 처리 지연, 불투명한 답변 등</p></article><article class="card"><h3>이 정책, 이상해요</h3><p>정책·조례·사업의 절차, 예산, 형평성에 대한 문제 제기</p></article><article class="card"><h3>우리 의원님, 이러셔도 될까요</h3><p>지방의회·의원의 이해충돌과 부적절한 의정활동</p></article></div><div class="post-composer"><h3>시민의 목소리 작성</h3><select id="voiceCategory" aria-label="시민의 소리 분류"><option>민원이 불편했어요</option><option>이 정책, 이상해요</option><option>우리 의원님, 이러셔도 될까요</option></select><textarea id="voiceInput" placeholder="언제, 어디서, 누가, 무엇을, 왜, 어떻게 겪었는지 사실에 기반해 작성해주세요."></textarea><div class="post-controls"><span class="label">개인정보는 가려주세요</span><button class="submitPolicy" id="voiceSubmit">시민의 소리 등록</button></div><div id="voicePosts" class="post-list"></div></div></div><div class="notice" style="margin-top:16px;"><strong>게시판 이용 안내</strong><br>본 게시판은 자유로운 의견 개진과 공론화를 위한 공간이며 게시물은 작성자 개인의 견해입니다. 허위사실, 명예훼손, 모욕 게시물은 관련 법령에 따라 작성자 본인이 책임질 수 있고, 신고 접수 시 임시 비공개 처리될 수 있습니다. 본 게시판은 주민감사청구·주민조례청구 등 법정 절차를 대신하지 않습니다.</div><div class="guide surface" style="margin-top:16px;"><div><h3>글쓰기 전 다섯 가지 약속</h3><ol><li><strong>육하원칙으로 작성하기</strong> - 추측보다 사실을 먼저 적어주세요.</li><li><strong>증거가 있다면 함께 올리기</strong> - 타인의 개인정보는 꼭 가려주세요.</li><li><strong>본인 인증 후 작성 권장</strong> - 신뢰도 높은 목소리가 더 큰 힘을 가집니다.</li><li><strong>상대방에게 소명 기회 주기</strong> - 댓글을 통한 답변의 길을 열어둡니다.</li><li><strong>정식 청구는 공식 채널 이용하기</strong> - 이곳은 공론화의 전 단계입니다.</li></ol></div><div><h3>주민e직접 바로가기</h3><p>공론화 후 주민감사청구·주민조례청구를 진행하려면 행정안전부 공식 채널을 이용해주세요.</p><a class="external-link" href="https://jumin.mois.go.kr" target="_blank" rel="noopener">주민e직접 방문 ↗</a></div></div></section>
+      <!-- 시민의 소리에는 광고를 넣지 않습니다. 행정고발·민원 관련 민감 콘텐츠 옆 광고는 애드센스 정책상 위험합니다. -->
+      <section id="voice-section" class="board-section" aria-labelledby="voice-title"><div class="surface"><div class="section-head"><div><div class="eyebrow">02 · CIVIC VOICE</div><h2 id="voice-title">시민의 소리</h2></div><span class="tag">목소리가 힘이 되는 곳</span></div><p class="intro">우리 동네와 행정 안에서 무언가 이상하다고 느낀 적이 있으신가요? 부당한 민원 처리, 석연치 않은 정책, 제 역할을 하지 않는 의정활동을 사실에 기반해 함께 이야기하는 공간입니다.</p><div class="grid"><article class="card"><h3>민원이 불편했어요</h3><p>담당 공무원의 불친절, 처리 지연, 불투명한 답변 등</p></article><article class="card"><h3>이 정책, 이상해요</h3><p>정책·조례·사업의 절차, 예산, 형평성에 대한 문제 제기</p></article><article class="card"><h3>우리 의원님, 이러셔도 될까요</h3><p>지방의회·의원의 이해충돌과 부적절한 의정활동</p></article></div><div class="post-composer"><h3>시민의 목소리 작성</h3><select id="voiceCategory" aria-label="시민의 소리 분류"><option>민원이 불편했어요</option><option>이 정책, 이상해요</option><option>우리 의원님, 이러셔도 될까요</option></select><textarea id="voiceInput" placeholder="언제, 어디서, 누가, 무엇을, 왜, 어떻게 겪었는지 사실에 기반해 작성해주세요." aria-label="시민의 소리 내용" style="margin-top:8px"></textarea><div class="post-controls"><span class="label">개인정보는 가려주세요</span><button class="submitPolicy" id="voiceSubmit">시민의 소리 등록</button></div><div id="voicePosts" class="post-list"></div></div></div><div class="notice" style="margin-top:16px;"><strong>게시판 이용 안내</strong><br>본 게시판은 자유로운 의견 개진과 공론화를 위한 공간이며 게시물은 작성자 개인의 견해입니다. 허위사실, 명예훼손, 모욕 게시물은 관련 법령에 따라 작성자 본인이 책임질 수 있고, 신고 접수 시 임시 비공개 처리될 수 있습니다. 본 게시판은 주민감사청구·주민조례청구 등 법정 절차를 대신하지 않습니다.</div><div class="guide surface" style="margin-top:16px;"><div><h3>글쓰기 전 다섯 가지 약속</h3><ol><li><strong>육하원칙으로 작성하기</strong> - 추측보다 사실을 먼저 적어주세요.</li><li><strong>증거가 있다면 함께 올리기</strong> - 타인의 개인정보는 꼭 가려주세요.</li><li><strong>본인 인증 후 작성 권장</strong> - 신뢰도 높은 목소리가 더 큰 힘을 가집니다.</li><li><strong>상대방에게 소명 기회 주기</strong> - 댓글을 통한 답변의 길을 열어둡니다.</li><li><strong>정식 청구는 공식 채널 이용하기</strong> - 이곳은 공론화의 전 단계입니다.</li></ol></div><div><h3>주민e직접 바로가기</h3><p>공론화 후 주민감사청구·주민조례청구를 진행하려면 행정안전부 공식 채널을 이용해주세요.</p><a class="external-link" href="https://jumin.mois.go.kr" target="_blank" rel="noopener">주민e직접 방문 ↗</a></div></div></section>
 
-    <section id="policy-section" class="surface" aria-labelledby="policy-title"><div class="section-head"><div><div class="eyebrow">03 · POLICY FORUM</div><h2 id="policy-title">정책비평·제안의 장</h2><p class="intro">정부·지자체 정책을 비평하고 더 나은 대안을 제시해 주세요. 공감이 쌓인 제안은 우수 제안으로 모아 진행 경과를 공유합니다.</p></div><div class="sort-bar"><button class="sort-btn active" data-sort="latest">최신순</button><button class="sort-btn" data-sort="likes">추천순</button></div></div>
+      <section id="policy-section" class="board-section surface" aria-labelledby="policy-title"><div class="section-head"><div><div class="eyebrow">03 · POLICY FORUM</div><h2 id="policy-title">정책비평·제안의 장</h2></div><div class="sort-bar"><button class="sort-btn active" data-sort="latest">최신순</button><button class="sort-btn" data-sort="likes">추천순</button></div></div><p class="intro">정부·지자체 정책을 비평하고 더 나은 대안을 제시해 주세요. 부처별로 의견을 남기고, 공감하는 제안에는 추천을 눌러 주세요. 공감이 쌓인 제안은 첫 화면과 스페이스 레터에서 소개합니다.</p>
+        <div id="categoryContainer"></div><div class="policy-actions"><span>공감이 많은 의견부터 함께 살펴보세요.</span><a href="#policy-title">정책 제안 기준 보기 ↑</a></div></section>
 
-      <!-- ===== 광고 3: 정책비평·제안의 장 상단 ===== -->
-      <div class="ad-slot">
-        <span class="ad-label">광고</span>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-             data-ad-slot="3333333333"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      </div>
+      <section id="research-section" class="board-section surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">04 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2></div><span class="tag">지식과 상상 · 회원 전용</span></div><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다. 가입한 회원만 읽고 쓸 수 있습니다.</p>
+        <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select><span class="label">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" placeholder="글 제목을 입력하세요" aria-label="글 제목" style="margin-top:8px"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
 
-      <div id="categoryContainer"></div><div class="policy-actions"><span>공감이 많은 의견부터 함께 살펴보세요.</span><a href="#policy-title">정책 제안 기준 보기 ↑</a></div></section>
-    <section id="chat-section" class="surface" aria-labelledby="chat-title"><div class="section-head"><div><div class="eyebrow">LIVE ROOM</div><h2 id="chat-title">실시간 채팅</h2></div><span class="tag">지금 이야기하기</span></div><div id="chatBox" class="chat-box" aria-live="polite"></div><div class="chat-input"><textarea id="chatInput" placeholder="메시지를 입력하세요. 여러 줄로 작성할 수 있습니다." aria-label="채팅 메시지" aria-describedby="chatHelp"></textarea><button id="sendBtn">전송</button></div><p id="chatHelp" class="label">Enter 줄바꿈 · Ctrl+Enter 전송</p></section>
-    <section id="research-section" class="section-panel surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">05 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다.</p></div><span class="tag">지식과 상상</span></div>
-
-      <!-- ===== 광고 4: 학술·논문·소고·이야기 상단 ===== -->
-      <div class="ad-slot">
-        <span class="ad-label">광고</span>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-             data-ad-slot="4444444444"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      </div>
-
-      <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select><span class="label">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" placeholder="글 제목을 입력하세요" aria-label="글 제목"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
-    <section id="reader-section" class="surface" aria-labelledby="reader-title">
-      <div class="section-head"><div><div class="eyebrow">READER COMMUNITY</div><h2 id="reader-title">독자 소통 공간</h2></div><span id="reader-comment-count" class="tag">댓글 불러오는 중</span></div>
-      <p class="intro">의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 방문자에게 공개되며, 작성은 로그인한 회원만 할 수 있습니다. 개인정보를 적지 마세요.</p>
-      <form id="reader-comment-form" class="reader-form">
-        <p class="intro" id="reader-author-note">로그인한 회원의 닉네임으로 등록됩니다.</p>
-        <label for="reader-text">댓글 내용</label><textarea id="reader-text" name="text" required maxlength="2000" placeholder="의견이나 질문을 남겨주세요."></textarea>
-        <button type="submit" class="submitPolicy">댓글 등록</button>
-      </form>
-      <p id="reader-comment-status" class="form-status" role="status"></p>
-      <div id="reader-comments"></div>
-      <button id="reader-comments-refresh" type="button" class="submitPolicy">댓글 새로고침</button>
+      <section id="chat-section" class="board-section surface" aria-labelledby="chat-title"><div class="section-head"><div><div class="eyebrow">LIVE ROOM</div><h2 id="chat-title">실시간 채팅</h2></div><span class="tag">지금 이야기하기</span></div><p class="intro">접속한 사람들과 바로 이야기를 나누는 공간입니다. 대화는 누구나 볼 수 있고, 메시지는 로그인한 회원만 보낼 수 있습니다. 대화 내용은 서버에 기록으로 보관하지 않습니다.</p><div id="chatBox" class="chat-box" aria-live="polite"></div><div class="chat-input"><textarea id="chatInput" placeholder="메시지를 입력하세요. 여러 줄로 작성할 수 있습니다." aria-label="채팅 메시지" aria-describedby="chatHelp"></textarea><button id="sendBtn">전송</button></div><p id="chatHelp" class="label">Enter 줄바꿈 · Ctrl+Enter 전송</p></section>
     </section>
-    <section id="newsletter-section" class="surface" aria-labelledby="newsletter-title">
-      <div class="eyebrow">SPACE LETTER</div><h2 id="newsletter-title">뉴스레터 구독</h2>
-      <p class="intro">커뮤니티의 주요 소식과 사유의 글을 이메일로 보내드립니다. 신청 후 받은 확인 메일의 <strong>구독 확인하기</strong> 버튼을 눌러야 구독이 완료됩니다.</p>
-      <form id="newsletter-form" class="reader-form">
-        <label for="newsletter-email">이메일 주소</label><input id="newsletter-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
-        <label class="reader-consent"><input id="newsletter-consent" type="checkbox" required><span>뉴스레터 신청 관리 및 발송을 위한 이메일 수집·이용에 동의합니다. 동의는 선택이며, 미동의 시 신청할 수 없습니다. 구독 종료 또는 철회 시 즉시 삭제합니다. 발송 통계를 위해 메일 열람·링크 클릭 여부를 기록합니다.</span></label>
-        <p class="intro">모든 메일 하단의 <strong>수신거부</strong> 또는 아래 <strong>구독 해지</strong>로 언제든 철회할 수 있으며, 철회 즉시 이메일을 삭제합니다. <a href="/privacy">개인정보처리방침</a></p>
-        <button type="submit" class="submitPolicy">구독하기</button>
-      </form>
-      <p id="newsletter-status" class="form-status" role="status"></p>
-      <details class="newsletter-unsubscribe"><summary>구독 해지(동의 철회)</summary>
-      <form id="unsubscribe-form" class="reader-form">
-        <label for="unsubscribe-email">구독 신청한 이메일 주소</label><input id="unsubscribe-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
-        <button type="submit">구독 해지</button>
-      </form>
-      <p id="unsubscribe-status" class="form-status" role="status"></p></details>
-    </section>
-    <section id="guide-section" class="surface" aria-labelledby="guide-title">
-      <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title">회원과 운영 안내</h2>
-      <div class="policy-columns">
-        <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>메일 발송 설정 후 이메일 인증·비밀번호 재설정 메일을 발송합니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>학술·논문·소고·이야기는 회원만 읽고 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
-        <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
-        <div><h3>신고와 제재 · 운영 원칙</h3><ul><li>작성한 글은 작성자가 직접 삭제할 수 없으며, 부적절한 글은 신고를 통해 운영자가 처리합니다.</li><li>회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김(임시조치) 처리됩니다.</li><li>운영자는 검토 후 글을 삭제하거나 다시 공개합니다. 24~48시간 내 1차 검토를 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지, 중대 위반은 영구 정지 및 관계기관 통보</li><li>본인 글의 삭제가 꼭 필요하면 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 요청해 주세요.</li></ul></div>
-      </div>
-    </section>
+
+    <div class="shared-sections">
+      <section id="reader-section" class="surface" aria-labelledby="reader-title">
+        <div class="section-head"><div><div class="eyebrow">READER COMMUNITY</div><h2 id="reader-title">독자 소통 공간</h2></div><span id="reader-comment-count" class="tag">댓글 불러오는 중</span></div>
+        <p class="intro">사이트 운영에 대한 의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 방문자에게 공개되며, 작성은 로그인한 회원만 할 수 있습니다. 개인정보를 적지 마세요.</p>
+        <form id="reader-comment-form" class="reader-form">
+          <p class="intro" id="reader-author-note">로그인한 회원의 닉네임으로 등록됩니다.</p>
+          <label for="reader-text">댓글 내용</label><textarea id="reader-text" name="text" required maxlength="2000" placeholder="의견이나 질문을 남겨주세요."></textarea>
+          <button type="submit" class="submitPolicy">댓글 등록</button>
+        </form>
+        <p id="reader-comment-status" class="form-status" role="status"></p>
+        <div id="reader-comments"></div>
+        <button id="reader-comments-refresh" type="button" class="like-btn" style="margin-top:12px">댓글 새로고침</button>
+      </section>
+
+      <section id="newsletter-section" class="surface" aria-labelledby="newsletter-title">
+        <div class="eyebrow">SPACE LETTER</div><h2 id="newsletter-title" style="margin:4px 0 0;font-size:clamp(22px,3vw,30px);color:var(--ink)">스페이스 레터 구독</h2>
+        <p class="intro">매주 월요일 아침 7시, 한국은행·한국부동산원 공식 통계로 정리한 경제 지표와 이번 주 정부 정책, 커뮤니티의 목소리를 이메일로 보내드립니다. 신청 후 받은 확인 메일의 <strong>구독 확인하기</strong> 버튼을 눌러야 구독이 완료됩니다.</p>
+        <form id="newsletter-form" class="reader-form">
+          <label for="newsletter-email">이메일 주소</label><input id="newsletter-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
+          <label class="reader-consent"><input id="newsletter-consent" type="checkbox" required><span>뉴스레터 신청 관리 및 발송을 위한 이메일 수집·이용에 동의합니다. 동의는 선택이며, 미동의 시 신청할 수 없습니다. 구독 종료 또는 철회 시 즉시 삭제합니다. 발송 통계를 위해 메일 열람·링크 클릭 여부를 기록합니다.</span></label>
+          <p class="intro">모든 메일 하단의 <strong>수신거부</strong> 또는 아래 <strong>구독 해지</strong>로 언제든 철회할 수 있으며, 철회 즉시 이메일을 삭제합니다. <a href="/privacy">개인정보처리방침</a></p>
+          <button type="submit" class="submitPolicy">구독하기</button>
+        </form>
+        <p id="newsletter-status" class="form-status" role="status"></p>
+        <details class="newsletter-unsubscribe"><summary>구독 해지(동의 철회)</summary>
+        <form id="unsubscribe-form" class="reader-form">
+          <label for="unsubscribe-email">구독 신청한 이메일 주소</label><input id="unsubscribe-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
+          <button type="submit" class="like-btn">구독 해지</button>
+        </form>
+        <p id="unsubscribe-status" class="form-status" role="status"></p></details>
+      </section>
+
+      <section id="guide-section" class="surface" aria-labelledby="guide-title">
+        <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title" style="margin:4px 0 14px;font-size:clamp(22px,3vw,30px);color:var(--ink)">회원과 운영 안내</h2>
+        <div class="policy-columns">
+          <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>가입 후 이메일 인증 메일을 보내드립니다. 비밀번호를 잊으면 재설정 메일로 바꿀 수 있습니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>학술·논문·소고·이야기는 회원만 읽고 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
+          <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>사이트에는 Google 애드센스 광고가 표시될 수 있으며, 광고 쿠키에 관한 내용은 개인정보처리방침에 안내합니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
+          <div><h3>신고와 제재 · 운영 원칙</h3><ul><li>작성한 글은 작성자가 직접 삭제할 수 없으며, 부적절한 글은 신고를 통해 운영자가 처리합니다.</li><li>회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김(임시조치) 처리됩니다.</li><li>운영자는 검토 후 글을 삭제하거나 다시 공개합니다. 24~48시간 내 1차 검토를 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지, 중대 위반은 영구 정지 및 관계기관 통보</li><li>본인 글의 삭제가 꼭 필요하면 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 요청해 주세요.</li></ul></div>
+        </div>
+      </section>
+
+      <div class="ad-slot panel" data-ad="bottom" hidden><span class="ad-label">광고</span></div>
+    </div>
   </main>
+
   <dialog id="signup-dialog" class="signup-dialog" aria-labelledby="signup-title" aria-describedby="signup-account-notice">
     <div class="signup-heading">
       <div><span class="signup-kicker">JOIN SPACE</span><h2 id="signup-title">함께 이야기할 준비가 되셨나요?</h2></div>
@@ -305,20 +336,61 @@
       <button class="signup-submit" type="submit" disabled>탈퇴하기</button>
     </form>
   </dialog>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div>
+        <p class="footer-brand">스페이스 커뮤니티</p>
+        <p>운영: (주)위드플러시아 · 개인정보 보호책임자: 박용구</p>
+        <p>문의: <a href="mailto:dragon600120@gmail.com" style="color:#fff">dragon600120@gmail.com</a></p>
+        <p style="margin-top:8px">© 2026 스페이스 커뮤니티 · 서로 존중하는 문화</p>
+      </div>
+      <nav class="footer-links" aria-label="사이트 정보">
+        <a href="/privacy"><strong>개인정보처리방침</strong></a>
+        <a href="#guide-section">이용 안내·운영 원칙</a>
+        <a href="#newsletter-section">스페이스 레터 구독</a>
+        <a href="/letter">지난 레터 보기</a>
+      </nav>
+    </div>
+  </footer>
+
   <script defer src="/boards.js"></script>
   <script defer src="/reader-community.js"></script>
-  <footer class="site-footer"><div class="site-footer-inner"><p>© 2026 스페이스 커뮤니티 · 서로 존중하는 문화</p><p>운영: (주)위드플러시아 · 문의 <a href="mailto:dragon600120@gmail.com" style="color:inherit">dragon600120@gmail.com</a> · <a href="/privacy" style="color:inherit"><strong>개인정보처리방침</strong></a></p></div></footer>
+  <script defer src="/portal.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const tabSections = ["chat-section", "community-section", "voice-section", "policy-section", "research-section"];
-    function showSection(sectionId, scroll = true) { tabSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === sectionId)); document.querySelectorAll(".section-tab").forEach(button => button.classList.toggle("active", button.dataset.target === sectionId)); if (scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
-    document.querySelectorAll(".section-tab").forEach(button => button.addEventListener("click", () => { const sectionId = button.dataset.target; if (window.location.hash === `#${sectionId}`) showSection(sectionId); else window.location.hash = sectionId; }));
-    function showLinkedSection(scroll = true) { const sectionId = window.location.hash.slice(1); const sharedSection = ["guide-section", "reader-section", "newsletter-section"].includes(sectionId); showSection(tabSections.includes(sectionId) ? sectionId : "chat-section", scroll && !sharedSection); if (sharedSection && scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
-    window.addEventListener("hashchange", () => showLinkedSection());
+    const boardSections = ["community-section", "voice-section", "policy-section", "research-section", "chat-section"];
+    const sharedSections = ["reader-section", "newsletter-section", "guide-section", "boards"];
+    function showSection(sectionId, scroll = true) {
+      boardSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === sectionId));
+      document.querySelectorAll(".board-tabs [data-target]").forEach(element => element.classList.toggle("active", element.dataset.target === sectionId));
+      updateNav();
+      if (scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    function updateNav() {
+      const hash = window.location.hash.slice(1);
+      let matched = false;
+      document.querySelectorAll(".section-nav a").forEach(link => {
+        const active = Boolean(hash) && link.getAttribute("href") === `#${hash}`;
+        link.classList.toggle("active", active);
+        matched = matched || active;
+      });
+      document.querySelector(".section-nav [data-home]").classList.toggle("active", !matched);
+    }
+    window.spaceShowSection = showSection;
+    document.querySelectorAll(".board-tabs .section-tab").forEach(button => button.addEventListener("click", () => {
+      const sectionId = button.dataset.target;
+      if (window.location.hash === `#${sectionId}`) showSection(sectionId); else window.location.hash = sectionId;
+    }));
+    function showLinkedSection(scroll = true) {
+      const sectionId = window.location.hash.slice(1);
+      if (boardSections.includes(sectionId)) { showSection(sectionId, scroll); return; }
+      if (!document.querySelector(".board-section.tab-visible")) showSection("community-section", false);
+      if (sharedSections.includes(sectionId) && scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    window.addEventListener("hashchange", () => { showLinkedSection(); updateNav(); });
     showLinkedSection(Boolean(window.location.hash));
-    const darkModeButton = document.getElementById("darkModeBtn");
-    darkModeButton.addEventListener("click", () => { document.body.classList.toggle("dark-mode"); darkModeButton.textContent = document.body.classList.contains("dark-mode") ? "라이트모드" : "다크모드"; });
-    const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});
+const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});
   </script>
 </body>
 </html>
