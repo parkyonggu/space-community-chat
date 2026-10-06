@@ -215,6 +215,8 @@
 
   // ---------- hero stats ----------
   function countUp(element, value, suffix = '') {
+    // 0인 항목은 카드를 숨겨 빈 사이트처럼 보이지 않게 합니다.
+    element.closest('.stat').hidden = !value;
     const previous = Number(element.dataset.value || 0);
     element.dataset.value = String(value);
     const start = performance.now();

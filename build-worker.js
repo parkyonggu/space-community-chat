@@ -10,7 +10,7 @@ assert.ok(socketLine, 'Chat initialization was not found');
 html = html.replace(socketLine, '');
 html = html.replace('<script src="/socket.io/socket.io.js"></script>', '<script defer src="/worker-chat.js"></script>');
 fs.mkdirSync(output, { recursive: true });
-for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml', 'boards.js', 'newsletter.html', 'newsletter-admin.html', 'newsletter-admin.js', 'portal.css', 'portal.js', 'letter.html', 'ads.txt']) {
+for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml', 'boards.js', 'newsletter.html', 'newsletter-admin.html', 'newsletter-admin.js', 'portal.css', 'portal.js', 'letter.html', 'ads.txt', 'about.html', 'terms.html', 'page.css']) {
   fs.copyFileSync(path.join(source, file), path.join(output, file));
 }
 fs.cpSync(path.join(source, 'icons'), path.join(output, 'icons'), { recursive: true });

@@ -1,0 +1,23 @@
+/* 사이트 소개·이용약관 같은 읽기 페이지 */
+.page-wrap { max-width:820px; margin:0 auto; padding:0 20px; }
+.page-head { background:var(--navy); color:#fff; padding:22px 0 34px; }
+.page-head .back { color:#c9d0e3; text-decoration:none; font-size:14px; font-weight:700; }
+.page-head .back:hover { color:#fff; }
+.page-head h1 { margin:12px 0 6px; font-size:clamp(26px,4vw,36px); letter-spacing:-.03em; }
+.page-head p { margin:0; color:#c9d0e3; }
+.page-body { margin-top:-18px; position:relative; }
+.page-card { background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); padding:30px 32px; line-height:1.8; }
+.page-card h2 { margin:28px 0 10px; font-size:19px; color:var(--ink); letter-spacing:-.02em; }
+.page-card h2:first-child { margin-top:0; }
+.page-card h3 { margin:18px 0 6px; font-size:16px; color:var(--ink); }
+.page-card p, .page-card li { color:var(--text); font-size:15.5px; }
+.page-card ul, .page-card ol { padding-left:22px; }
+.page-card li { margin:6px 0; }
+.feature-list { list-style:none; padding-left:0 !important; }
+.feature-list li { padding:10px 14px; border:1px solid var(--line-soft); border-radius:10px; background:#fafbfe; }
+.info-table { width:100%; border-collapse:collapse; font-size:15px; }
+.info-table th, .info-table td { text-align:left; padding:10px 12px; border-top:1px solid var(--line-soft); vertical-align:top; }
+.info-table th { width:34%; color:var(--muted); font-weight:700; }
+.note { color:var(--muted) !important; font-size:14px !important; }
+.page-cta { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 0; }
+@media (max-width:520px) { .page-card { padding:22px 18px; } .info-table th { width:42%; } }
