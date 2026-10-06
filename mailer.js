@@ -32,10 +32,10 @@ function createMailer(environment = process.env) {
   return {
     configured: true,
     verify: () => transport.verify(),
-    async send({ to, subject, text }) {
+    async send({ to, subject, text, html }) {
       const result = await transport.sendMail({
         from: { name: '스페이스 커뮤니티', address: environment.MAIL_FROM },
-        to, subject, text,
+        to, subject, text, ...(html ? { html } : {}),
       });
       if (!result.accepted?.length || result.rejected?.length) throw new Error('SMTP did not accept the recipient.');
     },

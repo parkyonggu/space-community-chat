@@ -109,6 +109,7 @@ function updateControls() {
     control.verify.disabled = authBusy || !csrfToken;
     control.logout.disabled = authBusy || !csrfToken;
     control.remove.hidden = !authUser;
+    control.admin.hidden = !authUser?.admin;
     control.remove.disabled = authBusy || !csrfToken;
   });
   forms.forEach(form => {
@@ -229,6 +230,12 @@ function addAccountControls(parent, isGuide = false) {
       updateControls();
     }
   });
+  const admin = document.createElement('a');
+  admin.className = 'auth-secondary';
+  admin.href = '/newsletter-admin';
+  admin.textContent = '뉴스레터 관리';
+  admin.hidden = true;
+  admin.style.textDecoration = 'none';
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'auth-secondary';
@@ -236,9 +243,9 @@ function addAccountControls(parent, isGuide = false) {
   remove.setAttribute('aria-haspopup', 'dialog');
   remove.setAttribute('aria-controls', 'delete-dialog');
   remove.addEventListener('click', event => openAuth(deleteDialog, event.currentTarget));
-  group.append(name, login, signup, verify, logout, remove, status);
+  group.append(name, login, signup, verify, logout, admin, remove, status);
   parent.appendChild(group);
-  accountControls.push({ name, login, signup, verify, logout, remove, status });
+  accountControls.push({ name, login, signup, verify, logout, admin, remove, status });
 }
 
 addAccountControls(document.querySelector('header .brand'));

@@ -10,7 +10,7 @@
   "assets": {
     "directory": "worker-dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/ws/*"]
+    "run_worker_first": ["/api/*", "/ws/*", "/n/*"]
   },
   "durable_objects": {
     "bindings": [
@@ -29,5 +29,8 @@
     "SITE_URL": "https://withpluces.com"
     , "MAIL_FROM": "no-reply@withpluces.com"
     , "ADMIN_EMAILS": "dragon600120@gmail.com"
+    , "CONTACT_EMAIL": "dragon600120@gmail.com"
+    , "NEWSLETTER_SENDER": "(주)위드플러시아"
+    , "NEWSLETTER_DAILY_LIMIT": "300"
   }
 }

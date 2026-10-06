@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import auth from '../auth-api.js';
 import community from '../community-api.js';
 import board from '../board-api.js';
+import newsletter from '../newsletter-api.js';
 
 const json = (body, status = 200) => Response.json(body, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
@@ -70,8 +71,8 @@ export class CommunityService extends DurableObject {
     const mailer = env.EMAIL && env.MAIL_FROM ? {
       configured: true,
       async verify() {},
-      async send({ to, subject, text }) {
-        await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: '스페이스 커뮤니티' }, subject, text });
+      async send({ to, subject, text, html }) {
+        await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: '스페이스 커뮤니티' }, subject, text, ...(html ? { html } : {}) });
       },
     } : undefined;
     const adminEmails = (env.ADMIN_EMAILS || '').split(',');
@@ -94,6 +95,24 @@ export class CommunityService extends DurableObject {
       authenticate: this.auth.authenticate, requireVerifiedEmail,
     });
     this.requireVerifiedEmail = requireVerifiedEmail;
+    this.newsletter = newsletter.createNewsletterApi('/private', {
+      storage: new SqlStore(state, 'newsletter', ['subscribers', 'campaigns', 'meta']), rateLimit,
+      authenticate: this.auth.authenticate, mailer, siteUrl: env.SITE_URL,
+      dailyLimit: Number(env.NEWSLETTER_DAILY_LIMIT) || 300,
+      legacySubscribers: () => this.community.legacySubscribers(),
+      clearLegacySubscribers: () => this.community.clearLegacySubscribers(),
+      schedule: async delay => {
+        const current = await state.storage.getAlarm();
+        const at = Date.now() + delay;
+        if (!current || current > at) await state.storage.setAlarm(at);
+      },
+      senderName: env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: env.CONTACT_EMAIL || '',
+    });
+  }
+
+  async alarm() {
+    const result = await this.newsletter.processQueue();
+    if (result.more) await this.state.storage.setAlarm(Date.now() + (result.delay || 60000));
   }
 
   async fetch(request) {
@@ -129,7 +148,8 @@ export class CommunityService extends DurableObject {
       return json({ name: canSend ? user.nickname : null, signedIn: Boolean(user) });
     }
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
-      pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board : this.community;
+      pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
+      pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/') ? this.newsletter : this.community;
     await handler(source, target, pathname);
     return completed;
   }
@@ -188,7 +208,8 @@ export default {
     try {
       const url = new URL(request.url);
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
-          ['/api/comments', '/api/newsletter', '/api/newsletter/unsubscribe'].includes(url.pathname)) {
+          url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
+          url.pathname === '/api/comments') {
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);

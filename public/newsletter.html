@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스페이스 레터 · 구독 관리</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/icons/icon-512.png" type="image/png">
+  <style>
+    :root { --ink:#e8eef7; --muted:#aebdd0; --blue:#5f8dff; --line:#3a4b63; --paper:#182333; --surface:#223044; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--paper); color:var(--ink); font-family:"Noto Sans KR","Pretendard",sans-serif; padding:24px 16px; }
+    main { width:100%; max-width:520px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:28px; }
+    .kicker { color:var(--blue); font-size:12px; font-weight:700; letter-spacing:1px; }
+    h1 { margin:6px 0 12px; font-size:24px; }
+    p { color:var(--muted); line-height:1.7; }
+    button { width:100%; margin-top:12px; padding:13px; border:0; border-radius:10px; background:#1958e8; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:default; }
+    .status { min-height:24px; margin-top:16px; color:var(--ink); }
+    .status[data-error="true"] { color:#ff9c9c; }
+    a { color:var(--blue); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="kicker">SPACE LETTER</div>
+    <h1 id="title">스페이스 레터 구독 관리</h1>
+    <p id="description">메일에 있는 링크로 이 페이지를 열어 주세요.</p>
+    <button id="action" type="button" hidden></button>
+    <p id="status" class="status" role="status"></p>
+    <p><a href="/">스페이스 커뮤니티로 가기</a> · <a href="/privacy">개인정보처리방침</a></p>
+  </main>
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search);
+      const confirmToken = params.get('confirm');
+      const unsubscribeToken = params.get('unsubscribe');
+      history.replaceState(null, '', location.pathname);
+      const title = document.getElementById('title');
+      const description = document.getElementById('description');
+      const button = document.getElementById('action');
+      const status = document.getElementById('status');
+      const mode = confirmToken ? 'confirm' : unsubscribeToken ? 'unsubscribe' : null;
+      if (!mode) return;
+      if (mode === 'confirm') {
+        title.textContent = '구독을 확인해 주세요';
+        description.textContent = '아래 버튼을 누르면 스페이스 레터 구독이 완료됩니다.';
+        button.textContent = '구독 확인하기';
+      } else {
+        title.textContent = '수신거부';
+        description.textContent = unsubscribeToken === 'preview' ? '미리보기용 링크입니다. 실제 메일의 수신거부 링크에서만 처리됩니다.' : '아래 버튼을 누르면 즉시 수신이 중단되고 이메일 주소가 삭제됩니다.';
+        button.textContent = '수신거부하기';
+      }
+      button.hidden = unsubscribeToken === 'preview';
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        status.dataset.error = 'false';
+        status.textContent = '처리하고 있습니다.';
+        try {
+          const response = await fetch(mode === 'confirm' ? '/api/newsletter/confirm' : '/api/newsletter/unsubscribe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: mode === 'confirm' ? confirmToken : unsubscribeToken }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || '처리하지 못했습니다.');
+          status.textContent = result.message;
+          button.hidden = true;
+          title.textContent = mode === 'confirm' ? '구독이 완료되었습니다' : '수신거부가 완료되었습니다';
+          description.hidden = true;
+        } catch (error) {
+          status.dataset.error = 'true';
+          status.textContent = error.message || '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

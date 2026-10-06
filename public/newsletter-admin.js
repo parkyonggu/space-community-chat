@@ -1,0 +1,266 @@
+(() => {
+  const $ = id => document.getElementById(id);
+  let csrfToken = '';
+  let summary = null;
+  let previewTimer;
+  let refreshTimer;
+  const DRAFT_KEY = 'space-newsletter-draft';
+  const templates = {
+    weekly: { subject: '스페이스 레터 · 이번 주 소식', body: '# 이번 주 스페이스 소식\n\n안녕하세요, 스페이스 커뮤니티입니다. 한 주 동안 커뮤니티에서 나눈 이야기를 모아 전해 드립니다.\n\n## 이번 주 주목할 글\n\n- **글 제목** — 한 줄 소개\n- **글 제목** — 한 줄 소개\n\n## 시민의 소리\n\n이번 주 공론화된 주제를 소개합니다.\n\n[커뮤니티에서 자세히 보기](https://withpluces.com/)\n\n---\n\n다음 주에 또 찾아뵙겠습니다.' },
+    notice: { subject: '[공지] 스페이스 커뮤니티 안내', body: '# 공지 안내\n\n안녕하세요, 스페이스 커뮤니티 운영진입니다.\n\n## 안내 내용\n\n변경되는 내용을 적어 주세요.\n\n## 적용 일정\n\n- 시행일: 2026년 ○월 ○일\n\n궁금한 점은 언제든 문의해 주세요.\n\n[스페이스 커뮤니티 바로가기](https://withpluces.com/)' },
+    column: { subject: '스페이스 레터 · 칼럼', body: '# 칼럼 제목\n\n도입 문단을 적어 주세요.\n\n## 소제목\n\n본문을 적어 주세요.\n\n---\n\n글쓴이 소개 한 줄\n\n[학술·논문·소고·이야기에서 더 읽기](https://withpluces.com/#research-section)' },
+  };
+
+  function setStatus(id, message, isError = false) {
+    $(id).textContent = message;
+    $(id).dataset.error = String(isError);
+  }
+
+  async function api(url, body) {
+    const response = await fetch(url, body ? {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(body),
+    } : { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `오류 (${response.status})`);
+    return result;
+  }
+
+  function cell(text) {
+    const td = document.createElement('td');
+    td.textContent = text;
+    return td;
+  }
+
+  const percent = (part, total) => (total ? `${Math.round((part / total) * 1000) / 10}%` : '-');
+  const date = value => (value ? new Date(value).toLocaleString('ko-KR') : '-');
+  const kindLabel = { newsletter: '뉴스레터', confirm: '구독 확인', notice: '수신동의 안내' };
+  const statusLabel = { sending: '발송 중', done: '완료', cancelled: '취소됨' };
+
+  function render() {
+    const s = summary.subscribers;
+    const stats = [
+      ['구독 확인 완료', s.confirmed], ['확인 대기', s.pending], ['기존 신청(확인 필요)', s.legacy],
+      ['2년 안내 대상', s.noticeDue], ['오늘 보낸 메일', `${summary.sentToday} / ${summary.dailyLimit}`],
+    ];
+    $('stats').replaceChildren(...stats.map(([label, value]) => {
+      const box = document.createElement('div');
+      box.className = 'stat';
+      const b = document.createElement('b');
+      b.textContent = value;
+      const span = document.createElement('span');
+      span.textContent = label;
+      box.append(b, span);
+      return box;
+    }));
+    $('mail-note').textContent = summary.mailConfigured
+      ? `메일은 하루 ${summary.dailyLimit}통 이내로, 1분에 20통씩 나누어 발송됩니다. 한도를 넘는 분량은 다음 날 이어서 보냅니다.`
+      : '메일 발송이 설정되지 않아 발송할 수 없습니다.';
+    const sending = summary.campaigns.some(c => c.status === 'sending');
+    $('send').disabled = !summary.mailConfigured || sending || !s.confirmed;
+    $('reconfirm').disabled = !summary.mailConfigured || sending || !(s.legacy + s.pending);
+    $('notice').disabled = !summary.mailConfigured || sending || !s.noticeDue;
+    $('send').textContent = `구독자 전체(${s.confirmed}명)에게 발송`;
+    $('reconfirm').textContent = `기존·미확인 신청자(${s.legacy + s.pending}명)에게 구독 확인 메일 보내기`;
+    $('notice').textContent = `2년 수신동의 안내 보내기 (${s.noticeDue}명)`;
+
+    const table = document.createElement('table');
+    const head = document.createElement('tr');
+    ['보낸 날', '종류', '제목', '상태', '대상', '발송', '실패', '남음', '열람률', '클릭률', '수신거부', ''].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    for (const campaign of summary.campaigns) {
+      const tr = document.createElement('tr');
+      const badge = document.createElement('span');
+      badge.className = `badge ${campaign.status}`;
+      badge.textContent = statusLabel[campaign.status] || campaign.status;
+      const statusCell = document.createElement('td');
+      statusCell.appendChild(badge);
+      if (campaign.errors.length) statusCell.append(document.createElement('br'), `오류: ${campaign.errors.join(', ')}`);
+      const actions = document.createElement('td');
+      if (campaign.status === 'sending') {
+        const cancel = document.createElement('button');
+        cancel.className = 'danger';
+        cancel.textContent = '남은 발송 취소';
+        cancel.addEventListener('click', async () => {
+          if (!confirm('남은 발송을 취소할까요? 이미 보낸 메일은 회수되지 않습니다.')) return;
+          try { setStatus('ops-status', (await api('/api/admin/newsletter/cancel', { id: campaign.id })).message); load(); } catch (error) { setStatus('ops-status', error.message, true); }
+        });
+        actions.appendChild(cancel);
+      }
+      const tracked = campaign.kind === 'newsletter';
+      tr.append(cell(date(campaign.createdAt)), cell(kindLabel[campaign.kind] || campaign.kind),
+        cell(`${campaign.ad ? '(광고) ' : ''}${campaign.subject}`), statusCell, cell(campaign.total), cell(campaign.sent),
+        cell(campaign.failed), cell(campaign.remaining), cell(tracked ? `${percent(campaign.opens, campaign.sent)} (${campaign.opens})` : '-'),
+        cell(tracked ? `${percent(campaign.clicks, campaign.sent)} (${campaign.clicks})` : '-'), cell(tracked ? campaign.unsubscribes : '-'), actions);
+      table.appendChild(tr);
+    }
+    if (!summary.campaigns.length) {
+      const tr = document.createElement('tr');
+      const td = cell('아직 발송 기록이 없습니다.');
+      td.colSpan = 12;
+      tr.appendChild(td);
+      table.appendChild(tr);
+    }
+    $('campaigns').replaceChildren(table);
+    clearTimeout(refreshTimer);
+    if (sending) refreshTimer = setTimeout(load, 15000);
+  }
+
+  async function load() {
+    try {
+      summary = await api('/api/admin/newsletter');
+      render();
+    } catch (error) {
+      setStatus('ops-status', error.message, true);
+    }
+  }
+
+  function content() {
+    return { subject: $('subject').value, body: $('body').value, ad: $('ad').checked };
+  }
+
+  function saveDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(content())); } catch { /* storage unavailable */ }
+  }
+
+  function schedulePreview() {
+    saveDraft();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(async () => {
+      const draft = content();
+      if (!draft.subject.trim() || !draft.body.trim()) {
+        $('preview').srcdoc = '<p style="font-family:sans-serif;color:#6b7891;padding:24px">제목과 본문을 쓰면 미리보기가 표시됩니다.</p>';
+        $('preview-subject').textContent = '';
+        return;
+      }
+      try {
+        const result = await api('/api/admin/newsletter/preview', draft);
+        $('preview').srcdoc = result.html;
+        $('preview-subject').textContent = `— 받는 사람에게 보이는 제목: ${result.subject}`;
+      } catch (error) {
+        setStatus('compose-status', error.message, true);
+      }
+    }, 500);
+  }
+
+  function insert(kind) {
+    const textarea = $('body');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.slice(start, end);
+    let text;
+    if (kind === 'h1') text = `\n\n# ${selected || '큰 제목'}\n\n`;
+    else if (kind === 'h2') text = `\n\n## ${selected || '소제목'}\n\n`;
+    else if (kind === 'bold') text = `**${selected || '굵은 글자'}**`;
+    else if (kind === 'link') {
+      const url = prompt('연결할 주소를 입력하세요 (https://로 시작)', 'https://');
+      if (!url) return;
+      text = `[${selected || '링크 글자'}](${url.trim()})`;
+    } else if (kind === 'image') {
+      const url = prompt('이미지 주소를 입력하세요 (https://로 시작하는 공개 이미지)', 'https://');
+      if (!url) return;
+      text = `\n\n![${selected || '이미지 설명'}](${url.trim()})\n\n`;
+    } else if (kind === 'list') text = `\n\n${(selected || '항목 1\n항목 2').split('\n').map(line => `- ${line.replace(/^- /, '')}`).join('\n')}\n\n`;
+    else text = '\n\n---\n\n';
+    textarea.setRangeText(text, start, end, 'end');
+    textarea.focus();
+    schedulePreview();
+  }
+
+  async function init() {
+    try {
+      const session = await api('/api/auth/session');
+      csrfToken = session.csrfToken;
+      if (!session.user?.admin) {
+        $('gate-message').innerHTML = '';
+        $('gate-message').append(session.user ? '운영자 계정만 이용할 수 있습니다.' : '운영자 계정으로 로그인해 주세요. ');
+        const link = document.createElement('a');
+        link.href = '/#login';
+        link.textContent = '로그인하러 가기';
+        link.style.color = '#5f8dff';
+        if (!session.user) $('gate-message').appendChild(link);
+        return;
+      }
+    } catch (error) {
+      $('gate-message').textContent = error.message;
+      return;
+    }
+    $('gate').hidden = true;
+    $('app').hidden = false;
+    try {
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+      if (draft) {
+        $('subject').value = draft.subject || '';
+        $('body').value = draft.body || '';
+        $('ad').checked = draft.ad === true;
+      }
+    } catch { /* ignore */ }
+    ['subject', 'body', 'ad'].forEach(id => $(id).addEventListener('input', schedulePreview));
+    $('ad').addEventListener('change', schedulePreview);
+    document.querySelectorAll('[data-insert]').forEach(button => button.addEventListener('click', () => insert(button.dataset.insert)));
+    $('template').addEventListener('change', () => {
+      const template = templates[$('template').value];
+      if (!template) return;
+      if (($('body').value.trim() || $('subject').value.trim()) && !confirm('지금 쓰고 있는 내용을 서식으로 바꿀까요?')) {
+        $('template').value = '';
+        return;
+      }
+      $('subject').value = template.subject;
+      $('body').value = template.body;
+      $('template').value = '';
+      schedulePreview();
+    });
+    $('test').addEventListener('click', async () => {
+      $('test').disabled = true;
+      try { setStatus('compose-status', (await api('/api/admin/newsletter/test', content())).message); } catch (error) { setStatus('compose-status', error.message, true); }
+      $('test').disabled = false;
+    });
+    $('send').addEventListener('click', async () => {
+      const draft = content();
+      if (!confirm(`구독자 ${summary.subscribers.confirmed}명에게 "${draft.ad ? '(광고) ' : ''}${draft.subject}"를 보낼까요?\n시험 발송으로 내용을 먼저 확인하셨나요? 보낸 메일은 회수할 수 없습니다.`)) return;
+      $('send').disabled = true;
+      try {
+        setStatus('compose-status', (await api('/api/admin/newsletter/send', draft)).message);
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+      } catch (error) { setStatus('compose-status', error.message, true); }
+      load();
+    });
+    for (const [id, url, question] of [['reconfirm', '/api/admin/newsletter/reconfirm', '구독 확인을 하지 않은 신청자에게 확인 메일을 보낼까요? 확인 버튼을 누른 사람만 구독자가 됩니다.'],
+      ['notice', '/api/admin/newsletter/notice', '수신동의 후 2년이 지난 구독자에게 수신동의 사실 안내 메일을 보낼까요?']]) {
+      $(id).addEventListener('click', async () => {
+        if (!confirm(question)) return;
+        $(id).disabled = true;
+        try { setStatus('ops-status', (await api(url, {})).message); } catch (error) { setStatus('ops-status', error.message, true); }
+        load();
+      });
+    }
+    $('refresh').addEventListener('click', load);
+    $('show-subscribers').addEventListener('click', async () => {
+      const box = $('subscriber-list');
+      if (!box.hidden) { box.hidden = true; return; }
+      try {
+        const { subscribers } = await api('/api/admin/newsletter/subscribers');
+        const table = document.createElement('table');
+        const head = document.createElement('tr');
+        ['이메일', '상태', '신청일', '수신동의일'].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
+        table.appendChild(head);
+        const label = { confirmed: '구독 중', pending: '확인 대기', legacy: '기존 신청' };
+        subscribers.forEach(entry => {
+          const tr = document.createElement('tr');
+          tr.append(cell(entry.email), cell(label[entry.status] || entry.status), cell(date(entry.requestedAt)), cell(date(entry.consentAt)));
+          table.appendChild(tr);
+        });
+        box.replaceChildren(table);
+        box.hidden = false;
+      } catch (error) { setStatus('ops-status', error.message, true); }
+    });
+    schedulePreview();
+    load();
+  }
+  init();
+})();

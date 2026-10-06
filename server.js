@@ -7,6 +7,7 @@ const { createCommunityApi } = require('./community-api');
 const { createAuthApi } = require('./auth-api');
 const { createMailer } = require('./mailer');
 const { createBoardApi } = require('./board-api');
+const { createNewsletterApi } = require('./newsletter-api');
 
 require('@next/env').loadEnvConfig(__dirname, process.env.NODE_ENV !== 'production');
 
@@ -29,6 +30,28 @@ const authApi = createAuthApi(dataDirectory, {
 });
 const communityApi = createCommunityApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
 const boardApi = createBoardApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
+let newsletterTimer;
+const newsletterApi = createNewsletterApi(dataDirectory, {
+  authenticate: authApi.authenticate, mailer, siteUrl,
+  dailyLimit: Number(process.env.NEWSLETTER_DAILY_LIMIT) || 300,
+  legacySubscribers: () => communityApi.legacySubscribers(),
+  clearLegacySubscribers: () => communityApi.clearLegacySubscribers(),
+  schedule: delay => scheduleNewsletter(delay),
+  senderName: process.env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: process.env.CONTACT_EMAIL || '',
+});
+function scheduleNewsletter(delay) {
+  clearTimeout(newsletterTimer);
+  newsletterTimer = setTimeout(async () => {
+    try {
+      const result = await newsletterApi.processQueue();
+      if (result.more) scheduleNewsletter(result.delay || 60000);
+    } catch (error) {
+      console.error('Newsletter queue failed:', error);
+      scheduleNewsletter(60000);
+    }
+  }, delay);
+}
+scheduleNewsletter(5000);
 
 app.prepare().then(() => {
   const httpServer = createServer((request, response) => {
@@ -41,7 +64,23 @@ app.prepare().then(() => {
       boardApi(request, response, pathname);
       return;
     }
-    if (pathname === '/api/comments' || pathname === '/api/newsletter' || pathname === '/api/newsletter/unsubscribe') {
+    if (pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/')) {
+      newsletterApi(request, response, pathname);
+      return;
+    }
+    if (['/newsletter', '/newsletter-admin'].includes(pathname)) {
+      fs.readFile(path.join(__dirname, 'public', `${pathname.slice(1)}.html`), (error, html) => {
+        if (error) {
+          response.statusCode = 500;
+          response.end('Internal Server Error');
+          return;
+        }
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        response.end(html);
+      });
+      return;
+    }
+    if (pathname === '/api/comments') {
       communityApi(request, response, pathname);
       return;
     }

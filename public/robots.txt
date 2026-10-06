@@ -2,5 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /ws/
+Disallow: /n/
+Disallow: /newsletter-admin
+Disallow: /newsletter
 
 Sitemap: https://withpluces.com/sitemap.xml

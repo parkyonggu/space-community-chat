@@ -13,7 +13,7 @@
     "test:worker": "node --test cloudflare/integration.test.cjs",
     "start": "node server.js",
     "check:mail": "node check-mail.js",
-    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js"
+    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js newsletter-api.test.js"
   },
   "keywords": [],
   "author": "",

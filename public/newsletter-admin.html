@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>뉴스레터 관리 · 스페이스 커뮤니티</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/icons/icon-512.png" type="image/png">
+  <style>
+    :root { --ink:#e8eef7; --muted:#aebdd0; --blue:#5f8dff; --line:#3a4b63; --paper:#182333; --surface:#223044; --card:#293a4f; --good:#55c99a; --bad:#ff9c9c; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Noto Sans KR","Pretendard",sans-serif; line-height:1.6; }
+    header { background:linear-gradient(135deg,#101b2b,#1c3552); padding:20px 16px; }
+    header div, main { max-width:1200px; margin:0 auto; }
+    header a { color:#c8dbff; text-decoration:none; font-size:14px; }
+    h1 { margin:6px 0 0; font-size:24px; }
+    h2 { font-size:17px; margin:0 0 12px; }
+    main { padding:20px 16px 48px; display:grid; gap:16px; }
+    section { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+    .stat { background:var(--card); border-radius:10px; padding:12px; }
+    .stat b { display:block; font-size:24px; }
+    .stat span { color:var(--muted); font-size:13px; }
+    .editor { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; }
+    @media (max-width:900px) { .editor { grid-template-columns:1fr; } }
+    label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    input[type=text], textarea, select { width:100%; background:#152031; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+    textarea { min-height:380px; resize:vertical; font-family:inherit; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 6px; }
+    button { background:#2c3f59; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:inherit; font-size:14px; cursor:pointer; }
+    button.primary { background:#1958e8; border-color:#1958e8; color:#fff; font-weight:700; }
+    button.danger { background:#5a2630; border-color:#7a3340; }
+    button:disabled { opacity:.55; cursor:default; }
+    .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
+    .check { display:flex; gap:8px; align-items:flex-start; font-size:14px; color:var(--ink); margin-top:10px; }
+    .check input { margin-top:5px; }
+    iframe { width:100%; height:560px; border:1px solid var(--line); border-radius:10px; background:#eef2f8; }
+    .muted { color:var(--muted); font-size:13px; }
+    .status { min-height:22px; font-size:14px; margin-top:10px; }
+    .status[data-error="true"] { color:var(--bad); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid var(--line); padding:8px 6px; text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    .table-wrap { overflow-x:auto; }
+    .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; background:#2c3f59; }
+    .badge.sending { background:#1958e8; color:#fff; }
+    .badge.done { background:#1e5b45; }
+    .badge.cancelled { background:#5a2630; }
+    .help { font-size:13px; color:var(--muted); background:var(--card); border-radius:8px; padding:10px 12px; }
+    .help code { color:#c8dbff; }
+    #gate { text-align:center; padding:40px 16px; }
+  </style>
+</head>
+<body>
+  <header><div><a href="/">← 스페이스 커뮤니티</a><h1>뉴스레터 관리</h1></div></header>
+  <main id="gate"><p id="gate-message">운영자 정보를 확인하고 있습니다.</p></main>
+  <main id="app" hidden>
+    <section>
+      <h2>현황</h2>
+      <div class="stats" id="stats"></div>
+      <p class="muted" id="mail-note"></p>
+      <div class="row">
+        <button type="button" id="reconfirm">기존·미확인 신청자에게 구독 확인 메일 보내기</button>
+        <button type="button" id="notice">2년 수신동의 안내 보내기</button>
+        <button type="button" id="show-subscribers">구독자 목록 보기</button>
+        <button type="button" id="refresh">새로고침</button>
+      </div>
+      <p class="status" id="ops-status" role="status"></p>
+      <div class="table-wrap" id="subscriber-list" hidden></div>
+    </section>
+
+    <section>
+      <h2>새 뉴스레터 쓰기</h2>
+      <div class="editor">
+        <div>
+          <label for="template">시작 서식</label>
+          <select id="template">
+            <option value="">서식 선택 (현재 내용을 바꿉니다)</option>
+            <option value="weekly">주간 소식지</option>
+            <option value="notice">공지 안내</option>
+            <option value="column">칼럼·에세이</option>
+          </select>
+          <label for="subject">제목</label>
+          <input type="text" id="subject" maxlength="150" placeholder="예: 스페이스 레터 10월 첫째 주 소식">
+          <label class="check"><input type="checkbox" id="ad"><span>광고·홍보 내용이 포함됩니다 (제목 앞에 <b>(광고)</b>가 자동으로 붙고 수신동의일이 표시됩니다)</span></label>
+          <div class="toolbar" aria-label="서식 도구">
+            <button type="button" data-insert="h1">큰 제목</button>
+            <button type="button" data-insert="h2">소제목</button>
+            <button type="button" data-insert="bold">굵게</button>
+            <button type="button" data-insert="link">링크</button>
+            <button type="button" data-insert="image">이미지</button>
+            <button type="button" data-insert="list">목록</button>
+            <button type="button" data-insert="hr">구분선</button>
+          </div>
+          <textarea id="body" placeholder="본문을 쓰세요. 빈 줄로 문단을 나눕니다."></textarea>
+          <p class="help">서식: <code># 큰 제목</code> · <code>## 소제목</code> · <code>**굵게**</code> · <code>[글자](https://주소)</code> · <code>![설명](https://이미지주소)</code> · <code>- 목록</code> · <code>---</code> 구분선. 작성 중인 글은 이 브라우저에 자동 저장됩니다.</p>
+          <div class="row">
+            <button type="button" id="test">나에게 시험 발송</button>
+            <button type="button" class="primary" id="send">구독자 전체에게 발송</button>
+          </div>
+          <p class="status" id="compose-status" role="status"></p>
+        </div>
+        <div>
+          <label>미리보기 <span id="preview-subject" class="muted"></span></label>
+          <iframe id="preview" title="뉴스레터 미리보기" sandbox></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>발송 기록과 통계</h2>
+      <p class="muted">열람은 메일 속 보이지 않는 이미지가 열릴 때 집계되므로, 이미지를 차단한 메일 앱에서는 적게 잡힐 수 있습니다. 클릭은 본문 링크를 누른 구독자 수입니다.</p>
+      <div class="table-wrap" id="campaigns"></div>
+    </section>
+  </main>
+  <script src="/newsletter-admin.js" defer></script>
+</body>
+</html>

@@ -97,16 +97,7 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
         throw new ApiError(429, '요청이 많습니다. 잠시 후 다시 시도해 주세요.');
       }
       const body = await readBody(request);
-      if (pathname === '/api/newsletter/unsubscribe') {
-        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-        if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          throw new ApiError(400, '유효한 이메일을 입력해 주세요.');
-        }
-        await updateStore(store => {
-          store.subscribers = store.subscribers.filter(subscriber => subscriber.email !== email);
-        });
-        sendJson(response, 200, { message: '해당 이메일의 구독 신청이 있었다면 해지하고 즉시 삭제했습니다.' });
-      } else if (pathname === '/api/comments') {
+      if (pathname === '/api/comments') {
         let author = null;
         if (authenticate) {
           const auth = await authenticate(request, { csrf: true });
@@ -126,16 +117,7 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
         });
         sendJson(response, 201, { comment: { id: comment.id, name, text, createdAt: comment.createdAt } });
       } else {
-        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-        if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true) {
-          throw new ApiError(400, '유효한 이메일과 개인정보 수집·이용 동의가 필요합니다.');
-        }
-        await updateStore(store => {
-          if (!store.subscribers.some(subscriber => subscriber.email === email)) {
-            store.subscribers.push({ email, consentVersion: '2026-10-05', requestedAt: new Date().toISOString() });
-          }
-        });
-        sendJson(response, 200, { message: '구독 신청이 접수되었습니다. 이메일 발송 서비스는 준비 중입니다.' });
+        throw new ApiError(404, '요청한 기능이 없습니다.');
       }
     } catch (error) {
       if (!(error instanceof ApiError)) console.error('Community API failed:', error);
@@ -146,6 +128,8 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
       }
     }
   }
+  handleCommunityApi.legacySubscribers = async () => (await readStore()).subscribers || [];
+  handleCommunityApi.clearLegacySubscribers = () => updateStore(store => { store.subscribers = []; });
   handleCommunityApi.anonymizeUser = userId => updateStore(store => {
     for (const comment of store.comments) {
       if (comment.authorId === userId) {
