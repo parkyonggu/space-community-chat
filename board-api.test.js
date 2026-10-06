@@ -100,3 +100,39 @@ test('boards persist posts, protect research, require members to write and suppo
   assert.ok(!JSON.stringify(stored).includes('u-bob'));
   assert.equal((await fetch(`${origin}/api/board`, { method: 'POST' })).status, 405);
 });
+
+test('authors can edit their own posts; others, hidden posts and empty edits are refused; admins see earlier versions', async t => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'space-board-edit-'));
+  const handler = createBoardApi(directory, { authenticate, requireVerifiedEmail: true });
+  const server = createServer((request, response) => handler(request, response, new URL(request.url, 'http://x').pathname));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); await fs.rm(directory, { recursive: true }); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (route, body, user) => fetch(origin + route, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', 'x-csrf-token': 'ok', ...(user ? { 'x-test-user': user } : {}) } });
+  const list = async (board, user) => (await (await fetch(`${origin}/api/board?board=${board}`, { headers: user ? { 'x-test-user': user } : {} })).json()).posts;
+
+  const { post: voice } = await (await post('/api/board/posts', { board: 'voice', category: '민원이 불편했어요', text: '처음 내용' }, 'alice')).json();
+  const edited = await post('/api/board/edit', { postId: voice.id, category: '이 정책, 이상해요', text: '고친 내용' }, 'alice');
+  assert.equal(edited.status, 200);
+  const { post: after } = await edited.json();
+  assert.equal(after.text, '고친 내용');
+  assert.equal(after.category, '이 정책, 이상해요');
+  assert.ok(after.editedAt);
+  assert.equal((await list('voice'))[0].text, '고친 내용');
+  assert.equal((await post('/api/board/edit', { postId: voice.id, category: '이 정책, 이상해요', text: '고친 내용' }, 'alice')).status, 400, 'no change');
+  assert.equal((await post('/api/board/edit', { postId: voice.id, text: '남의 글' }, 'bob')).status, 403);
+  assert.equal((await post('/api/board/edit', { postId: voice.id, text: '인증 전' }, 'dave')).status, 403);
+  assert.equal((await post('/api/board/edit', { postId: voice.id, text: '로그인 전' })).status, 401);
+  assert.equal((await post('/api/board/edit', { postId: voice.id, category: '없는 분류', text: '바꿈' }, 'alice')).status, 400);
+  assert.equal((await post('/api/board/edit', { postId: 'missing', text: '바꿈' }, 'alice')).status, 404);
+  assert.deepEqual((await list('voice', 'admin'))[0].history.map(entry => entry.text), ['처음 내용']);
+  assert.equal((await list('voice', 'bob'))[0].history, undefined);
+
+  const { post: research } = await (await post('/api/board/posts', { board: 'research', category: '논문', title: '제목', text: '본문' }, 'bob')).json();
+  assert.equal((await post('/api/board/edit', { postId: research.id, title: '', text: '본문2' }, 'bob')).status, 400, 'title required');
+  assert.equal((await post('/api/board/edit', { postId: research.id, title: '새 제목', text: '본문2' }, 'bob')).status, 200);
+
+  for (const user of ['bob', 'carol', 'admin']) await post('/api/board/report', { postId: voice.id, reason: '허위' }, user);
+  assert.equal((await post('/api/board/edit', { postId: voice.id, text: '숨김 뒤 수정' }, 'alice')).status, 409);
+});

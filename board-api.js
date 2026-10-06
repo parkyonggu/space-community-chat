@@ -101,11 +101,11 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
       id: post.id, board: post.board, category: post.category, title: post.title, text: post.text,
-      authorName: post.authorName, createdAt: post.createdAt, likes: likes.length,
+      authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
       mine: Boolean(user && post.authorId === user.id),
-      ...(user?.admin ? { hidden: Boolean(post.hiddenAt), reportCount: reports.length, reasons: reports.slice(-10).map(entry => entry.reason) } : {}),
+      ...(user?.admin ? { hidden: Boolean(post.hiddenAt), reportCount: reports.length, reasons: reports.slice(-10).map(entry => entry.reason), history: (post.history || []).slice(-5) } : {}),
     };
   }
 
@@ -138,7 +138,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         send(response, 200, { posts: posts.map(post => view(post, store, user)) });
         return;
       }
-      const actions = ['/api/board/posts', '/api/board/like', '/api/board/report', '/api/board/moderate'];
+      const actions = ['/api/board/posts', '/api/board/edit', '/api/board/like', '/api/board/report', '/api/board/moderate'];
       if (!actions.includes(pathname)) throw new BoardError(404, '요청한 기능이 없습니다.');
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -149,7 +149,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
       if (auth.error) throw new BoardError(auth.error.status, auth.error.message);
       const user = auth.user;
       if (!user) throw new BoardError(401, '로그인한 회원만 이용할 수 있습니다.');
-      const input = await readBody(request, pathname === '/api/board/posts' ? 96 * 1024 : 4096);
+      const input = await readBody(request, pathname === '/api/board/posts' || pathname === '/api/board/edit' ? 96 * 1024 : 4096);
 
       if (pathname === '/api/board/posts') {
         if (requireVerifiedEmail && !user.emailVerified) throw new BoardError(403, '이메일 인증을 완료한 회원만 글을 쓸 수 있습니다. 상단의 인증 메일 보내기를 이용해 주세요.');
@@ -167,6 +167,33 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           createdAt: new Date(now()).toISOString() };
         await updateStore(store => { store.posts.push(post); });
         send(response, 201, { post: view(post, { likes: [], reports: [] }, user), message: '글이 등록되었습니다.' });
+        return;
+      }
+
+      if (pathname === '/api/board/edit') {
+        if (requireVerifiedEmail && !user.emailVerified) throw new BoardError(403, '이메일 인증을 완료한 회원만 글을 수정할 수 있습니다.');
+        limit(`board-edit:${user.id}`, 20, 10 * 60000);
+        const post = await updateStore(store => {
+          const target = findPost(store, input.postId);
+          if (target.authorId !== user.id) throw new BoardError(403, '내가 쓴 글만 수정할 수 있습니다.');
+          if (target.hiddenAt) throw new BoardError(409, '신고로 숨김 처리된 글은 운영자 검토가 끝날 때까지 수정할 수 없습니다.');
+          const rules = BOARDS[target.board];
+          let category = target.category;
+          if (rules.categories && target.board !== 'policy' && input.category !== undefined) {
+            if (!rules.categories.includes(input.category)) throw new BoardError(400, '분류를 선택해 주세요.');
+            category = input.category;
+          }
+          const title = rules.title ? text(input.title) : '';
+          if (rules.title && (!title || title.length > 120)) throw new BoardError(400, '제목을 1~120자로 입력해 주세요.');
+          const body = text(input.text);
+          if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
+          if (body === target.text && title === (target.title || '') && category === target.category) throw new BoardError(400, '바뀐 내용이 없습니다.');
+          // Keep the previous versions so moderators can see what a reported post said before it was edited.
+          target.history = [...(target.history || []), { category: target.category, title: target.title, text: target.text, savedAt: target.editedAt || target.createdAt }].slice(-5);
+          Object.assign(target, { category, title, text: body, editedAt: new Date(now()).toISOString() });
+          return view(target, store, user);
+        });
+        send(response, 200, { post, message: '글을 수정했습니다.' });
         return;
       }
 

@@ -325,3 +325,9 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 #guide-section .signup-open-button { margin-left:0; }
 /* 회원 탈퇴는 하단 '회원과 운영 안내'에서만 보여 상단을 간결하게 유지 */
 .site-top .auth-controls > button:last-of-type { display:none; }
+.post-editor { display:grid; gap:8px; }
+.post-editor select, .post-editor input { justify-self:start; max-width:100%; }
+.post-editor input { width:100%; }
+.post-history { margin-top:8px; font-size:13.5px; color:var(--muted); }
+.post-history summary { cursor:pointer; font-weight:700; }
+.post-history p { margin:6px 0; padding:8px 10px; background:#fafbfe; border-radius:8px; color:var(--muted); }

@@ -110,7 +110,13 @@
     meta.style.flexWrap = 'wrap';
     meta.style.gap = '8px';
     meta.style.alignItems = 'center';
-    meta.appendChild(make('span', '', `${post.authorName} · ${new Date(post.createdAt).toLocaleString('ko-KR')}`));
+    meta.appendChild(make('span', '', `${post.authorName} · ${new Date(post.createdAt).toLocaleString('ko-KR')}${post.editedAt ? ` · 수정됨 ${new Date(post.editedAt).toLocaleString('ko-KR')}` : ''}`));
+    if (post.mine && !post.hidden && canWrite()) {
+      const edit = make('button', 'like-btn', '수정');
+      edit.type = 'button';
+      edit.addEventListener('click', () => openEditor(post, item));
+      meta.appendChild(edit);
+    }
     if (post.board === 'policy') {
       const like = make('button', 'like-btn', `추천 ${post.likes}`);
       like.type = 'button';
@@ -170,7 +176,88 @@
       meta.appendChild(remove);
     }
     item.appendChild(meta);
+    if (state.user?.admin && post.history?.length) {
+      const history = make('details', 'post-history');
+      history.appendChild(make('summary', '', `수정 전 내용 ${post.history.length}건 (운영자만 보임)`));
+      post.history.slice().reverse().forEach(entry => {
+        const version = make('p', '', `${new Date(entry.savedAt).toLocaleString('ko-KR')} · ${entry.title ? `${entry.title} — ` : ''}${entry.text}`);
+        version.style.whiteSpace = 'pre-wrap';
+        history.appendChild(version);
+      });
+      item.appendChild(history);
+    }
     return item;
+  }
+
+  // Inline editor for the author's own post (title / category / body, by board rules).
+  function openEditor(post, item) {
+    const form = make('form', 'post-editor');
+    form.setAttribute('aria-label', '글 수정');
+    let category = null;
+    const optionsFrom = id => [...$(id).options].map(option => option.value).filter(value => value !== 'all');
+    if (post.board === 'voice' || post.board === 'research') {
+      category = make('select');
+      category.setAttribute('aria-label', '분류');
+      optionsFrom(post.board === 'voice' ? 'voiceCategory' : 'researchType').forEach(value => {
+        const option = make('option', '', value);
+        option.value = value;
+        category.appendChild(option);
+      });
+      category.value = post.category;
+      form.appendChild(category);
+    }
+    let title = null;
+    if (post.board === 'research') {
+      title = make('input');
+      title.type = 'text';
+      title.maxLength = 120;
+      title.value = post.title || '';
+      title.setAttribute('aria-label', '글 제목');
+      form.appendChild(title);
+    }
+    const text = make('textarea');
+    text.value = post.text;
+    text.maxLength = post.board === 'research' ? 20000 : post.board === 'policy' ? 3000 : 5000;
+    text.setAttribute('aria-label', '글 내용');
+    const status = make('p', 'form-status');
+    status.setAttribute('role', 'status');
+    const actions = make('div', 'post-controls');
+    const note = make('span', 'label', '수정하면 "수정됨"으로 표시됩니다. 이전 내용은 신고 검토를 위해 운영자에게만 보관됩니다.');
+    const buttons = make('div');
+    buttons.style.display = 'flex';
+    buttons.style.gap = '8px';
+    const cancel = make('button', 'btn btn-outline', '취소');
+    cancel.type = 'button';
+    const save = make('button', 'submitPolicy', '수정 저장');
+    save.type = 'submit';
+    buttons.append(cancel, save);
+    actions.append(note, buttons);
+    form.append(text, actions, status);
+    const original = [...item.childNodes];
+    item.replaceChildren(form);
+    text.focus();
+    cancel.addEventListener('click', () => item.replaceChildren(...original));
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!text.value.trim() || (title && !title.value.trim())) {
+        status.textContent = title ? '제목과 내용을 입력해 주세요.' : '내용을 입력해 주세요.';
+        status.dataset.error = 'true';
+        return;
+      }
+      save.disabled = true;
+      try {
+        const result = await api('/api/board/edit', { postId: post.id, text: text.value, ...(title ? { title: title.value } : {}), ...(category ? { category: category.value } : {}) });
+        state.posts[post.board] = state.posts[post.board].map(entry => entry.id === post.id ? result.post : entry);
+        render(post.board);
+        announce(post.board);
+        setStatus(post.board, result.message);
+        $(`post-${post.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (error) {
+        status.textContent = error.message;
+        status.dataset.error = 'true';
+        save.disabled = false;
+      }
+    });
   }
 
   async function moderate(post, action) {
