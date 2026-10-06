@@ -77,6 +77,15 @@
       action.appendChild(open);
       tr.append(cell(date(draft.createdAt)), cell(draft.source === 'auto' ? '자동(일요일)' : '수동'), cell(draft.subject), action);
       draftTable.appendChild(tr);
+      if (draft.notes && draft.notes.length) {
+        const noteRow = document.createElement('tr');
+        const noteCell = document.createElement('td');
+        noteCell.colSpan = 4;
+        noteCell.style.cssText = 'color:#b42318;font-size:0.9em;white-space:pre-wrap';
+        noteCell.textContent = '자료 오류:\n' + draft.notes.map(note => '· ' + note).join('\n');
+        noteRow.appendChild(noteCell);
+        draftTable.appendChild(noteRow);
+      }
     }
     if (!summary.drafts.length) { const tr = document.createElement('tr'); const td = cell('아직 초안이 없습니다. "지금 초안 만들기"로 바로 만들어 볼 수 있습니다.'); td.colSpan = 4; tr.appendChild(td); draftTable.appendChild(tr); }
     $('drafts').replaceChildren(draftTable);

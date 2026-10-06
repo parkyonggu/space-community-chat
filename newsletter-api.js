@@ -288,7 +288,7 @@ function createNewsletterApi(dataDirectory, {
       },
       nextMonday: new Date(nextMondaySeven(now())).toISOString(), ecosKey: Boolean(ecosKey), rebKey: Boolean(rebKey),
       drafts: [...store.drafts].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 5)
-        .map(draft => ({ id: draft.id, subject: draft.subject, createdAt: draft.createdAt, source: draft.source })),
+        .map(draft => ({ id: draft.id, subject: draft.subject, createdAt: draft.createdAt, source: draft.source, notes: draft.notes || [] })),
       campaigns: [...store.campaigns].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 50).map(campaign => ({
         id: campaign.id, kind: campaign.kind, subject: campaign.subject, ad: campaign.ad, status: campaign.status,
         createdAt: campaign.createdAt, finishedAt: campaign.finishedAt || null, createdBy: campaign.createdBy, sendAt: campaign.sendAt || null,
@@ -339,7 +339,7 @@ function createNewsletterApi(dataDirectory, {
 
   async function generateWeekly({ source = 'auto', notify = true } = {}) {
     const draft = await buildWeeklyDraft({ fetchImpl: fetchImpl || fetch, ecosKey, rebKey, now: now(), siteUrl: origin, highlights });
-    const entry = { id: randomUUID(), subject: draft.subject, body: draft.body, createdAt: iso(), source };
+    const entry = { id: randomUUID(), subject: draft.subject, body: draft.body, createdAt: iso(), source, notes: Array.isArray(draft.notes) ? draft.notes.slice(0, 20) : [] };
     await updateStore(store => {
       store.drafts.push(entry);
       store.drafts.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
@@ -347,7 +347,7 @@ function createNewsletterApi(dataDirectory, {
     });
     if (notify) {
       const when = kstText(nextMondaySeven(now()));
-      await notifyAdmins('[스페이스 레터] 이번 주 브리핑 초안이 준비되었습니다', `# 이번 주 브리핑 초안이 준비되었습니다\n\n경제 지표와 커뮤니티 글을 모아 초안을 만들었습니다. "${MANUAL_MARK}" 칸을 채운 뒤 시험 발송으로 확인하고 **${when}** 예약 발송을 눌러 주세요.\n\n[뉴스레터 관리 열기](${origin}/newsletter-admin)`);
+      await notifyAdmins('[스페이스 레터] 이번 주 브리핑 초안이 준비되었습니다', `# 이번 주 브리핑 초안이 준비되었습니다\n\n경제 지표와 커뮤니티 글을 모아 초안을 만들었습니다. "${MANUAL_MARK}" 칸을 채운 뒤 시험 발송으로 확인하고 **${when}** 예약 발송을 눌러 주세요.\n\n[뉴스레터 관리 열기](${origin}/newsletter-admin)${entry.notes.length ? `\n\n**불러오지 못한 자료**\n\n${entry.notes.map(note => `- ${note}`).join('\n')}` : ''}`);
     }
     return entry;
   }
@@ -521,7 +521,7 @@ function createNewsletterApi(dataDirectory, {
         if (action === 'draft/generate') {
           limit(`nl-draft:${user.id}`, 10, 60 * 60000);
           const draft = await generateWeekly({ source: 'manual', notify: false });
-          sendJson(response, 201, { draft, message: '이번 주 초안을 새로 만들었습니다.' });
+          sendJson(response, 201, { draft, message: draft.notes.length ? `초안을 만들었지만 일부 자료를 불러오지 못했습니다 (${draft.notes.length}건). 초안 목록의 "자료 오류"를 확인해 주세요.` : '이번 주 초안을 새로 만들었습니다.' });
           return;
         }
         if (action === 'draft/get') {

@@ -203,8 +203,9 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
     W_RENT: [['2026W39', '전국', 100], ['2026W40', '전국', 100.03], ['2026W39', '서울', 100], ['2026W40', '서울', 100.08]],
   };
   const requested = [];
-  const fetchImpl = async url => {
+  const fetchImpl = async (url, options = {}) => {
     requested.push(url);
+    assert.match(options.headers?.['User-Agent'] || '', /withpluces/);
     if (url.startsWith('https://www.imf.org/')) {
       return { ok: true, json: async () => ({ values: { NGDP_RPCH: { WEOWORLD: { 2026: 3.1, 2027: 3.2 }, KOR: { 2026: 1.9, 2027: 2.1 }, USA: { 2026: 2.3, 2027: 2.1 } } } }) };
     }
@@ -222,7 +223,7 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
     if (code === '901Y009' && start === '202509') rows = [['202509', '118.0']];
     return { ok: true, json: async () => ({ StatisticSearch: { row: rows.map(([TIME, DATA_VALUE]) => ({ TIME, DATA_VALUE })) } }) };
   };
-  const highlights = async () => ({ policy: [{ category: 'education', text: '교육 정책 제안 내용', likes: 4 }], voice: [{ category: '이 정책, 이상해요', text: '시민의 소리 내용' }], community: [], researchCount: 2 });
+  const highlights = async () => ({ policy: [{ category: 'education', text: '교육 정책 제안 내용', likes: 4 }], voice: [{ category: '이 정책, 이상해요', text: '시민의 소리 내용' }], community: [{ category: '자유', text: '*주식투자운용전략 * 공유 #1' }], researchCount: 2 });
   const f = await fixture(t, { extra: { fetchImpl, highlights, adminEmails: ['admin@example.com'], ecosKey: 'TESTKEY', rebKey: 'REBKEY' } });
   // Sunday 2026-10-04 18:00 KST
   f.advance(Date.parse('2026-10-04T09:00:00Z') - f.now());
@@ -246,6 +247,9 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   assert.ok(draft.body.includes('전년 동월 대비 +2.1%'));
   assert.ok(draft.body.includes('**[정책 제안 · 교육부]** 교육 정책 제안 내용 (추천 4)'));
   assert.ok(draft.body.includes('새 글 2편'));
+  assert.ok(draft.body.includes('주식투자운용전략 공유 1') || draft.body.includes('주식투자운용전략  공유 1'), 'markdown characters stripped');
+  assert.ok(!draft.body.includes('*주식'));
+  assert.deepEqual(draft.notes, []);
   assert.ok(draft.body.includes('[직접 작성]'));
   assert.ok(draft.body.includes('매매를 권유하지 않습니다'));
   const notice = f.sent.at(-1);
@@ -254,6 +258,7 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
 
   let summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
   assert.equal(summary.drafts.length, 1);
+  assert.deepEqual(summary.drafts[0].notes, []);
   assert.equal(summary.nextMonday, '2026-10-04T22:00:00.000Z');
   const loaded = await (await f.post('/api/admin/newsletter/draft/get', { id: summary.drafts[0].id }, 'admin')).json();
   assert.equal(loaded.draft.body, draft.body);
@@ -304,4 +309,22 @@ test('draft generation degrades gracefully when ECOS is unavailable', async t =>
   assert.ok(draft.body.includes('IMF 전망 자료를 불러오지 못했습니다'));
   assert.ok(draft.body.includes('REB_API_KEY'));
   assert.ok(!draft.body.includes('R-ONE)'));
+  assert.ok(draft.notes.some(note => note.startsWith('IMF:')));
+  assert.ok(draft.notes.some(note => note.includes('REB_API_KEY')));
+  assert.ok(draft.notes.some(note => note.startsWith('한국은행 KOSPI')));
+  const summary = await (await f.get('/api/admin/newsletter', 'admin')).json();
+  assert.ok(summary.drafts[0].notes.length > 0);
+});
+
+test('weekly change spans holiday gaps', async t => {
+  const fetchImpl = async url => {
+    if (!url.includes('ecos.bok.or.kr')) return { ok: false, status: 500, json: async () => ({}) };
+    const parts = new URL(url).pathname.split('/');
+    const rows = parts[8] === '802Y001' && parts[12] === '0001000' ? [['20260922', '6500'], ['20260923', '6600'], ['20260929', '6700'], ['20261002', '6930']] : [];
+    return { ok: true, json: async () => ({ StatisticSearch: { row: rows.map(([TIME, DATA_VALUE]) => ({ TIME, DATA_VALUE })) } }) };
+  };
+  const f = await fixture(t, { extra: { fetchImpl, ecosKey: 'TESTKEY' } });
+  f.advance(Date.parse('2026-10-04T09:00:00Z') - f.now());
+  const draft = await f.generate({ notify: false });
+  assert.ok(draft.body.includes('**KOSPI** 6,930 (1주 전 대비 +5.00%)') || draft.body.includes('**KOSPI** 6,930.00 (1주 전 대비 +5.00%)'), draft.body.split('\n').find(line => line.includes('KOSPI')));
 });

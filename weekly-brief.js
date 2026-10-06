@@ -9,6 +9,7 @@ const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원�
   ocean: '해양수산부', safety: '행정안전부', justice: '법무부', personnel: '인사혁신처' };
 
 const DAY = 24 * 60 * 60 * 1000;
+const HEADERS = { Accept: 'application/json', 'User-Agent': 'withpluces-newsletter/1.0 (+https://withpluces.com)', 'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8' };
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
 const ymd = timestamp => kstDate(timestamp).toISOString().slice(0, 10).replace(/-/g, '');
 const ym = timestamp => kstDate(timestamp).toISOString().slice(0, 7).replace('-', '');
@@ -28,23 +29,23 @@ async function ecos(fetchImpl, key, code, cycle, start, end, item) {
   // The public "sample" key returns at most 10 rows (oldest first), so windows below stay short.
   const limit = key === 'sample' ? 10 : 1000;
   const url = `https://ecos.bok.or.kr/api/StatisticSearch/${encodeURIComponent(key)}/json/kr/1/${limit}/${code}/${cycle}/${start}/${end}/${item}`;
-  const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
+  const response = await fetchImpl(url, { headers: HEADERS });
   if (!response.ok) throw new Error(`ECOS ${response.status}`);
   const data = await response.json();
   const rows = data?.StatisticSearch?.row;
-  if (!Array.isArray(rows) || !rows.length) throw new Error(`ECOS empty ${code}`);
+  if (!Array.isArray(rows) || !rows.length) throw new Error(`ECOS ${data?.RESULT?.CODE || 'empty'} ${code}/${item}`);
   return rows.map(row => ({ time: row.TIME, value: Number(row.DATA_VALUE) })).filter(row => Number.isFinite(row.value))
     .sort((left, right) => left.time.localeCompare(right.time));
 }
 
-async function indicators(fetchImpl, key, now) {
+async function indicators(fetchImpl, key, now, notes = []) {
   const end = ymd(now);
-  const start = ymd(now - 11 * DAY);
+  const start = ymd(now - (key === 'sample' ? 11 : 24) * DAY);
   const daily = async (label, code, item, unit, digits, mode) => {
     try {
       const rows = await ecos(fetchImpl, key, code, 'D', start, end, item);
       const last = rows.at(-1);
-      const weekAgo = [...rows].reverse().find(row => row.time <= ymd(Date.parse(`${last.time.slice(0, 4)}-${last.time.slice(4, 6)}-${last.time.slice(6, 8)}T00:00:00+09:00`) - 6 * DAY));
+      const weekAgo = [...rows].reverse().find(row => row.time <= ymd(Date.parse(`${last.time.slice(0, 4)}-${last.time.slice(4, 6)}-${last.time.slice(6, 8)}T00:00:00+09:00`) - 7 * DAY));
       let change = '';
       if (weekAgo) {
         if (mode === 'percent') change = ` (1주 전 대비 ${signed(((last.value - weekAgo.value) / weekAgo.value) * 100, 2, '%')})`;
@@ -53,6 +54,7 @@ async function indicators(fetchImpl, key, now) {
       }
       return `- **${label}** ${number(last.value, digits)}${unit}${change} · ${dateLabel(last.time)} 기준`;
     } catch (error) {
+      notes.push(`한국은행 ${label}: ${error.message}`);
       return `- **${label}** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`;
     }
   };
@@ -65,7 +67,8 @@ async function indicators(fetchImpl, key, now) {
   try {
     const rows = await ecos(fetchImpl, key, '722Y001', 'D', ymd(now - 7 * DAY), end, '0101000');
     lines.push(`- **한국은행 기준금리** 연 ${number(rows.at(-1).value, 2)}% · ${dateLabel(rows.at(-1).time)} 기준`);
-  } catch {
+  } catch (error) {
+    notes.push(`한국은행 기준금리: ${error.message}`);
     lines.push(`- **한국은행 기준금리** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
   }
   try {
@@ -75,13 +78,14 @@ async function indicators(fetchImpl, key, now) {
     const previous = await ecos(fetchImpl, key, '901Y009', 'M', lastYear, lastYear, '0');
     const yoy = ((last.value - previous[0].value) / previous[0].value) * 100;
     lines.push(`- **소비자물가** 전년 동월 대비 ${signed(yoy, 1, '%')} · ${dateLabel(last.time)} 기준`);
-  } catch {
+  } catch (error) {
+    notes.push(`한국은행 소비자물가: ${error.message}`);
     lines.push(`- **소비자물가** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
   }
   return lines;
 }
 
-async function globalIndicators(fetchImpl, key, now) {
+async function globalIndicators(fetchImpl, key, now, notes = []) {
   const lines = [];
   const monthly = async (code, item, from = 6) => ecos(fetchImpl, key, code, 'M', ym(now - from * 31 * DAY), ym(now), item);
   try {
@@ -93,7 +97,8 @@ async function globalIndicators(fetchImpl, key, now) {
       if (!time) time = rows.at(-1).time;
     }
     lines.push(`- **주요국 정책금리** ${parts.join(' · ')} · ${dateLabel(time)} 기준 (BIS)`);
-  } catch {
+  } catch (error) {
+    notes.push(`한국은행 주요국 정책금리: ${error.message}`);
     lines.push(`- **주요국 정책금리** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
   }
   try {
@@ -103,14 +108,16 @@ async function globalIndicators(fetchImpl, key, now) {
     const change = rows => (rows.length > 1 ? ` (전월 대비 ${signed(((rows.at(-1).value - rows.at(-2).value) / rows.at(-2).value) * 100, 1, '%')})` : '');
     lines.push(`- **국제유가** 두바이 ${number(dubai.at(-1).value, 1)}달러${change(dubai)} · WTI ${number(wti.at(-1).value, 1)}달러${change(wti)} · ${dateLabel(dubai.at(-1).time)} 평균 (IMF)`);
     lines.push(`- **금 시세** 온스당 ${number(gold.at(-1).value, 1)}달러${change(gold)} · ${dateLabel(gold.at(-1).time)} 평균 (IMF)`);
-  } catch {
+  } catch (error) {
+    notes.push(`한국은행 국제유가·금: ${error.message}`);
     lines.push(`- **국제유가·금** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
   }
   try {
     const us = await monthly('902Y002', 'USA');
     const change = us.length > 1 ? ` (전월 대비 ${signed(((us.at(-1).value - us.at(-2).value) / us.at(-2).value) * 100, 1, '%')})` : '';
     lines.push(`- **미국 주가지수(OECD 종합)** ${number(us.at(-1).value, 1)}${change} · ${dateLabel(us.at(-1).time)} 기준`);
-  } catch {
+  } catch (error) {
+    notes.push(`한국은행 미국 주가지수: ${error.message}`);
     lines.push(`- **미국 주가지수** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
   }
   return lines;
@@ -118,17 +125,18 @@ async function globalIndicators(fetchImpl, key, now) {
 
 const IMF_AREAS = [['WEOWORLD', '세계'], ['KOR', '한국'], ['USA', '미국'], ['CHN', '중국'], ['JPN', '일본'], ['EURO', '유로존']];
 
-async function imfOutlook(fetchImpl, now) {
+async function imfOutlook(fetchImpl, now, notes = []) {
   const year = kstDate(now).getUTCFullYear();
   try {
-    const response = await fetchImpl('https://www.imf.org/external/datamapper/api/v1/NGDP_RPCH', { headers: { Accept: 'application/json' } });
+    const response = await fetchImpl(`https://www.imf.org/external/datamapper/api/v1/NGDP_RPCH/${IMF_AREAS.map(([code]) => code).join('/')}`, { headers: HEADERS });
     if (!response.ok) throw new Error(`IMF ${response.status}`);
     const values = (await response.json())?.values?.NGDP_RPCH;
     const lines = IMF_AREAS.filter(([code]) => values?.[code]?.[year] !== undefined)
       .map(([code, name]) => `- **${name}** ${year}년 ${number(values[code][year], 1)}% → ${year + 1}년 ${values[code][year + 1] !== undefined ? `${number(values[code][year + 1], 1)}%` : '-'}`);
     if (!lines.length) throw new Error('IMF empty');
     return ['IMF 세계경제전망(WEO)의 실질 경제성장률 전망입니다.', '', ...lines];
-  } catch {
+  } catch (error) {
+    notes.push(`IMF: ${error.message}`);
     return [`IMF 전망 자료를 불러오지 못했습니다. ${MANUAL_MARK} IMF·OECD·한국은행 전망을 확인해 적어 주세요.`];
   }
 }
@@ -140,11 +148,11 @@ async function rebHousing(fetchImpl, key) {
   const base = 'https://www.reb.or.kr/r-one/openapi';
   const call = async (service, params) => {
     const query = new URLSearchParams({ KEY: key, Type: 'json', ...params });
-    const response = await fetchImpl(`${base}/${service}.do?${query}`, { headers: { Accept: 'application/json' } });
+    const response = await fetchImpl(`${base}/${service}.do?${query}`, { headers: HEADERS });
     if (!response.ok) throw new Error(`REB ${response.status}`);
     const data = await response.json();
     const body = data?.[service];
-    if (!Array.isArray(body)) throw new Error(`REB ${data?.RESULT?.CODE || 'invalid'}`);
+    if (!Array.isArray(body)) throw new Error(`REB ${service} ${data?.RESULT?.CODE || ''} ${data?.RESULT?.MESSAGE || 'invalid response'}`.trim());
     const total = body[0]?.head?.find(entry => entry.list_total_count !== undefined)?.list_total_count || 0;
     return { total, rows: body[1]?.row || [] };
   };
@@ -154,22 +162,23 @@ async function rebHousing(fetchImpl, key) {
     tables.push(...rows);
     if (rows.length < 1000) break;
   }
-  const weekly = tables.filter(table => String(table.DTACYCLE_CD || '').split(',').includes('WK') && /아파트/.test(table.STATBL_NM));
+  const weekly = tables.filter(table => (String(table.DTACYCLE_CD || '').split(',').some(code => ['WK', 'WW'].includes(code.trim())) || /주/.test(table.DTACYCLE_NM || '') || /^\(주\)|주간/.test(table.STATBL_NM)) && /아파트/.test(table.STATBL_NM));
   const pick = pattern => weekly.filter(table => pattern.test(table.STATBL_NM)).sort((left, right) => (left.V_ORDER || 0) - (right.V_ORDER || 0))[0];
   const tableSets = [['매매', pick(/매매가격지수/)], ['전세', pick(/전세가격지수/)]].filter(([, table]) => table);
-  if (!tableSets.length) throw new Error('REB weekly tables not found');
+  if (!tableSets.length) throw new Error(`주간 아파트 통계표를 찾지 못함 (전체 ${tables.length}개 중 주간 아파트 후보: ${weekly.map(table => table.STATBL_NM).slice(0, 5).join(', ') || '없음'})`);
   const lines = [];
   let week = '';
   for (const [label, table] of tableSets) {
-    const first = await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: 'WK', pIndex: '1', pSize: '1' });
+    const cycle = String(table.DTACYCLE_CD || 'WK').split(',').map(code => code.trim()).find(code => ['WK', 'WW'].includes(code)) || 'WK';
+    const first = await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: cycle, pIndex: '1', pSize: '1' });
     const lastPage = Math.max(1, Math.ceil(first.total / 1000));
     const rows = [];
     for (const page of [lastPage - 1, lastPage].filter(page => page >= 1)) {
-      rows.push(...(await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: 'WK', pIndex: String(page), pSize: '1000' })).rows);
+      rows.push(...(await call('SttsApiTblData', { STATBL_ID: table.STATBL_ID, DTACYCLE_CD: cycle, pIndex: String(page), pSize: '1000' })).rows);
     }
     const regional = rows.filter(row => REB_REGIONS.includes(row.CLS_FULLNM || row.CLS_NM) && Number.isFinite(Number(row.DTA_VAL)));
     const times = [...new Set(regional.map(row => row.WRTTIME_IDTFR_ID))].sort();
-    if (times.length < 2) throw new Error('REB not enough weeks');
+    if (times.length < 2) throw new Error(`${table.STATBL_NM}: 지역(전국·서울 등) 자료가 2주 이상 없음 (받은 행 ${rows.length}개, 예: ${rows.slice(-2).map(row => `${row.WRTTIME_IDTFR_ID}/${row.CLS_FULLNM || row.CLS_NM}`).join(', ')})`);
     const [previous, latest] = times.slice(-2);
     week = regional.find(row => row.WRTTIME_IDTFR_ID === latest)?.WRTTIME_DESC || latest;
     const parts = REB_REGIONS.map(region => {
@@ -186,7 +195,7 @@ async function rebHousing(fetchImpl, key) {
 function highlightLines(posts, siteUrl) {
   const lines = [];
   const clip = text => {
-    const line = String(text).replace(/\s+/g, ' ').trim();
+    const line = String(text).replace(/[*_#`>\[\]]/g, '').replace(/\s+/g, ' ').trim();
     return line.length > 70 ? `${line.slice(0, 70)}…` : line;
   };
   for (const post of posts.policy) lines.push(`- **[정책 제안 · ${DEPARTMENTS[post.category] || post.category}]** ${clip(post.text)} (추천 ${post.likes})`);
@@ -203,13 +212,16 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
   const sendDate = kstDate(sendAt);
   const title = `${sendDate.getUTCMonth() + 1}월 ${sendDate.getUTCDate()}일`;
   const key = ecosKey || 'sample';
-  const [figures, global, outlook] = await Promise.all([indicators(fetchImpl, key, now), globalIndicators(fetchImpl, key, now), imfOutlook(fetchImpl, now)]);
+  const notes = [];
+  const [figures, global, outlook] = await Promise.all([indicators(fetchImpl, key, now, notes), globalIndicators(fetchImpl, key, now, notes), imfOutlook(fetchImpl, now, notes)]);
   let housing;
   try {
     housing = await rebHousing(fetchImpl, rebKey);
   } catch (error) {
     housing = null;
+    notes.push(`한국부동산원: ${error.message}`);
   }
+  if (!rebKey) notes.push('한국부동산원: 인증키(REB_API_KEY)가 없습니다.');
   const posts = highlights ? await highlights(new Date(now - 7 * DAY).toISOString()) : { policy: [], voice: [], community: [], researchCount: 0 };
   const body = [
     `# ${title} 주간 경제·정책 브리핑`,
@@ -262,7 +274,7 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
     '',
     '자료 출처: 한국은행 경제통계시스템(ECOS) · 국제통화기금(IMF) World Economic Outlook(https://www.imf.org/external/datamapper)' + (housing ? ' · 한국부동산원 부동산통계정보시스템(R-ONE)' : '') + '. 국제 지표는 한국은행이 BIS·IMF·OECD 자료를 수록한 것입니다.',
   ].join('\n');
-  return { subject: `스페이스 레터 · ${title} 주간 경제·정책 브리핑`, body, sendAt };
+  return { subject: `스페이스 레터 · ${title} 주간 경제·정책 브리핑`, body, sendAt, notes: notes.map(note => note.slice(0, 300)) };
 }
 
 module.exports = { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK };
