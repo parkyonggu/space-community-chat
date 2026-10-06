@@ -18,7 +18,7 @@
       { "name": "CHAT", "class_name": "ChatRoom" }
     ]
   },
-  "triggers": { "crons": ["0 9 * * 0"] },
+  "triggers": { "crons": ["0 9 * * SUN"] },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["CommunityService", "ChatRoom"] }
   ],
