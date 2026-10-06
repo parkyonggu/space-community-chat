@@ -331,3 +331,27 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .post-history { margin-top:8px; font-size:13.5px; color:var(--muted); }
 .post-history summary { cursor:pointer; font-weight:700; }
 .post-history p { margin:6px 0; padding:8px 10px; background:#fafbfe; border-radius:8px; color:var(--muted); }
+
+/* 광고 자리의 사이트 안내 배너 (AdSense 승인 전·미노출 시) */
+.house-ad { position:relative; }
+.house-ad-card { display:flex; align-items:center; gap:16px; padding:16px 18px; border-radius:12px; background:var(--navy); color:#fff; text-decoration:none; text-align:left; min-height:96px; animation:houseIn .5s ease; }
+.house-ad-card:hover { background:var(--navy-2); }
+.house-ad-card:hover .house-ad-cta { background:#ffc95c; }
+@keyframes houseIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.house-ad-icon { flex:none; width:52px; height:52px; border-radius:14px; background:rgba(245,185,65,.14); color:var(--gold); display:grid; place-items:center; }
+.house-ad-icon svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.house-ad-copy { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.house-ad-kicker { color:var(--gold); font-size:12px; font-weight:800; letter-spacing:.04em; }
+.house-ad-title { font-size:17px; line-height:1.35; color:#fff; }
+.house-ad-text { color:#c9d0e3; font-size:13.5px; line-height:1.55; }
+.house-ad-cta { flex:none; padding:9px 14px; border-radius:10px; background:var(--gold); color:var(--navy); font-weight:800; font-size:14px; white-space:nowrap; }
+.house-ad-dots { position:absolute; right:12px; bottom:6px; display:flex; gap:4px; }
+.house-ad-dots i { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.3); }
+.house-ad-dots i.on { background:var(--gold); }
+.dash-side .house-ad-card { flex-direction:column; align-items:flex-start; min-height:250px; justify-content:center; gap:10px; padding:22px 20px 26px; }
+.dash-side .house-ad-cta { align-self:stretch; text-align:center; }
+@media (max-width:640px) {
+  .house-ad-card { flex-wrap:wrap; }
+  .house-ad-icon { width:44px; height:44px; }
+  .house-ad-cta { width:100%; text-align:center; }
+}
