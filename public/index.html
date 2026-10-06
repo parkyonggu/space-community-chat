@@ -4,15 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스페이스 커뮤니티</title>
+  <meta name="description" content="스페이스 커뮤니티 — 실시간 채팅, 시민의 소리, 정책 제안과 독자 소통 공간">
+  <link rel="canonical" href="https://withpluces.com/">
+  <meta property="og:url" content="https://withpluces.com/">
+  <meta property="og:title" content="스페이스 커뮤니티">
   <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/icons/icon-512.png" sizes="512x512">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#1958E8">
+  <meta name="referrer" content="no-referrer">
+  <link rel="stylesheet" href="/signup.css">
+  <script defer src="/signup.js"></script>
 
-  <!-- ===== 구글 애드센스: 전역 스크립트 =====
-       ca-pub-XXXXXXXXXXXXXXXX 부분을 애드센스에서 발급받은 실제 게시자 ID로 교체하세요.
-       심사 승인 전까지는 광고 자리가 비어있는 게 정상입니다. -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485"
        crossorigin="anonymous"></script>
 
   <style>
@@ -53,14 +57,68 @@
     body.dark-mode { --paper:#101827; --ink:#edf3ff; --muted:#b7c4d8; --line:#34445d; --soft:#1e3154; background:var(--paper); } body.dark-mode .surface,body.dark-mode .card,body.dark-mode .policy-category { background:#172235; } body.dark-mode .category-group { background:#14223a; border-color:#38598f; } body.dark-mode .category-group h3 { color:#c8dbff; } body.dark-mode .chat-box,body.dark-mode .sort-bar button,body.dark-mode .like-btn,body.dark-mode input,body.dark-mode textarea,body.dark-mode select { background:#101827; color:var(--ink); border-color:#526783; } body.dark-mode .notice { background:#332d1e; border-color:#8e7330; } body.dark-mode .hero-note,body.dark-mode .post-item p,body.dark-mode .policy-actions { color:var(--muted); }
     @media (max-width:760px) { .hero,.guide,.grid,.policy-columns { grid-template-columns:1fr; } main { padding:22px 14px 44px; } .surface { padding:18px; } .section-head { display:block; } .section-head .sort-bar { justify-content:flex-start; margin-top:12px; } }
 
+    .home-link { display:inline-block; margin-bottom:12px; color:#c8dbff; text-decoration:none; font-weight:700; }
+    .home-link:hover { text-decoration:underline; }
+
     /* ===== 광고 영역 스타일 ===== */
     .ad-slot { margin:24px 0; padding:8px; text-align:center; border:1px dashed var(--line); border-radius:8px; background:rgba(255,255,255,.03); min-height:90px; }
     .ad-slot .ad-label { display:block; font-size:11px; color:var(--muted); letter-spacing:.05em; margin-bottom:6px; }
+    .editorial-figure { margin:0 0 28px; }
+    .editorial-cover { position:relative; overflow:hidden; border:1px solid #426289; border-radius:24px; background:#09182e; box-shadow:0 20px 55px rgba(0,0,0,.25); isolation:isolate; }
+    .editorial-figure img { display:block; width:100%; height:460px; object-fit:cover; object-position:center; }
+    .editorial-cover::after { content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(90deg,rgba(4,13,29,.94),rgba(4,13,29,.65) 42%,rgba(4,13,29,.06) 78%),linear-gradient(0deg,rgba(4,13,29,.5),transparent 70%); }
+    .editorial-cover-content { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:40px; max-width:650px; color:#f5f9ff; }
+    .editorial-kicker { display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:.18em; color:#b5d9ff; }
+    .editorial-kicker::before { content:""; width:24px; height:2px; background:#82bdff; }
+    .editorial-cover-content h2 { margin:20px 0 14px; font-size:clamp(28px,3.2vw,44px); line-height:1.25; letter-spacing:-.035em; word-break:keep-all; }
+    .editorial-cover-content p { max-width:400px; margin:0; color:#c5d5eb; font-size:15px; line-height:1.8; word-break:keep-all; }
+    .editorial-figure figcaption { margin:12px 8px 0; font-size:12px; line-height:1.7; color:var(--muted); text-align:center; word-break:keep-all; }
+    .editorial-figure figcaption strong { color:#a7caff; margin-right:6px; }
+    .reader-form { display:grid; gap:12px; }
+    .reader-form input:not([type="checkbox"]) { width:100%; min-width:0; padding:10px 14px; border:1px solid var(--line); border-radius:4px; }
+    .reader-form button { justify-self:start; }
+    .reader-meta { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .reader-meta time { color:var(--muted); font-size:13px; }
+    .reader-comment { border-left:3px solid var(--blue); padding:16px; margin-top:14px; background:var(--card); border-radius:8px; }
+    .reader-comment p { white-space:pre-wrap; overflow-wrap:anywhere; }
+    .form-status { min-height:1.65em; color:var(--muted); }
+    .form-status[data-error="true"] { color:#ffb4ab; }
+    .reader-consent { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--muted); }
+    .reader-consent input { margin-top:6px; }
+    .reader-shortcuts { display:flex; flex-wrap:wrap; gap:10px; margin:24px 0 0; }
+    .reader-shortcuts a { display:inline-flex; align-items:center; gap:8px; padding:11px 16px; border:1px solid #708ba9; border-radius:10px; color:#eff6ff; background:rgba(16,34,57,.8); font-size:13px; font-weight:700; text-decoration:none; transition:background .2s,border-color .2s; }
+    .reader-shortcuts a:first-child { background:#2d5bff; border-color:#5f83ff; color:#fff; }
+    .reader-shortcuts a:hover { background:#244366; border-color:#bddcff; }
+    .reader-shortcuts a:first-child:hover { background:#1946e8; }
+    .reader-shortcuts a:focus-visible { outline:3px solid #c5e3ff; outline-offset:4px; }
+    .reader-shortcuts a span { font-size:17px; }
+    @media (max-width:760px) {
+      .editorial-cover { border-radius:18px; }
+      .editorial-figure img { height:240px; }
+      .editorial-cover::after { background:linear-gradient(0deg,#09182e,transparent 30%); bottom:auto; height:240px; }
+      .editorial-cover-content { position:relative; padding:8px 22px 26px; }
+      .editorial-cover-content h2 { margin-top:16px; font-size:28px; }
+      .reader-shortcuts { flex-direction:column; width:100%; }
+      .reader-shortcuts a { justify-content:space-between; }
+    }
   </style>
 </head>
 <body>
+  <div class="site-header" style="padding-bottom:0"><div class="header-inner"><a class="home-link" href="/article.html">기존 아티클 보기 →</a></div></div>
   <header class="site-header"><div class="header-inner"><div class="brand"><img class="brand-mark" src="/icons/icon-512.png" alt="스페이스 커뮤니티 로고"><div><h1>스페이스 커뮤니티</h1><p>사람과 생각이 만나 서로를 존중하는 열린 공론장</p></div></div><nav aria-label="주요 메뉴"><button class="section-tab active" data-target="chat-section">1. 실시간 채팅</button><button class="section-tab" data-target="community-section">2. 소통·나눔 광장</button><button class="section-tab" data-target="voice-section">3. 시민의 소리</button><button class="section-tab" data-target="policy-section">4. 정책비평·제안</button><button class="section-tab" data-target="research-section">5. 학술·논문·소고·이야기</button><button id="darkModeBtn">다크모드</button></nav><div class="search-bar"><input id="searchInput" aria-label="의견 검색" placeholder="정책 의견을 검색하세요"><button id="searchBtn">검색</button></div></div></header>
   <main>
+    <figure class="editorial-figure">
+      <div class="editorial-cover">
+      <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J" alt="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 모듈러 구조" width="1200" height="420">
+        <div class="editorial-cover-content">
+          <div class="editorial-kicker">SPACE · CONNECTING IDEAS</div>
+          <h2>생각이 연결되는 곳,<br>새로운 이야기가 시작됩니다.</h2>
+          <p>기술과 일상, 시민의 목소리까지.<br>당신의 생각을 나누고 함께 더 나은 내일을 만드세요.</p>
+          <nav class="reader-shortcuts" aria-label="독자 참여 메뉴"><a href="#reader-section">독자 소통 공간 · 댓글 등록 <span aria-hidden="true">↗</span></a><a href="#newsletter-section">뉴스레터 구독 <span aria-hidden="true">→</span></a></nav>
+        </div>
+      </div>
+      <figcaption><strong>그림 1.</strong> 멀티 프레임워크 환경에서 공통 토큰 계약(Design Token Contracts)을 동기화하는 모듈러 시스템 구조</figcaption>
+    </figure>
     <section class="hero" aria-labelledby="hero-title"><div><div class="eyebrow">SPACE COMMUNITY</div><h2 id="hero-title">가까이 있든 멀리 있든,<br>우리는 서로의 이야기를 나눕니다.</h2><p class="lead">안부와 소식, 가벼운 잡담부터 진지한 의견과 유용한 정책 제안까지. 자유 시민 누구나 목소리를 내고 서로의 생각을 존중하는 공간입니다.</p></div><p class="hero-note">대한민국 헌법이 보장하는 국민 참여 정신을 바탕으로, 사실에 기반한 대화와 함께 만드는 변화를 지향합니다.</p></section>
 
     <!-- ===== 광고 1: 히어로 하단 배너 (전체 방문자 공통 노출) ===== -->
@@ -127,9 +185,122 @@
       </div>
 
       <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select><span class="label">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" placeholder="글 제목을 입력하세요" aria-label="글 제목"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
-    <section id="guide-section" class="surface" aria-labelledby="guide-title"><div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title">회원과 운영 안내</h2><div class="policy-columns"><div><h3>회원가입과 등급</h3><ul><li>이메일 또는 휴대전화 본인인증</li><li>약관·개인정보처리방침·운영원칙 동의</li><li>일반회원: 열람·댓글·일반 글쓰기</li><li>인증회원: 시민의 소리 글쓰기</li><li>우수회원: 정책 제안 우선 노출·배지</li></ul></div><div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 휴대전화, 닉네임을 수집합니다.</li><li>시민의 소리 본인인증 정보는 게시물에 공개되지 않습니다.</li><li>신고·분쟁 대응 근거로만 활용하며 관련 법령에 따릅니다.</li></ul></div><div><h3>신고와 제재</h3><ul><li>게시물·댓글에서 사유와 내용을 신고할 수 있습니다.</li><li>24~48시간 내 1차 검토 후 임시조치·소명을 진행합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지</li><li>중대 위반은 영구 정지 및 관계기관 통보</li><li>통보 후 7일 이내 이의제기할 수 있습니다.</li></ul></div></div></section>
+    <section id="reader-section" class="surface" aria-labelledby="reader-title">
+      <div class="section-head"><div><div class="eyebrow">READER COMMUNITY</div><h2 id="reader-title">독자 소통 공간</h2></div><span id="reader-comment-count" class="tag">댓글 불러오는 중</span></div>
+      <p class="intro">의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 독자에게 공개됩니다. 개인정보를 적지 마세요.</p>
+      <form id="reader-comment-form" class="reader-form">
+        <label for="reader-name">닉네임</label><input id="reader-name" name="name" required maxlength="40" autocomplete="nickname" placeholder="독자 닉네임">
+        <label for="reader-text">댓글 내용</label><textarea id="reader-text" name="text" required maxlength="2000" placeholder="의견이나 질문을 남겨주세요."></textarea>
+        <button type="submit" class="submitPolicy">댓글 등록</button>
+      </form>
+      <p id="reader-comment-status" class="form-status" role="status"></p>
+      <div id="reader-comments"></div>
+      <button id="reader-comments-refresh" type="button" class="submitPolicy">댓글 새로고침</button>
+    </section>
+    <section id="newsletter-section" class="surface" aria-labelledby="newsletter-title">
+      <div class="eyebrow">SPACE LETTER</div><h2 id="newsletter-title">뉴스레터 구독</h2>
+      <p class="intro">엄선된 기술 아티클과 사유의 글을 이메일 편지함으로 보내드립니다. 현재는 구독 신청만 접수하며, 이메일 발송 서비스는 준비 중입니다.</p>
+      <form id="newsletter-form" class="reader-form">
+        <label for="newsletter-email">이메일 주소</label><input id="newsletter-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
+        <label class="reader-consent"><input id="newsletter-consent" type="checkbox" required><span>뉴스레터 신청 관리 및 발송을 위한 이메일 수집·이용에 동의합니다. 동의는 선택이며, 미동의 시 신청할 수 없습니다. 구독 종료 또는 철회 시 삭제합니다. 발송 개시 전까지는 신청 관리 목적으로만 보관합니다.</span></label>
+        <p class="intro">언제든 아래 <strong>구독 해지</strong>로 철회할 수 있으며, 철회 즉시 이메일을 삭제합니다. <a href="/privacy">개인정보처리방침</a></p>
+        <button type="submit" class="submitPolicy">구독하기</button>
+      </form>
+      <p id="newsletter-status" class="form-status" role="status"></p>
+      <details class="newsletter-unsubscribe"><summary>구독 해지(동의 철회)</summary>
+      <form id="unsubscribe-form" class="reader-form">
+        <label for="unsubscribe-email">구독 신청한 이메일 주소</label><input id="unsubscribe-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
+        <button type="submit">구독 해지</button>
+      </form>
+      <p id="unsubscribe-status" class="form-status" role="status"></p></details>
+    </section>
+    <section id="guide-section" class="surface" aria-labelledby="guide-title">
+      <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title">회원과 운영 안내</h2>
+      <div class="policy-columns">
+        <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>메일 발송 설정 후 이메일 인증·비밀번호 재설정 메일을 발송합니다.</li><li>휴대전화 본인인증·인증회원 등급 및 게시판 접근 제한은 아직 적용되지 않았습니다.</li></ul></div>
+        <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
+        <div><h3>신고와 제재 · 운영 계획</h3><ul><li>공개 운영 전에 신고·제재 절차를 마련할 예정입니다.</li><li>24~48시간 내 1차 검토 후 임시조치·소명을 진행하는 것을 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지</li><li>중대 위반은 영구 정지 및 관계기관 통보</li><li>통보 후 7일 이내 이의제기할 수 있도록 준비합니다.</li></ul></div>
+      </div>
+    </section>
   </main>
-  <footer class="site-footer"><div class="site-footer-inner"><p>© 2026 스페이스 커뮤니티 · 서로 존중하는 문화</p><p>운영진은 게시판 가이드라인, 신고 처리, 분쟁 중재와 우수 제안 공유를 담당합니다.</p></div></footer>
+  <dialog id="signup-dialog" class="signup-dialog" aria-labelledby="signup-title" aria-describedby="signup-account-notice">
+    <div class="signup-heading">
+      <div><span class="signup-kicker">JOIN SPACE</span><h2 id="signup-title">함께 이야기할 준비가 되셨나요?</h2></div>
+      <button id="signup-close" class="signup-close" type="button" aria-label="회원가입 창 닫기">×</button>
+    </div>
+    <p class="signup-intro">서로의 생각을 존중하는 스페이스의 새로운 독자가 되어 주세요.</p>
+    <p id="signup-account-notice" class="signup-notice">회원가입 후 자동으로 로그인됩니다. 비밀번호는 보안 해시로 저장합니다. 메일 발송이 설정되어 있으면 가입한 이메일로 인증 메일을 보냅니다. 휴대전화 본인인증은 제공하지 않습니다.</p>
+    <form id="signup-form" class="signup-form">
+      <div class="signup-field"><label for="signup-email">이메일</label><input id="signup-email" type="email" required maxlength="254" autocomplete="email" placeholder="reader@example.com"></div>
+      <div class="signup-field"><label for="signup-nickname">닉네임</label><input id="signup-nickname" type="text" required minlength="2" maxlength="25" autocomplete="off" placeholder="사용할 닉네임" aria-describedby="signup-nickname-help"><small id="signup-nickname-help">앞뒤 공백을 제외한 2~25자</small></div>
+      <div class="signup-field"><label for="signup-password">비밀번호</label><input id="signup-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10자 이상 입력" aria-describedby="signup-password-help"><small id="signup-password-help">10~128자 · 다른 사이트와 다른 비밀번호를 사용해 주세요.</small></div>
+      <div class="signup-field"><label for="signup-password-confirm">비밀번호 확인</label><input id="signup-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="비밀번호를 다시 입력해 주세요"></div>
+      <fieldset class="signup-consents">
+        <legend>가입 동의 항목</legend>
+        <label><input id="signup-terms" type="checkbox" required><span><strong>[필수]</strong> 만 14세 이상이며 커뮤니티 이용 원칙에 동의합니다</span></label>
+        <details><summary>이용 원칙 보기</summary><p>서로 존중하는 대화, 타인의 권리 보호, 허위사실·불법 콘텐츠 금지와 커뮤니티 운영 원칙을 준수합니다. 이메일 인증은 이메일 주소의 소유만 확인하며 별도의 인증회원 등급을 부여하지 않습니다.</p></details>
+        <label><input id="signup-privacy" type="checkbox" required><span><strong>[필수]</strong> 개인정보 수집·이용 동의</span></label>
+        <details><summary>개인정보 안내 보기</summary><p>계정 생성·로그인 관리를 위해 이메일, 닉네임, 비밀번호 해시, 동의 시각과 로그인 세션을 서버에 저장합니다. 비밀번호 원문은 저장하지 않습니다. 계정 정보는 회원 탈퇴 시 즉시 삭제하며 세션은 만료 또는 로그아웃 시 폐기합니다. 서비스는 Cloudflare, Inc.(미국)의 인프라에서 운영되어 정보가 국외에 저장될 수 있습니다. 동의를 거부할 수 있으나 가입할 수 없습니다. 탈퇴는 로그인 후 <em>회원 탈퇴</em> 버튼으로 직접 할 수 있습니다. 자세한 내용은 <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>을 확인해 주세요.</p></details>
+      </fieldset>
+      <label class="auth-remember"><input id="signup-remember" type="checkbox"><span>로그인 상태 유지 (30일) · 공용 기기에서는 선택하지 마세요.</span></label>
+      <p id="signup-status" class="signup-status" role="status" aria-live="polite"></p>
+      <button class="signup-submit" type="submit" disabled>회원가입</button>
+      <button class="auth-switch" type="button" data-auth-switch="login">이미 가입하셨나요? 로그인</button>
+    </form>
+  </dialog>
+  <dialog id="login-dialog" class="signup-dialog" aria-labelledby="login-title">
+    <div class="signup-heading"><div><span class="signup-kicker">WELCOME BACK</span><h2 id="login-title">다시 만나 반갑습니다.</h2></div><button id="login-close" class="signup-close" type="button" aria-label="로그인 창 닫기">×</button></div>
+    <p class="signup-intro">이메일과 비밀번호로 스페이스에 로그인하세요.</p>
+    <form id="login-form" class="signup-form">
+      <div class="signup-field"><label for="login-email">이메일</label><input id="login-email" type="email" required maxlength="254" autocomplete="username" placeholder="reader@example.com"></div>
+      <div class="signup-field"><label for="login-password">비밀번호</label><input id="login-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <label class="auth-remember"><input id="login-remember" type="checkbox"><span>로그인 상태 유지 (30일)</span></label>
+      <p class="signup-footnote">공용 기기에서는 선택하지 마세요. 미선택 시 브라우저 세션 쿠키를 사용하며 최대 12시간 후 만료됩니다.</p>
+      <p id="login-status" class="signup-status" role="status" aria-live="polite"></p>
+      <button class="signup-submit" type="submit" disabled>로그인</button>
+      <button class="auth-switch" type="button" data-auth-switch="forgot">비밀번호를 잊으셨나요?</button>
+      <button class="auth-switch" type="button" data-auth-switch="signup">아직 계정이 없으신가요? 회원가입</button>
+    </form>
+  </dialog>
+  <dialog id="forgot-dialog" class="signup-dialog" aria-labelledby="forgot-title">
+    <div class="signup-heading"><div><span class="signup-kicker">ACCOUNT RECOVERY</span><h2 id="forgot-title">비밀번호 재설정 메일</h2></div><button id="forgot-close" class="signup-close" type="button" aria-label="재설정 메일 창 닫기">×</button></div>
+    <p class="signup-intro">가입한 이메일을 입력하면 30분 동안 사용할 수 있는 재설정 링크를 보내드립니다.</p>
+    <form id="forgot-form" class="signup-form">
+      <div class="signup-field"><label for="forgot-email">이메일</label><input id="forgot-email" type="email" required maxlength="254" autocomplete="email" placeholder="reader@example.com"></div>
+      <p id="forgot-status" class="signup-status" role="status"></p>
+      <button class="signup-submit" type="submit" disabled>재설정 메일 요청</button>
+      <button class="auth-switch" type="button" data-auth-switch="login">로그인으로 돌아가기</button>
+    </form>
+  </dialog>
+  <dialog id="verify-dialog" class="signup-dialog" aria-labelledby="verify-title">
+    <div class="signup-heading"><div><span class="signup-kicker">VERIFY EMAIL</span><h2 id="verify-title">이메일 주소 인증</h2></div><button id="verify-close" class="signup-close" type="button" aria-label="이메일 인증 창 닫기">×</button></div>
+    <p class="signup-intro">아래 버튼을 눌러 이 이메일 주소를 인증해 주세요. 메일을 여는 것만으로는 인증되지 않습니다.</p>
+    <form id="verify-form" class="signup-form"><p id="verify-status" class="signup-status" role="status"></p><button class="signup-submit" type="submit" disabled>이메일 인증 완료하기</button></form>
+  </dialog>
+  <dialog id="reset-dialog" class="signup-dialog" aria-labelledby="reset-title">
+    <div class="signup-heading"><div><span class="signup-kicker">NEW PASSWORD</span><h2 id="reset-title">새 비밀번호 설정</h2></div><button id="reset-close" class="signup-close" type="button" aria-label="새 비밀번호 창 닫기">×</button></div>
+    <p class="signup-notice">변경 후 모든 기기의 기존 로그인이 해제됩니다. 새 비밀번호로 다시 로그인해 주세요.</p>
+    <form id="reset-form" class="signup-form">
+      <div class="signup-field"><label for="reset-password">새 비밀번호</label><input id="reset-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10~128자 입력"></div>
+      <div class="signup-field"><label for="reset-password-confirm">새 비밀번호 확인</label><input id="reset-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="새 비밀번호 다시 입력"></div>
+      <p id="reset-status" class="signup-status" role="status"></p>
+      <button class="signup-submit" type="submit" disabled>비밀번호 변경</button>
+      <button class="auth-switch" type="button" data-auth-switch="forgot">새 재설정 메일 요청</button>
+      <button class="auth-switch" type="button" data-auth-switch="login">로그인으로 이동</button>
+    </form>
+  </dialog>
+  <dialog id="delete-dialog" class="signup-dialog" aria-labelledby="delete-title">
+    <div class="signup-heading"><div><span class="signup-kicker">DELETE ACCOUNT</span><h2 id="delete-title">회원 탈퇴</h2></div><button id="delete-close" class="signup-close" type="button" aria-label="회원 탈퇴 창 닫기">×</button></div>
+    <p class="signup-notice">탈퇴하면 이메일·닉네임·비밀번호 해시와 모든 로그인 세션이 즉시 삭제되며 되돌릴 수 없습니다. 이미 공개된 댓글은 남으므로, 삭제가 필요하면 운영자에게 요청해 주세요.</p>
+    <form id="delete-form" class="signup-form">
+      <div class="signup-field"><label for="delete-password">현재 비밀번호</label><input id="delete-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <label class="auth-remember"><input id="delete-confirm" type="checkbox" required><span>계정과 개인정보가 즉시 삭제되는 것을 확인했습니다.</span></label>
+      <p id="delete-status" class="signup-status" role="status"></p>
+      <button class="signup-submit" type="submit" disabled>탈퇴하기</button>
+    </form>
+  </dialog>
+  <script defer src="/reader-community.js"></script>
+  <footer class="site-footer"><div class="site-footer-inner"><p>© 2026 스페이스 커뮤니티 · 서로 존중하는 문화</p><p>운영: (주)위드플러시아 · 문의 <a href="mailto:dragon600120@gmail.com" style="color:inherit">dragon600120@gmail.com</a> · <a href="/privacy" style="color:inherit"><strong>개인정보처리방침</strong></a></p></div></footer>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const categories = [{ title:"재정·경제산업부", depts:[{id:"economy",name:"기획재정부"},{id:"industry",name:"산업통상자원부"},{id:"finance",name:"금융위원회"},{id:"sme",name:"중소벤처기업부"}] },{ title:"사회·교육·문화", depts:[{id:"education",name:"교육부"},{id:"culture",name:"문화체육관광부"},{id:"welfare",name:"보건복지부"},{id:"labor",name:"고용노동부"},{id:"gender",name:"여성가족부"},{id:"environment",name:"환경부"}] },{ title:"외교·안보·통일", depts:[{id:"foreign",name:"외교부"},{id:"unification",name:"통일부"},{id:"defense",name:"국방부"}] },{ title:"과학·인프라", depts:[{id:"science",name:"과학기술정보통신부"},{id:"landtransport",name:"국토교통부"},{id:"agriculture",name:"농림축산식품부"},{id:"ocean",name:"해양수산부"}] },{ title:"일반행정·법무", depts:[{id:"safety",name:"행정안전부"},{id:"justice",name:"법무부"},{id:"personnel",name:"인사혁신처"}] }];
@@ -150,9 +321,11 @@
     document.getElementById("researchSubmit").addEventListener("click", () => { const titleInput = document.getElementById("researchTitle"); const contentInput = document.getElementById("researchInput"); const title = titleInput.value.trim(); const text = contentInput.value.trim(); if (!title || !text) { alert("제목과 내용을 입력해주세요."); return; } researchPosts.unshift({ category: document.getElementById("researchType").value, title, text }); titleInput.value = ""; contentInput.value = ""; renderResearchPosts(); });
     document.getElementById("researchFilter").addEventListener("change", renderResearchPosts);
     const tabSections = ["chat-section", "community-section", "voice-section", "policy-section", "research-section"];
-    function showSection(sectionId) { tabSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === sectionId)); document.querySelectorAll(".section-tab").forEach(button => button.classList.toggle("active", button.dataset.target === sectionId)); document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
-    document.querySelectorAll(".section-tab").forEach(button => button.addEventListener("click", () => showSection(button.dataset.target)));
-    showSection("chat-section");
+    function showSection(sectionId, scroll = true) { tabSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === sectionId)); document.querySelectorAll(".section-tab").forEach(button => button.classList.toggle("active", button.dataset.target === sectionId)); if (scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
+    document.querySelectorAll(".section-tab").forEach(button => button.addEventListener("click", () => { const sectionId = button.dataset.target; if (window.location.hash === `#${sectionId}`) showSection(sectionId); else window.location.hash = sectionId; }));
+    function showLinkedSection(scroll = true) { const sectionId = window.location.hash.slice(1); const sharedSection = ["guide-section", "reader-section", "newsletter-section"].includes(sectionId); showSection(tabSections.includes(sectionId) ? sectionId : "chat-section", scroll && !sharedSection); if (sharedSection && scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
+    window.addEventListener("hashchange", () => showLinkedSection());
+    showLinkedSection(Boolean(window.location.hash));
     const darkModeButton = document.getElementById("darkModeBtn");
     darkModeButton.addEventListener("click", () => { document.body.classList.toggle("dark-mode"); darkModeButton.textContent = document.body.classList.contains("dark-mode") ? "라이트모드" : "다크모드"; });
     const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});

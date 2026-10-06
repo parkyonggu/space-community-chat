@@ -6,8 +6,14 @@
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
+    "build:pages": "node build-pages.js",
+    "build:worker": "node build-worker.js",
+    "dev:worker": "wrangler dev --port 3003 --var SITE_URL:http://localhost:3003",
+    "deploy:worker": "wrangler deploy",
+    "test:worker": "node --test cloudflare/integration.test.cjs",
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "check:mail": "node check-mail.js",
+    "test": "node --test community-api.test.js auth-api.test.js"
   },
   "keywords": [],
   "author": "",
@@ -16,12 +22,14 @@
   "dependencies": {
     "express": "^5.2.1",
     "mongoose": "^9.9.5",
+    "nodemailer": "^10.0.14",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "wrangler": "^4.0.0",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

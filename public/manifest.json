@@ -2,15 +2,15 @@
   "name": "스페이스 커뮤니티",
   "short_name": "스페이스 커뮤니티",
   "description": "사람과 생각이 만나 서로를 존중하는 열린 공론장",
-  "start_url": "/space-community-chat/index.html",
-  "scope": "/space-community-chat/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#F8F9FF",
   "theme_color": "#1958E8",
   "lang": "ko",
   "icons": [
     {
-      "src": "/space-community-chat/public/icons/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

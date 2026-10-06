@@ -1,0 +1,743 @@
+﻿<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485"
+  crossorigin="anonymous"></script>
+<!-- Primary SEO Meta Tags (Google Search Central & Naver Search Advisor) -->
+<title>2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드 | 스페이스</title>
+<meta name="description" content="마이크로 프론트엔드의 파편화를 넘어 컴포넌트 토큰 레이어와 서버 컴포넌트 환경이 결합된 지속 가능한 인터페이스 아키텍처 구축 실무 가이드를 스페이스에서 확인하세요."/>
+<meta name="keywords" content="프론트엔드, 웹아키텍처, 디자인시스템, RSC, 서버컴포넌트, 스타일딕셔너리, W3C DTCG, 스페이스, 테크블로그"/>
+<meta name="author" content="강태현 (Taehyun Kang)"/>
+<meta name="publisher" content="스페이스 (Space)"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
+<link rel="canonical" href="https://space-editorial.com/articles/2025-frontend-architecture-design-system"/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+
+<!-- Open Graph / Naver & Social Meta Tags -->
+<meta property="og:type" content="article"/>
+<meta property="og:site_name" content="스페이스 (Space)"/>
+<meta property="og:title" content="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드"/>
+<meta property="og:description" content="마이크로 프론트엔드의 파편화를 넘어 컴포넌트 토큰 레이어와 서버 컴포넌트 환경이 결합된 지속 가능한 인터페이스 아키텍처 구축 실무 가이드"/>
+<meta property="og:url" content="https://space-editorial.com/articles/2025-frontend-architecture-design-system"/>
+<meta property="og:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 모듈러 구조"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="article:published_time" content="2025-05-14T09:00:00+09:00"/>
+<meta property="article:modified_time" content="2025-05-14T11:30:00+09:00"/>
+<meta property="article:author" content="강태현"/>
+<meta property="article:section" content="기술 & AI"/>
+<meta property="article:tag" content="프론트엔드"/>
+<meta property="article:tag" content="디자인시스템"/>
+<meta property="article:tag" content="웹아키텍처"/>
+
+<!-- Twitter Cards -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드"/>
+<meta name="twitter:description" content="마이크로 프론트엔드의 파편화를 넘어 컴포넌트 토큰 레이어와 서버 컴포넌트 환경이 결합된 지속 가능한 인터페이스 아키텍처 구축 실무"/>
+<meta name="twitter:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J"/>
+
+<!-- Structured Data (JSON-LD Schema.org) for Google & Naver Rich Snippets -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://space-editorial.com/#organization",
+      "name": "스페이스 (Space)",
+      "url": "https://space-editorial.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://space-editorial.com/favicon.svg",
+        "width": 32,
+        "height": 32
+      }
+    },
+    {
+      "@type": "TechArticle",
+      "@id": "https://space-editorial.com/articles/2025-frontend-architecture-design-system#article",
+      "isPartOf": {
+        "@type": "WebPage",
+        "@id": "https://space-editorial.com/articles/2025-frontend-architecture-design-system"
+      },
+      "headline": "2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드",
+      "description": "마이크로 프론트엔드의 파편화를 넘어 컴포넌트 토큰 레이어와 서버 컴포넌트 환경이 결합된 지속 가능한 인터페이스 아키텍처 구축 실무를 탐구합니다.",
+      "inLanguage": "ko-KR",
+      "mainEntityOfPage": "https://space-editorial.com/articles/2025-frontend-architecture-design-system",
+      "datePublished": "2025-05-14T09:00:00+09:00",
+      "dateModified": "2025-05-14T11:30:00+09:00",
+      "author": {
+        "@type": "Person",
+        "name": "강태현 (Taehyun Kang)",
+        "jobTitle": "Lead UI Platform Engineer",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "Space Editorial Lab"
+        }
+      },
+      "publisher": {
+        "@id": "https://space-editorial.com/#organization"
+      },
+      "image": {
+        "@type": "ImageObject",
+        "url": "https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J",
+        "caption": "2025년 웹 프론트엔드 아키텍처와 디자인 시스템 모듈러 구조"
+      },
+      "articleSection": "기술 & AI",
+      "keywords": ["프론트엔드", "디자인시스템", "웹아키텍처", "RSC", "Style Dictionary"]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://space-editorial.com/articles/2025-frontend-architecture-design-system#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "홈",
+          "item": "https://space-editorial.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "기술 & AI",
+          "item": "https://space-editorial.com/tech-ai"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드",
+          "item": "https://space-editorial.com/articles/2025-frontend-architecture-design-system"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary-fixed-dim": "#b8c3ff", "surface-container-highest": "#d3e4fe", "on-secondary-fixed-variant": "#0035bd", "tertiary-fixed-dim": "#b7c7e9", "error-container": "#ffdad6", "on-primary": "#ffffff", "surface-container-low": "#eff4ff", "surface-dim": "#cbdbf5", "on-tertiary": "#ffffff", "secondary-fixed": "#dde1ff", "surface-variant": "#d3e4fe", "on-secondary": "#ffffff", "error": "#ba1a1a", "surface-tint": "#555e75", "on-surface": "#0b1c30", "surface-container-lowest": "#ffffff", "primary-container": "#121b2f", "on-primary-fixed-variant": "#3d475c", "secondary": "#0040df", "on-error": "#ffffff", "outline": "#76777d", "on-secondary-fixed": "#001355", "tertiary-fixed": "#d7e3ff", "primary": "#000000", "background": "#f8f9ff", "on-tertiary-container": "#7584a3", "inverse-surface": "#213145", "on-primary-container": "#7a849c", "tertiary": "#000000", "surface-container": "#e5eeff", "primary-fixed": "#d9e2fd", "on-tertiary-fixed-variant": "#384763", "on-tertiary-fixed": "#0b1b35", "on-secondary-container": "#efefff", "on-background": "#0b1c30", "on-primary-fixed": "#121b2f", "outline-variant": "#c6c6cd", "primary-fixed-dim": "#bdc6e0", "surface": "#f8f9ff", "secondary-container": "#2d5bff", "on-error-container": "#93000a", "on-surface-variant": "#45474d", "inverse-primary": "#bdc6e0", "inverse-on-surface": "#eaf1ff", "surface-bright": "#f8f9ff", "tertiary-container": "#0b1b35", "surface-container-high": "#dce9ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "content-editorial-max": "740px", "gutter-3xl": "4.5rem", "gutter-xl": "2rem", "content-stream-max": "1180px", "gutter-md": "1rem", "content-full-max": "1360px", "ad-leaderboard-height": "90px", "gutter-lg": "1.5rem", "gutter-2xl": "3rem", "gutter-sm": "0.5rem", "ad-sidebar-width": "300px", "gutter-xs": "0.25rem" }, "fontFamily": { "headline-lg-mobile": [ "Plus Jakarta Sans" ], "body-editorial-md": [ "Inter" ], "headline-md": [ "Plus Jakarta Sans" ], "caption": [ "Inter" ], "body-editorial-lg": [ "Inter" ], "body-ui": [ "Inter" ], "body-ui-bold": [ "Inter" ], "display-hero-mobile": [ "Plus Jakarta Sans" ], "ad-label": [ "Space Grotesk" ], "headline-lg": [ "Plus Jakarta Sans" ], "label-mono": [ "Space Grotesk" ], "display-hero": [ "Plus Jakarta Sans" ], "headline-sm": [ "Plus Jakarta Sans" ] }, "fontSize": { "headline-lg-mobile": [ "26px", { "lineHeight": "36px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-editorial-md": [ "17px", { "lineHeight": "30px", "letterSpacing": "-0.003em", "fontWeight": "400" } ], "headline-md": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "caption": [ "13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" } ], "body-editorial-lg": [ "19px", { "lineHeight": "34px", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "body-ui": [ "15px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" } ], "body-ui-bold": [ "15px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" } ], "display-hero-mobile": [ "34px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "800" } ], "ad-label": [ "10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" } ], "headline-lg": [ "32px", { "lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "label-mono": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "display-hero": [ "48px", { "lineHeight": "60px", "letterSpacing": "-0.025em", "fontWeight": "800" } ], "headline-sm": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ] } } } }</script></head><body class="bg-surface font-body-ui text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 max-w-content-full-max mx-auto px-gutter-lg flex items-center justify-between gap-gutter-md"><div class="flex items-center gap-gutter-lg"><a class="flex items-center gap-gutter-sm" data-path="home" href="#"><img alt="Space Blog Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1Um6Uc4RBXWgz7L6wi-tn1vC6p6Gs8gTIOoTk_PJ8UIPSTjs5UOVV6JClSaNW5d_G0I3rUy2FOac1SumLFuJyTG83q2KMiGeEW8iEQHaJIiM8GhcnMYz6DYn6IvkJ5vW5n2BXbaEW6H8D6MEmcjw0moM23bOc6EuLs4G57lxVoSHrxF0eZN1gUFY-tq7XVp7Hqrnpbvxynxa88Od6VLy85eDPy04xvKtcGboFBi761w6TK7sSWYF9vSIw"/><span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">스페이스</span></a><nav class="hidden xl:flex items-center gap-gutter-xs" data-active-classes="bg-surface-container-high text-on-surface font-body-ui-bold rounded-lg"><a aria-current="page" class="px-gutter-sm py-gutter-xs transition-colors bg-surface-container-high text-on-surface font-body-ui-bold rounded-lg" data-path="home" href="#">홈</a><a class="px-gutter-sm py-gutter-xs text-on-surface-variant font-body-ui text-body-ui hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="tech-dev" href="#">기술 &amp; 개발</a><a class="px-gutter-sm py-gutter-xs text-on-surface-variant font-body-ui text-body-ui hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="life-daily" href="#">라이프 &amp; 일상</a><a class="px-gutter-sm py-gutter-xs text-on-surface-variant font-body-ui text-body-ui hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="essays" href="#">에세이</a><a class="px-gutter-sm py-gutter-xs text-on-surface-variant font-body-ui text-body-ui hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" data-path="about" href="#">소개</a></nav></div><div class="flex-1 max-w-md hidden md:block"><div class="relative flex items-center w-full"><span class="material-symbols-outlined absolute left-gutter-sm text-on-surface-variant pointer-events-none text-xl">search</span><input class="w-full pl-10 pr-gutter-md py-gutter-xs bg-surface-container-low text-on-surface placeholder:text-outline text-body-ui font-body-ui rounded-lg focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-secondary-container transition-all" placeholder="글 제목, 태그, 키워드 검색..." type="search"/></div></div><div class="flex items-center gap-gutter-md"><a class="inline-flex items-center gap-gutter-xs px-gutter-md py-gutter-xs bg-secondary-container text-on-secondary rounded-lg font-body-ui-bold text-body-ui shadow-sm hover:opacity-90 transition-opacity" data-path="write-article" href="#"><span class="material-symbols-outlined text-lg">edit</span><span>새 글 작성</span></a><button aria-label="알림" class="p-gutter-xs rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors relative" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary-container"></span></button><a class="flex items-center rounded-full ring-2 ring-transparent hover:ring-secondary-container transition-all" data-path="my-profile" href="#"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBysWUUJJ-Sw6gQu9exr7j2a0nJBsx9J9OVZAkQxQDhrlyEgf7bpJsn8yB2bbBuh4r-NAAvEFDKBy-tNnmDox03U3QtJ2hp48A5WDhmzT1rQK81VjCROLXvP8Ceuhu9XNRsyZP9YALC7YBitDisyzWXtZEQLYjbI_cOYtbJ1LyVY163ciPcrh46YXHAO6dtfrehWtcFEyC1Ifv-pouX0mfi4cov7OB_gVjqskwMNJUCQ4nUKXkheoUe"/></a></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<div class="w-full bg-surface-container-lowest/60 py-gutter-sm">
+<div class="max-w-content-full-max mx-auto px-gutter-lg">
+<nav class="flex items-center gap-gutter-xs font-caption text-caption text-on-surface-variant">
+<a class="hover:text-secondary transition-colors" href="#">홈</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-secondary transition-colors" href="#">기술 &amp; AI</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-on-surface font-body-ui-bold">아티클 상세</span>
+</nav>
+</div>
+</div>
+<div class="max-w-content-full-max mx-auto px-gutter-lg pt-gutter-lg pb-gutter-3xl w-full">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter-2xl items-start">
+<article class="xl:col-span-8 flex flex-col min-w-0">
+<header class="flex flex-col gap-gutter-md pb-gutter-xl">
+<div class="flex flex-wrap items-center gap-gutter-sm">
+<span class="px-gutter-sm py-1 bg-surface-container-high text-on-surface font-ad-label text-ad-label uppercase rounded">
+              기술 &amp; AI
+            </span>
+<span class="text-caption font-caption text-on-surface-variant">2025. 05. 14</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-caption font-caption text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">schedule</span>
+              6 min read
+            </span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-caption font-caption text-on-surface-variant flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">visibility</span>
+              1,420회 읽음
+            </span>
+</div>
+<h1 class="font-display-hero text-headline-lg lg:text-display-hero text-on-surface tracking-tight leading-tight">
+            2025년 웹 프론트엔드 아키텍처와 디자인 시스템 구축 가이드
+          </h1>
+<p class="font-body-editorial-lg text-body-editorial-lg text-on-surface-variant leading-relaxed">
+            마이크로 프론트엔드의 파편화를 넘어 컴포넌트 토큰 레이어와 서버 컴포넌트 환경이 결합된 지속 가능한 인터페이스 아키텍처 구축 실무를 탐구합니다.
+          </p>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-gutter-md pt-gutter-sm bg-surface-container-low/50 p-gutter-md rounded-xl">
+<div class="flex items-center gap-gutter-md">
+<img alt="강태현 리드 UI 플랫폼 엔지니어 프로필" class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Close up professional portrait of a thoughtful Korean software engineering architect in a serene modern studio with warm diffused rim lighting and subtle minimalist aesthetics" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNaXqB1VbINY4m0g-uK5bl4bQDznxF20ZgReSWXyX-RkI-9qi15i5EneXJRT9kVDgKA0xf3yUy5v4gHB0T8F6ibVpf1Uw-rT349O1Sf_0z598UWJXtxoVowuW5MbWZBx5IqO7xAcT7WUF_BvRMBfMiKV56TCcjngXkGCum9TaQtwH84K6nlikiGcPaOuE66zbSSCXHHLSt9jVJrJxPVEmA_z0B3jwafywcYnXEv9TohZtZPmjCAB_C"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-gutter-xs">
+<span class="font-body-ui-bold text-body-ui-bold text-on-surface">강태현 (Taehyun Kang)</span>
+<span class="px-1.5 py-0.5 bg-secondary-container text-on-secondary font-ad-label text-ad-label rounded">PRO</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Lead UI Platform Engineer @ Space Editorial Lab</span>
+</div>
+</div>
+<div class="flex items-center gap-gutter-xs self-end sm:self-auto">
+<button class="px-gutter-md py-1.5 bg-on-surface text-surface font-body-ui-bold text-caption rounded hover:bg-on-surface-variant transition-colors flex items-center gap-1" id="follow-author-btn" type="button">
+<span class="material-symbols-outlined text-sm">add</span>
+<span id="follow-text">팔로우</span>
+</button>
+<div class="flex items-center gap-1 ml-gutter-xs bg-surface-container-lowest p-1 rounded-lg shadow-sm">
+<button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" id="copy-link-btn" title="URL 복사" type="button">
+<span class="material-symbols-outlined text-base">link</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title="트위터 / X 공유" type="button">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title="카카오톡 공유" type="button">
+<span class="material-symbols-outlined text-base">chat_bubble</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title="링크드인 공유" type="button">
+<span class="material-symbols-outlined text-base">work</span>
+</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-secondary-container transition-colors" id="bookmark-btn" title="북마크 저장" type="button">
+<span class="material-symbols-outlined text-base">bookmark</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<div class="w-full flex flex-col gap-gutter-xl">
+<figure class="flex flex-col gap-gutter-xs">
+<div class="w-full h-80 sm:h-96 md:h-[420px] rounded-xl overflow-hidden shadow-md relative">
+<img alt="2025년 웹 프론트엔드 아키텍처와 디자인 시스템 모듈러 구조" class="w-full h-full object-cover" data-alt="Conceptual editorial photograph showing futuristic clean wireframe architectures and sleek glass design tokens floating symmetrically with cool cobalt blue ambient lighting against a dark twilight canvas" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQXiwB1YtpysNhrxpARHkG5mKoMehCkfxLiLEKDToDWGmPUrUFqwnBg2LRx05x5SerkvzeF2v1sPfKC6l3DX12gStqa75QhMHst-w6AJVP0W03vDsiq7Mpl4SCwerqK4jSI6-PUcYFEFvfwkmS2oorgRUn3HWPeXudoh_jWFFszBTRNLNj7IUJVxqSs5m4VgvACGcR9IJZ_O1Pe74_KHLl2MiwTRdRRYKvq77mLxR0U_H4Bzw5d16J"/>
+<div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-primary/80 to-transparent p-gutter-md">
+<span class="font-ad-label text-ad-label uppercase text-on-primary/80 tracking-widest">Platform Engineering 2025</span>
+</div>
+</div>
+<figcaption class="font-caption text-caption text-on-surface-variant text-center pt-1">
+              그림 1. 멀티 프레임워크 환경에서 공통 토큰 계약(Design Token Contracts)을 동기화하는 모듈러 시스템 구조
+            </figcaption>
+</figure>
+<div class="max-w-content-editorial-max flex flex-col gap-gutter-lg font-body-editorial-md text-body-editorial-md text-on-surface leading-relaxed">
+<p>
+              웹 생태계는 지난 수년간 극단적인 번들 세분화와 상태 관리 패러다임의 급변을 거쳐 왔습니다. 2025년 현재, 프론트엔드 엔지니어링의 핵심 과제는 단순히 신규 프레임워크를 적용하는 것이 아니라, <strong class="font-body-ui-bold text-on-surface underline decoration-secondary-container decoration-2 underline-offset-4">디자인 토큰 규격의 자동화</strong>와 런타임 오버헤드를 제로에 가깝게 유지하는 견고한 아키텍처의 확립입니다.
+            </p>
+<h2 class="font-headline-lg text-headline-md sm:text-headline-lg text-on-surface pt-gutter-md flex items-center gap-gutter-xs" id="section-tokens">
+<span class="text-secondary font-label-mono text-body-ui">01.</span>
+              디자인 토큰과 타입스크립트의 계약 기반 통합
+            </h2>
+<p>
+              대규모 제품 조직에서 디자인 시스템의 붕괴는 대개 UI 디자이너의 피그마(Figma) 라이브러리와 실제 프론트엔드 코드베이스 간의 불일치에서 발생합니다. 이를 방지하기 위해 Style Dictionary 및 W3C DTCG 표준을 적용한 자동 코드 생성 파이프라인이 필수로 자리잡았습니다.
+            </p>
+<div class="bg-surface-container-high/60 p-gutter-lg rounded-xl flex items-start gap-gutter-md shadow-sm">
+<span class="material-symbols-outlined text-3xl text-secondary-container flex-shrink-0">format_quote</span>
+<blockquote class="font-body-editorial-md text-body-editorial-md text-on-surface italic">
+                “훌륭한 디자인 시스템은 단지 예쁜 버튼 모음집이 아닙니다. 그것은 엔지니어와 디자이너가 오류 없이 동일한 맥락으로 커뮤니케이션하도록 강제하는 컴파일러에 가깝습니다.”
+              </blockquote>
+</div>
+<p>
+              다음은 토큰 트랜스파일러가 생성한 CSS 변수 계약을 프론트엔드 컴포넌트에서 안전하게 주입하고 런타임 테마를 즉시 전환할 수 있는 미니멀 구현 예시입니다.
+            </p>
+<div class="bg-primary-container text-on-primary rounded-xl overflow-hidden shadow-md flex flex-col font-label-mono text-caption">
+<div class="flex items-center justify-between px-gutter-md py-gutter-xs bg-tertiary-container/80 text-on-primary-container">
+<span class="flex items-center gap-1.5 text-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-error"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-surface-container-highest"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
+<span class="ml-2 font-label-mono">design-system/tokenEngine.ts</span>
+</span>
+<span class="text-[11px] uppercase tracking-wider">TypeScript</span>
+</div>
+<pre class="p-gutter-md overflow-x-auto text-surface-container-high leading-normal"><code><span class="text-secondary-fixed-dim">export interface</span> <span class="text-surface-container-highest">EditorialThemeContract</span> {
+  palette: {
+    surface: <span class="text-tertiary-fixed">string</span>;
+    accent: <span class="text-tertiary-fixed">string</span>;
+    onSurface: <span class="text-tertiary-fixed">string</span>;
+  };
+  typography: {
+    rhythmBase: <span class="text-tertiary-fixed">number</span>;
+    lineScale: <span class="text-tertiary-fixed">Record&lt;string, string&gt;</span>;
+  };
+}
+
+<span class="text-outline">/** 런타임 제로-코스트 컴포넌트 래퍼 생성 */</span>
+<span class="text-secondary-fixed-dim">export function</span> <span class="text-surface-container-highest">createTokenStream</span>(theme: <span class="text-surface-container-highest">EditorialThemeContract</span>) {
+  <span class="text-secondary-fixed-dim">return</span> Object.freeze({
+    ...theme,
+    timestamp: Date.now(),
+    apply: () =&gt; document.documentElement.dataset.theme = <span class="text-tertiary-fixed">"editorial-ready"</span>
+  });
+}</code></pre>
+</div>
+<!-- In-Article Google AdSense Responsive Unit -->
+<div class="w-full my-gutter-lg p-gutter-md bg-surface-container-low rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm">
+<div class="w-full flex items-center justify-between font-ad-label text-ad-label text-outline uppercase tracking-wider">
+<span>AD / Google AdSense</span>
+<span class="material-symbols-outlined text-xs">info</span>
+</div>
+<div class="w-full h-28 sm:h-32 bg-surface-container-lowest rounded-lg flex flex-col sm:flex-row items-center justify-between p-gutter-md gap-gutter-md">
+<div class="flex items-center gap-gutter-md">
+<div class="w-14 h-14 rounded-lg bg-surface-container flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-2xl">cloud_sync</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-ui-bold text-on-surface">클라우드 네이티브 디자인 컴파일러 솔루션</span>
+<span class="font-caption text-caption text-on-surface-variant">Figma 스타일을 프로덕션 TypeScript 코드로 1초 만에 배포하세요.</span>
+</div>
+</div>
+<a class="px-gutter-md py-1.5 bg-secondary-container text-on-secondary font-body-ui-bold text-caption rounded-lg whitespace-nowrap shadow-sm hover:opacity-90" href="#">자세히 보기</a>
+</div>
+</div>
+<h2 class="font-headline-lg text-headline-md sm:text-headline-lg text-on-surface pt-gutter-md flex items-center gap-gutter-xs" id="section-microfrontends">
+<span class="text-secondary font-label-mono text-body-ui">02.</span>
+              서버 컴포넌트(RSC) 시대의 모듈 바운더리 설계
+            </h2>
+<p>
+              클라이언트 런타임에 모든 뷰를 렌더링하던 Single Page Application(SPA) 모델에서 서버 주도 렌더링으로 무게중심이 이동함에 따라, 상태 저장(Stateful) 경계와 무상태(Stateless) 프레젠테이션 경계를 명확하게 분리하는 전략이 필수가 되었습니다.
+            </p>
+<ul class="flex flex-col gap-gutter-sm my-gutter-xs">
+<li class="flex items-start gap-gutter-sm">
+<span class="material-symbols-outlined text-secondary text-lg mt-1">check_circle</span>
+<span><strong>Leaf-Level 인터랙션 분리:</strong> 복잡한 DOM 조작이나 웹소켓 리스너가 필요한 컴포넌트만 클라이언트 아일랜드(Island)로 고립시켜 번들 크기 최소화.</span>
+</li>
+<li class="flex items-start gap-gutter-sm">
+<span class="material-symbols-outlined text-secondary text-lg mt-1">check_circle</span>
+<span><strong>캐시 일관성 태깅:</strong> 정적 콘텐츠와 동적 반응형 컴포넌트의 캐시 생명 주기를 태그 기반 무효화 메커니즘으로 제어.</span>
+</li>
+<li class="flex items-start gap-gutter-sm">
+<span class="material-symbols-outlined text-secondary text-lg mt-1">check_circle</span>
+<span><strong>접근성 보장 자동화:</strong> WAI-ARIA 1.3 표준 준수 여부를 CI 단계에서 Headless 테스팅 파이프라인으로 엄격 검증.</span>
+</li>
+</ul>
+<h3 class="font-headline-sm text-headline-sm text-on-surface pt-gutter-sm" id="section-conclusion">
+              지속 가능한 시스템을 위한 제언
+            </h3>
+<p>
+              도구와 라이브러리는 계속해서 교체되지만, 명확한 문서화와 토큰 기반 규약은 소프트웨어 수명을 드라마틱하게 연장합니다. 오늘 소개한 설계 패턴을 기반으로 팀 내 프론트엔드 컨벤션을 점진적으로 리팩터링해 보시길 권합니다.
+            </p>
+</div>
+<!-- Bottom Tags & Reactions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-gutter-md pt-gutter-lg bg-surface-container-lowest p-gutter-lg rounded-xl shadow-sm">
+<div class="flex flex-wrap items-center gap-gutter-xs">
+<a class="px-gutter-sm py-1 bg-surface-container text-on-surface-variant font-caption text-caption rounded-full hover:bg-surface-container-high transition-colors" href="#">#프론트엔드</a>
+<a class="px-gutter-sm py-1 bg-surface-container text-on-surface-variant font-caption text-caption rounded-full hover:bg-surface-container-high transition-colors" href="#">#디자인시스템</a>
+<a class="px-gutter-sm py-1 bg-surface-container text-on-surface-variant font-caption text-caption rounded-full hover:bg-surface-container-high transition-colors" href="#">#웹개발</a>
+<a class="px-gutter-sm py-1 bg-surface-container text-on-surface-variant font-caption text-caption rounded-full hover:bg-surface-container-high transition-colors" href="#">#반응형디자인</a>
+</div>
+<div class="flex items-center gap-gutter-sm">
+<button class="flex items-center gap-1.5 px-gutter-md py-2 bg-error-container text-on-error-container rounded-lg font-body-ui-bold text-caption hover:opacity-90 transition-opacity shadow-sm" id="like-reaction-btn" type="button">
+<span class="material-symbols-outlined text-base text-error">favorite</span>
+<span id="like-count">142</span>
+</button>
+<button class="flex items-center gap-1.5 px-gutter-md py-2 bg-surface-container text-on-surface rounded-lg font-body-ui-bold text-caption hover:bg-surface-container-high transition-colors shadow-sm" id="share-reaction-btn" type="button">
+<span class="material-symbols-outlined text-base">share</span>
+<span>공유</span>
+</button>
+</div>
+</div>
+<!-- Google AdSense Matched Content Section -->
+<div class="flex flex-col gap-gutter-sm pt-gutter-md">
+<div class="flex items-center justify-between font-ad-label text-ad-label text-outline uppercase tracking-wider">
+<span>스폰서 추천 콘텐츠 / Google AdSense Matched</span>
+<span class="material-symbols-outlined text-xs">info</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter-md">
+<div class="bg-surface-container-lowest p-gutter-sm rounded-xl shadow-sm flex flex-col gap-2 group cursor-pointer hover:shadow-md transition-shadow">
+<div class="w-full h-28 rounded-lg overflow-hidden relative">
+<img alt="2025 개발자를 위한 차세대 모니터 특별 프로모션" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Minimalist computer workstation with dual modern monitors showing deep blue code editor and design mockup in a bright loft" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBkF7FiRWaXPV0Pjs3Lu3dLxdXUUDE34rLKuNYAoCHYYuE8wIhL5TPD0lTxXMsWW9nR1gSE3nbpJPkxurA5lKx3ugSg_fP4CPFTqwvNYnD0VdHtNN24Hs0E63ULhsB6t99fqNPWo3qWZjElYrbNvKYjiyQzw7W7X-lo-aKiR0e8uCYM3CD2DM6VWuDUr0Zb8nO2gMtnUY6AAGhZYQOlI5PCddguTTYtjFNf7Harh2qEkY0-dxkQM29"/>
+<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-on-surface/80 text-surface text-[10px] rounded font-ad-label uppercase">Ad</span>
+</div>
+<h4 class="font-headline-sm text-caption font-bold text-on-surface line-clamp-2">2025 개발자를 위한 차세대 모니터 특별 프로모션</h4>
+<span class="text-[11px] text-outline">테크기어 공식 스토어</span>
+</div>
+<div class="bg-surface-container-lowest p-gutter-sm rounded-xl shadow-sm flex flex-col gap-2 group cursor-pointer hover:shadow-md transition-shadow">
+<div class="w-full h-28 rounded-lg overflow-hidden relative">
+<img alt="글로벌 엔지니어링 리모트 포지션 오픈 채용" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Abstract colorful neon network nodes communicating in deep cyberspace with bright glow lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS1ZZO3TRmCgwLC_dxM75Qg2DBQGu1jHFby3r-5bBx9-CYQbIa1El3n1Td-07y7_VoeoqH4BpVw8_LfsE8Yxm9Bm4NpUxphl7hCJMaRIlomkX4AK4WnTEI_ahwZ6hCRxV6RKByv7BiknG4cqcweBeAVYPZUg9xARzMn2PM6sRhLUR6qphTSveDpwggmg0tKZj5QugcvdfPvIPLaneSkmvWHaQLYyZu8giKVJAABcy4cEzKOKL1328Y"/>
+<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-on-surface/80 text-surface text-[10px] rounded font-ad-label uppercase">Ad</span>
+</div>
+<h4 class="font-headline-sm text-caption font-bold text-on-surface line-clamp-2">글로벌 엔지니어링 리모트 포지션 오픈 채용</h4>
+<span class="text-[11px] text-outline">커리어 매칭 플랫폼</span>
+</div>
+<div class="bg-surface-container-lowest p-gutter-sm rounded-xl shadow-sm flex flex-col gap-2 group cursor-pointer hover:shadow-md transition-shadow">
+<div class="w-full h-28 rounded-lg overflow-hidden relative">
+<img alt="스타트업 엔지니어링 매니저로 살아남는 7가지 원칙" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Modern stylish office lounge with people collaborating peacefully over laptops and coffee cups" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrTPlXnxulKTdLV2a88H9cug_g-9uSZIUlWTtfYuIzt2IdHXyHS-XIuESbymDr3Fd6Vu6Hen1FW57VinQc01IOZDGZ5BfKKN74FhoBmeT9nPz6bXFdNrJTeG6WeiQKZ_kLvPOqCh59IeBvSBVmPxWF5LMQ4tGzjg4vGym0BRD4kBumRck8ij1f0vW_BavYFqt5T8l2RddGy7rjxsTsQ_o22on9AducbTZ6qgKiEt02BG2StQD0s8Iq"/>
+<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-secondary-container text-on-secondary text-[10px] rounded font-ad-label uppercase">추천글</span>
+</div>
+<h4 class="font-headline-sm text-caption font-bold text-on-surface line-clamp-2">스타트업 엔지니어링 매니저로 살아남는 7가지 원칙</h4>
+<span class="text-[11px] text-outline">스페이스 에디토리얼</span>
+</div>
+<div class="bg-surface-container-lowest p-gutter-sm rounded-xl shadow-sm flex flex-col gap-2 group cursor-pointer hover:shadow-md transition-shadow">
+<div class="w-full h-28 rounded-lg overflow-hidden relative">
+<img alt="생각의 밀도를 높이는 일일 기록 루틴과 도구들" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Clean aesthetic notebook journal and sleek pen resting on wooden desk beside an espresso cup in morning sunshine" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFnm1t2wnRQ5bWmVkILiGRPdcEUsiljguyO_Sr195EPRKk_hmxkHTh4ZA-zz_sRQPe4rPwlPZ56pTr6PRr9TNxHtvs0FVpyoxZQd4bnOyIdqQfwrIGRBvRqBJYt40YyNMmCOTsR-mAlexytgA2X3o2fwKOGEsiO4qC8ci1otrXJWHu2ejgR23g1opmHw31idPoVXvOxG7uaiBlPeq2etSfjnKXqnMq7BAHlpd8MbwNVJ_6GA6qvV07"/>
+<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-secondary-container text-on-secondary text-[10px] rounded font-ad-label uppercase">추천글</span>
+</div>
+<h4 class="font-headline-sm text-caption font-bold text-on-surface line-clamp-2">생각의 밀도를 높이는 일일 기록 루틴과 도구들</h4>
+<span class="text-[11px] text-outline">라이프 에디터</span>
+</div>
+</div>
+</div>
+<!-- Author Signature Card -->
+<div class="p-gutter-xl bg-surface-container-low rounded-xl shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-gutter-lg">
+<img alt="강태현 (Taehyun Kang) 에디토리얼 필진 프로필" class="w-20 h-20 rounded-full object-cover shadow-md flex-shrink-0" data-alt="Close up professional portrait of a thoughtful Korean software engineering architect in a serene modern studio with warm diffused rim lighting and subtle minimalist aesthetics" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuBJYtLObg0cJnu9gFbYq_tSh0HfGUCF9L08OBPqbDxJCTG5EHMfDSsCOtVBwvVAZzZ0JBXXwbsqPrAleSJXrEMqKp1N_nLV3H3kR-0U8zPe05DsAvtu3Dut5JwH0n6iSDQ7WduujUoEPsBPO7ki01F7t11tSg0K6uNmZxroOU1nr0dds9u8LToQbuPFwYO0EyE6F3aEr9JEHVlzx2FOIbDhadplUoPE120yoqRwSM734tOKpMaUK6"/>
+<div class="flex flex-col items-center sm:items-start gap-gutter-xs text-center sm:text-left">
+<div class="flex items-center gap-gutter-xs">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">강태현 (Taehyun Kang)</h3>
+<span class="font-caption text-caption text-secondary-container font-body-ui-bold">에디토리얼 필진</span>
+</div>
+<p class="font-body-ui text-body-ui text-on-surface-variant max-w-xl leading-relaxed">
+                웹 프론트엔드 아키텍처와 디자인 엔지니어링의 교차점을 탐구합니다. 현재 Space Editorial Lab에서 인터페이스 컴파일러 및 디자인 토큰 자동화 도구를 연구·기고하고 있습니다.
+              </p>
+<div class="pt-gutter-xs">
+<a class="inline-flex items-center gap-1 font-body-ui-bold text-body-ui text-secondary-container hover:underline" href="#">
+<span>이 저자의 다른 글 더보기</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Comments Section -->
+<section class="flex flex-col gap-gutter-lg pt-gutter-xl">
+<div class="flex items-center justify-between pb-gutter-xs">
+<div class="flex items-center gap-gutter-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">독자 소통 공간</h2>
+<span class="px-2.5 py-0.5 bg-secondary text-on-secondary font-label-mono text-label-mono rounded-full" id="comment-count-badge">댓글 24개</span>
+</div>
+<div class="flex items-center gap-gutter-xs font-caption text-caption text-on-surface-variant">
+<label class="sr-only" for="comment-sort-select">댓글 정렬</label>
+<select class="bg-surface-container-low text-on-surface px-gutter-sm py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary-container" id="comment-sort-select">
+<option value="latest">최신순</option>
+<option value="popular">추천순</option>
+</select>
+</div>
+</div>
+<!-- Comment Input Box -->
+<div class="bg-surface-container-lowest p-gutter-lg rounded-xl shadow-md flex flex-col gap-gutter-md">
+<div class="flex items-start gap-gutter-md">
+<img alt="댓글 작성 대기 중인 기본 프로필" class="w-10 h-10 rounded-full object-cover" data-alt="Friendly casual avatar photo of a young tech professional with a warm smile wearing dark minimal hoodie against calm white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCblZqZCaVFuoRQjxMBlkCrctsIsOK0cPQZuHOqF07aGdN16kxCTdpx2ziozPS5hTvebEK_V0pVgAyNQxy3njgFSMWPumPN4aRXbok0KkQ_cl16bF4HbH7xCwG3eGNs4GtI3ssZX81zqsAIsUfrSfwYhqVrgXaJvLLTUe4WCk43mnq3Ec1daIyrvgMssCN7JHpoAHb-um5Na1f1y_HiLzil1ClTVnwHph_3Sb8O5LvoiLo4OfpN-BJ0"/>
+<div class="flex-1 flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-body-ui-bold text-caption text-on-surface">독자 님으로 작성 중</span>
+<button class="font-caption text-caption text-secondary-container hover:underline" id="login-toggle-btn" type="button">회원 로그인 / 비회원 전환</button>
+</div>
+<div class="w-full bg-surface-container-low rounded-lg p-gutter-sm flex flex-col">
+<div class="flex items-center gap-1 pb-gutter-xs mb-1 text-on-surface-variant">
+<button class="p-1 hover:bg-surface-container rounded" title="굵게" type="button"><span class="material-symbols-outlined text-sm">format_bold</span></button>
+<button class="p-1 hover:bg-surface-container rounded" title="기울임" type="button"><span class="material-symbols-outlined text-sm">format_italic</span></button>
+<button class="p-1 hover:bg-surface-container rounded" title="인용구" type="button"><span class="material-symbols-outlined text-sm">format_quote</span></button>
+<button class="p-1 hover:bg-surface-container rounded" title="코드 블록" type="button"><span class="material-symbols-outlined text-sm">code</span></button>
+<button class="p-1 hover:bg-surface-container rounded" title="링크 삽입" type="button"><span class="material-symbols-outlined text-sm">link</span></button>
+</div>
+<textarea class="w-full bg-transparent text-on-surface placeholder:text-outline font-body-ui text-body-ui focus:outline-none resize-none" id="comment-textarea" placeholder="의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 마크다운 문법을 지원합니다." rows="3"></textarea>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-gutter-xs">
+<span class="font-caption text-caption text-outline">건전한 토론 문화를 위해 커뮤니티 가이드라인을 준수해 주세요.</span>
+<button class="px-gutter-lg py-2 bg-secondary-container text-on-secondary font-body-ui-bold text-caption rounded-lg shadow hover:opacity-90 transition-opacity" id="submit-comment-btn" type="button">
+                  댓글 등록
+                </button>
+</div>
+</div>
+<!-- Nested Comment Thread -->
+<div class="flex flex-col gap-gutter-lg" id="comments-thread-list">
+<!-- First Comment & Nested Author Reply -->
+<div class="bg-surface-container-lowest p-gutter-lg rounded-xl shadow-sm flex flex-col gap-gutter-md">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-gutter-sm">
+<img alt="댓글 작성자 김서연 프로필 사진" class="w-10 h-10 rounded-full object-cover" data-alt="Portrait photo of a young Korean female UI designer with clear glasses smiling genuinely in a bright architectural firm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlE7Iwd-o0v1yORTgdr5BhsWPqp1xFEGdrlfeP3r9H8sRuljrB3ejgEHkU4grznCtvco2Lq4uVpBMPJTwpkfvKiKrPfxVl1tOJ7F_GwAVbZbzIeHHHG6ONL2wEMxod3Pu14vIp1Eqg8aPA9UCl54XtYFsRA4xzLRM8vV49ig5MSQ9uLm82BtsrxC7JKxqM0Q066dgT3DX4WPHDOg8JcTQhm0ZE_cpgc6VpE5lE5gN1osAu72UDgL-R"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-body-ui-bold text-body-ui-bold text-on-surface">김서연 (Seoyeon Kim)</span>
+<span class="material-symbols-outlined text-secondary-container text-sm" title="인증 독자">verified</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">2시간 전</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1" type="button">
+<span class="material-symbols-outlined text-base">more_horiz</span>
+</button>
+</div>
+<p class="font-body-ui text-body-ui text-on-surface leading-relaxed">
+                  Style Dictionary와 W3C DTCG 연계 부분에서 매번 빌드 타임이 길어지는 병목이 있었는데, 기사에서 제시해주신 경량 스트림 방식 도입을 적극 검토해봐야겠습니다. 혹시 모바일 웹뷰(Hybrid App) 환경에서도 토큰 동기화 시 메모리 누수 문제는 없으셨는지 궁금합니다!
+                </p>
+<div class="flex items-center gap-gutter-md pt-gutter-xs">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5">
+<button class="flex items-center gap-1 px-2.5 py-1 text-on-surface-variant hover:text-secondary font-body-ui-bold text-caption" type="button">
+<span class="material-symbols-outlined text-sm">thumb_up</span>
+<span>14</span>
+</button>
+<button class="px-2 py-1 text-on-surface-variant hover:text-error font-body-ui-bold text-caption" type="button">
+<span class="material-symbols-outlined text-sm">thumb_down</span>
+</button>
+</div>
+<button class="flex items-center gap-1 font-body-ui-bold text-caption text-on-surface-variant hover:text-secondary-container" type="button">
+<span class="material-symbols-outlined text-sm">reply</span>
+<span>답글 달기</span>
+</button>
+</div>
+<!-- Nested Reply (Author) -->
+<div class="ml-gutter-md sm:ml-gutter-xl pl-gutter-md bg-surface-container-low p-gutter-md rounded-xl flex flex-col gap-gutter-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-gutter-sm">
+<img alt="답글 작성자 강태현 프로필 사진" class="w-8 h-8 rounded-full object-cover" data-alt="Close up professional portrait of a thoughtful Korean software engineering architect in a serene modern studio with warm diffused rim lighting and subtle minimalist aesthetics" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBntoO5YLBFTXZLEdOeIkt0Lxh5-UPmEPnkxEcCZ6Df8VGG1ZMq-lZHl9KBkLMJ2HtCBtiMPz_OwklpQp9CjngcamgVCE-o9Z7a6-P-eVG-_nM27BCbkzt_OQDMoLFDbtEJm3SbRtzII24LUEM8EXZ6ZQsXy0Z8F5pbM3OPmnf8VWFkR9SBmnaeIsjhrhpq_-1ZZA08bUsW0ptxuk5bTfCxm1QKDova2WbFO4AfdAZiqVXR1e8LE8SF"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-body-ui-bold text-caption text-on-surface">강태현 (Taehyun Kang)</span>
+<span class="px-1.5 py-0.2 bg-secondary-container text-on-secondary font-ad-label text-[10px] rounded">작성자</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">1시간 전</span>
+</div>
+</div>
+</div>
+<p class="font-body-ui text-body-ui text-on-surface leading-relaxed">
+                    서연 님, 좋은 질문 감사드립니다! 모바일 웹뷰의 경우 <code class="px-1 py-0.5 bg-surface-container-highest rounded text-caption font-label-mono">document.documentElement</code>에 매번 인라인 스타일을 통째로 덮어쓰면 리플로우(Reflow) 비용이 발생할 수 있습니다. 그래서 토큰 업데이트는 CSS Custom Properties 객체 단위로 격리된 서브트리에만 적용하도록 배치(Batch) 처리하는 것을 권장합니다. 다음 후속 아티클에서 웹뷰 최적화 벤치마크 데이터를 다뤄보겠습니다 :)
+                  </p>
+<div class="flex items-center gap-gutter-md pt-gutter-xs">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-secondary font-body-ui-bold text-caption" type="button">
+<span class="material-symbols-outlined text-sm">thumb_up</span>
+<span>8</span>
+</button>
+<button class="flex items-center gap-1 font-body-ui-bold text-caption text-on-surface-variant hover:text-secondary-container" type="button">
+<span class="material-symbols-outlined text-sm">reply</span>
+<span>답글</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Second Comment with Collapsed Subthread -->
+<div class="bg-surface-container-lowest p-gutter-lg rounded-xl shadow-sm flex flex-col gap-gutter-md">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-gutter-sm">
+<img alt="댓글 작성자 박민혁 프로필 사진" class="w-10 h-10 rounded-full object-cover" data-alt="Clean minimal avatar showing a confident male engineer in dark glasses in front of cool gradient background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvz3PdU2_y9MBEMA7A6rH9h9mk-nwDpjXNI_Ho-os2fQYI8wWD9uG-qMtlGh57tOjgCUio6Qw-RJVffbCndfeub2hFD6tmb8swRHZEnc8Dg3m-RRxLZYIN1--BrtlSSSfmMTRYGNnJhdYed5v__7GLnjxxOmOID56iEnz1aDfE9-ANLhQojOmhfvd4iZgv_ORojnU4-lLdezwQjB25Lhm-EhowoeP4RtuQLrfa_aYYdGhjzQdBl832"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-body-ui-bold text-body-ui-bold text-on-surface">박민혁 (DevMinhyuk)</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">3시간 전</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1" type="button">
+<span class="material-symbols-outlined text-base">more_horiz</span>
+</button>
+</div>
+<p class="font-body-ui text-body-ui text-on-surface leading-relaxed">
+                  서버 컴포넌트 환경에서 디자인 토큰 주입할 때 Hydration Mismatch 오류를 해결하는 방법이 명쾌하게 설명되어 있어 많은 도움 되었습니다. 사내 프론트엔드 위키에 공유했습니다!
+                </p>
+<div class="flex items-center justify-between pt-gutter-xs">
+<div class="flex items-center gap-gutter-md">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5">
+<button class="flex items-center gap-1 px-2.5 py-1 text-on-surface-variant hover:text-secondary font-body-ui-bold text-caption" type="button">
+<span class="material-symbols-outlined text-sm">thumb_up</span>
+<span>9</span>
+</button>
+</div>
+<button class="flex items-center gap-1 font-body-ui-bold text-caption text-on-surface-variant hover:text-secondary-container" type="button">
+<span class="material-symbols-outlined text-sm">reply</span>
+<span>답글 달기</span>
+</button>
+</div>
+<!-- Folded thread toggle -->
+<button class="flex items-center gap-1 font-body-ui-bold text-caption text-secondary-container hover:underline" id="toggle-folded-thread-btn" type="button">
+<span class="material-symbols-outlined text-sm">subdirectory_arrow_right</span>
+<span id="folded-thread-text">답글 2개 더보기</span>
+</button>
+</div>
+<!-- Hidden folded thread container -->
+<div class="hidden ml-gutter-md sm:ml-gutter-xl pl-gutter-md flex-col gap-gutter-sm" id="folded-thread-content">
+<div class="bg-surface-container-low p-gutter-sm rounded-lg flex flex-col gap-1">
+<span class="font-body-ui-bold text-caption text-on-surface">이준우:</span>
+<p class="font-body-ui text-caption text-on-surface-variant">저도 저번 프로젝트에서 하이드레이션 문제로 고생했는데 태그 기반 주입으로 말끔히 해결했습니다.</p>
+</div>
+<div class="bg-surface-container-low p-gutter-sm rounded-lg flex flex-col gap-1">
+<span class="font-body-ui-bold text-caption text-on-surface">정다은:</span>
+<p class="font-body-ui text-caption text-on-surface-variant">공유해주셔서 감사합니다. 정말 좋은 자료네요!</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</article>
+<!-- Right Sticky Side Navigation / TOC & Skyscraper Ad -->
+<aside class="hidden xl:flex xl:col-span-4 flex-col gap-gutter-lg sticky top-20">
+<!-- Table of Contents Module -->
+<div class="bg-surface-container-lowest p-gutter-lg rounded-xl shadow-sm flex flex-col gap-gutter-md">
+<div class="flex items-center justify-between pb-gutter-xs">
+<span class="font-headline-sm text-body-ui-bold text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-lg text-secondary">format_list_bulleted</span>
+              목차 (Table of Contents)
+            </span>
+<span class="font-label-mono text-ad-label text-outline uppercase tracking-wider">Guide</span>
+</div>
+<nav class="flex flex-col gap-1.5 font-body-ui text-body-ui">
+<a class="toc-item flex items-center justify-between py-1.5 px-gutter-sm rounded-lg text-secondary-container bg-surface-container-high font-body-ui-bold transition-all" href="#section-tokens" id="toc-link-1">
+<span class="truncate">1. 디자인 토큰과 타입스크립트 계약</span>
+<span class="material-symbols-outlined text-xs">arrow_forward</span>
+</a>
+<a class="toc-item flex items-center justify-between py-1.5 px-gutter-sm rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" href="#section-microfrontends" id="toc-link-2">
+<span class="truncate">2. 서버 컴포넌트(RSC) 모듈 바운더리</span>
+</a>
+<a class="toc-item flex items-center justify-between py-1.5 px-gutter-sm rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" href="#section-conclusion" id="toc-link-3">
+<span class="truncate">3. 지속 가능한 시스템을 위한 제언</span>
+</a>
+</nav>
+<div class="pt-gutter-xs">
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-1/3 transition-all duration-150" id="reading-progress-bar"></div>
+</div>
+<div class="flex justify-between items-center text-[11px] text-on-surface-variant pt-1">
+<span>읽기 진행률</span>
+<span class="font-label-mono" id="reading-progress-text">35%</span>
+</div>
+</div>
+</div>
+<!-- Sticky AdSense Skyscraper (300x600) Slot -->
+<div class="bg-surface-container-low rounded-xl p-gutter-md flex flex-col items-center gap-gutter-sm shadow-sm">
+<div class="w-full flex items-center justify-between font-ad-label text-ad-label text-outline uppercase tracking-wider">
+<span>스폰서 광고 / Google AdSense</span>
+<span class="material-symbols-outlined text-xs">info</span>
+</div>
+<div class="w-[300px] h-[540px] bg-surface-container-lowest rounded-lg p-gutter-lg flex flex-col items-center justify-between text-center shadow-inner relative overflow-hidden group">
+<div class="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-secondary-fixed/50 filter blur-xl pointer-events-none"></div>
+<div class="flex flex-col items-center gap-gutter-sm pt-gutter-md">
+<div class="w-16 h-16 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-3xl">developer_board</span>
+</div>
+<span class="font-ad-label text-ad-label uppercase text-secondary-container font-bold tracking-wider">Cloud Native DevOps</span>
+<h3 class="font-headline-md text-headline-sm text-on-surface leading-snug">
+                대규모 엔터프라이즈 프론트엔드 배포 가속화 엔진
+              </h3>
+<p class="font-caption text-caption text-on-surface-variant leading-normal">
+                Next.js 15 및 Remix 클라우드 빌드를 최대 4.8배 빠르게 최적화하는 스마트 캐시 플랫폼.
+              </p>
+</div>
+<div class="w-full flex flex-col gap-gutter-xs">
+<a class="w-full py-2.5 bg-on-surface text-surface font-body-ui-bold text-caption rounded-lg hover:bg-on-surface-variant transition-colors shadow-sm" href="#">
+                무료 엔터프라이즈 데모 신청
+              </a>
+<span class="text-[10px] text-outline font-label-mono">Sponsored by DevScale Global</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+    (function initPostDetailInteractive() {
+      // Follow author button toggle
+      const followBtn = document.getElementById('follow-author-btn');
+      const followText = document.getElementById('follow-text');
+      if (followBtn && followText) {
+        followBtn.addEventListener('click', () => {
+          const isFollowing = followText.textContent === '팔로잉';
+          followText.textContent = isFollowing ? '팔로우' : '팔로잉';
+          followBtn.classList.toggle('bg-secondary-container', !isFollowing);
+          followBtn.classList.toggle('text-on-secondary', !isFollowing);
+          followBtn.classList.toggle('bg-on-surface', isFollowing);
+          followBtn.classList.toggle('text-surface', isFollowing);
+        });
+      }
+
+      // Bookmark button toggle
+      const bookmarkBtn = document.getElementById('bookmark-btn');
+      if (bookmarkBtn) {
+        bookmarkBtn.addEventListener('click', () => {
+          const icon = bookmarkBtn.querySelector('.material-symbols-outlined');
+          if (icon) {
+            const isSaved = icon.textContent === 'bookmark_added';
+            icon.textContent = isSaved ? 'bookmark' : 'bookmark_added';
+            bookmarkBtn.classList.toggle('text-secondary-container', !isSaved);
+          }
+        });
+      }
+
+      // Like reaction button counter
+      const likeBtn = document.getElementById('like-reaction-btn');
+      const likeCount = document.getElementById('like-count');
+      let liked = false;
+      if (likeBtn && likeCount) {
+        likeBtn.addEventListener('click', () => {
+          let count = parseInt(likeCount.textContent, 10) || 142;
+          liked = !liked;
+          likeCount.textContent = liked ? count + 1 : count - 1;
+          likeBtn.classList.toggle('scale-105', liked);
+        });
+      }
+
+      // Copy link micro-interaction
+      const copyBtn = document.getElementById('copy-link-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard && navigator.clipboard.writeText(window.location.href);
+          const icon = copyBtn.querySelector('.material-symbols-outlined');
+          if (icon) {
+            icon.textContent = 'check';
+            setTimeout(() => { icon.textContent = 'link'; }, 1800);
+          }
+        });
+      }
+
+      // Toggle folded thread
+      const toggleFoldedBtn = document.getElementById('toggle-folded-thread-btn');
+      const foldedContent = document.getElementById('folded-thread-content');
+      const foldedText = document.getElementById('folded-thread-text');
+      if (toggleFoldedBtn && foldedContent && foldedText) {
+        toggleFoldedBtn.addEventListener('click', () => {
+          const isHidden = foldedContent.classList.contains('hidden');
+          foldedContent.classList.toggle('hidden', !isHidden);
+          foldedContent.classList.toggle('flex', isHidden);
+          foldedText.textContent = isHidden ? '답글 접기' : '답글 2개 더보기';
+        });
+      }
+
+      // Login prompt toggle
+      const loginToggleBtn = document.getElementById('login-toggle-btn');
+      if (loginToggleBtn) {
+        loginToggleBtn.addEventListener('click', () => {
+          const isGuest = loginToggleBtn.textContent.includes('비회원');
+          loginToggleBtn.textContent = isGuest ? '회원 로그인 상태 (강태현 님)' : '회원 로그인 / 비회원 전환';
+        });
+      }
+
+      // Submit new comment simulation
+      const submitCommentBtn = document.getElementById('submit-comment-btn');
+      const commentTextarea = document.getElementById('comment-textarea');
+      const threadList = document.getElementById('comments-thread-list');
+      const badge = document.getElementById('comment-count-badge');
+
+      if (submitCommentBtn && commentTextarea && threadList) {
+        submitCommentBtn.addEventListener('click', () => {
+          const text = commentTextarea.value.trim();
+          if (!text) {
+            commentTextarea.focus();
+            return;
+          }
+
+          const newCard = document.createElement('div');
+          newCard.className = 'bg-surface-container-lowest p-gutter-lg rounded-xl shadow-sm flex flex-col gap-gutter-md';
+          newCard.innerHTML = `
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-gutter-sm">
+                <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary flex items-center justify-center font-body-ui-bold">나</div>
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-body-ui-bold text-body-ui-bold text-on-surface">독자 (방금 전)</span>
+                  </div>
+                  <span class="font-caption text-caption text-on-surface-variant">방금 작성</span>
+                </div>
+              </div>
+            </div>
+            <p class="font-body-ui text-body-ui text-on-surface leading-relaxed">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+            <div class="flex items-center gap-gutter-md pt-gutter-xs">
+              <button type="button" class="flex items-center gap-1 px-2.5 py-1 bg-surface-container-low text-on-surface-variant hover:text-secondary rounded-lg font-body-ui-bold text-caption">
+                <span class="material-symbols-outlined text-sm">thumb_up</span>
+                <span>0</span>
+              </button>
+            </div>
+          `;
+          threadList.insertBefore(newCard, threadList.firstChild);
+          commentTextarea.value = '';
+          if (badge) badge.textContent = '댓글 25개';
+        });
+      }
+
+      // Reading progress bar calculation on scroll
+      window.addEventListener('scroll', () => {
+        const progressBar = document.getElementById('reading-progress-bar');
+        const progressText = document.getElementById('reading-progress-text');
+        if (!progressBar) return;
+        
+        const winScroll = document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = height > 0 ? Math.min(100, Math.max(0, Math.round((winScroll / height) * 100))) : 0;
+        
+        progressBar.style.width = scrolled + '%';
+        if (progressText) progressText.textContent = scrolled + '%';
+      }, { passive: true });
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-low mt-gutter-3xl"><div class="max-w-content-full-max mx-auto px-gutter-lg py-gutter-2xl"><div class="grid grid-cols-1 md:grid-cols-12 gap-gutter-xl pb-gutter-2xl"><div class="md:col-span-5 flex flex-col gap-gutter-md"><div class="flex items-center gap-gutter-sm"><span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">스페이스 (Space)</span><span class="px-gutter-xs py-0.5 rounded text-ad-label font-ad-label uppercase bg-surface-container-highest text-on-surface-variant">Editorial Log</span></div><p class="text-on-surface-variant font-body-ui text-body-ui max-w-content-editorial-max">기술과 사유, 일상의 미학을 깊이 있게 탐구하는 독립 에디토리얼 퍼블리싱 플랫폼입니다. 생각의 궤적을 텍스트로 기록합니다.</p><div class="flex items-center gap-gutter-md pt-gutter-xs"><a class="flex items-center gap-gutter-xs text-on-surface-variant hover:text-secondary-container font-label-mono text-label-mono transition-colors" href="#"><span class="material-symbols-outlined text-sm">rss_feed</span><span>RSS 피드</span></a><a class="flex items-center gap-gutter-xs text-on-surface-variant hover:text-secondary-container font-label-mono text-label-mono transition-colors" href="#"><span class="material-symbols-outlined text-sm">mail</span><span>contact@space.blog</span></a><a class="flex items-center gap-gutter-xs text-on-surface-variant hover:text-secondary-container font-label-mono text-label-mono transition-colors" href="#"><span class="material-symbols-outlined text-sm">shield</span><span>개인정보처리방침</span></a></div></div><div class="md:col-span-4 flex flex-col gap-gutter-sm"><h4 class="font-headline-sm text-body-ui-bold text-on-surface">뉴스레터 구독</h4><p class="text-caption font-caption text-on-surface-variant">주 1회 엄선된 기술 아티클과 사유의 글을 이메일 편지함으로 보내드립니다.</p><form class="flex items-center gap-gutter-xs mt-gutter-xs"><input class="flex-1 px-gutter-md py-gutter-xs bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-ui text-body-ui rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-container" placeholder="이메일 주소 입력" type="email"/><button class="px-gutter-md py-gutter-xs bg-primary text-on-primary font-body-ui-bold text-body-ui rounded-lg hover:bg-on-surface-variant transition-colors whitespace-nowrap" type="button">구독하기</button></form></div><div class="md:col-span-3 flex flex-col gap-gutter-xs bg-surface-container p-gutter-md rounded-lg"><div class="flex items-center justify-between"><span class="font-ad-label text-ad-label uppercase text-on-surface-variant tracking-wider">Notice</span><span class="material-symbols-outlined text-sm text-on-surface-variant">info</span></div><p class="font-caption text-caption text-on-surface-variant">본 블로그는 독자적 저작물 제작 및 양질의 텍스트 제공을 위해 Google AdSense 및 공인 제휴 링크를 일부 포함할 수 있습니다.</p></div></div><div class="pt-gutter-lg flex flex-col sm:flex-row items-center justify-between gap-gutter-md"><p class="font-caption text-caption text-on-surface-variant">© 2025 스페이스 (Space). All rights reserved. Designed with editorial poise.</p><div class="flex items-center gap-gutter-lg font-caption text-caption text-on-surface-variant"><a class="hover:text-on-surface transition-colors" data-path="about" href="#">스페이스 소개</a><a class="hover:text-on-surface transition-colors" href="#">이용약관</a><a class="hover:text-on-surface transition-colors" href="#">광고 및 제휴 문의</a></div></div></div></footer></body></html>

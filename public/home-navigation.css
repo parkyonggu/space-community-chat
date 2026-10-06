@@ -1,0 +1,18 @@
+.community-mobile-navigation {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .community-mobile-navigation {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    background: #f8f9ff;
+  }
+
+  body > main {
+    padding-top: 112px;
+  }
+}

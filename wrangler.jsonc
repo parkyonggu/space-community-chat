@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "space-community-service",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-10-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [{ "pattern": "withpluces.com", "custom_domain": true }],
+  "build": { "command": "npm run build:worker" },
+  "assets": {
+    "directory": "worker-dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/ws/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "COMMUNITY", "class_name": "CommunityService" },
+      { "name": "CHAT", "class_name": "ChatRoom" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["CommunityService", "ChatRoom"] }
+  ],
+  // 인증·비밀번호 재설정 메일 (Cloudflare Email Service)
+  // Workers Paid 요금제 가입과 withpluces.com 발신 도메인 인증을 마친 뒤
+  // (2026-10-06 설정 완료: Workers Paid 가입, withpluces.com 발신 도메인 인증)
+  "send_email": [{ "name": "EMAIL" }],
+  "vars": {
+    "SITE_URL": "https://withpluces.com"
+    , "MAIL_FROM": "no-reply@withpluces.com"
+  }
+}

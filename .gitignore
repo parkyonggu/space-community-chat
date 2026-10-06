@@ -3,3 +3,9 @@
 .env
 .env.local
 *.log
+data/
+.env.production
+pages-dist/
+pages-preview.zip
+worker-dist/
+.wrangler/

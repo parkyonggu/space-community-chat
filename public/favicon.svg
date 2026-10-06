@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="100%" height="100%">
+  <defs>
+    <!-- Background Space Gradient -->
+    <linearGradient id="spaceBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E172C" />
+      <stop offset="50%" stop-color="#080F1E" />
+      <stop offset="100%" stop-color="#040812" />
+    </linearGradient>
+
+    <!-- Orbital Arch Gradient -->
+    <linearGradient id="orbitGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="35%" stop-color="#2563EB" />
+      <stop offset="70%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#60A5FA" />
+    </linearGradient>
+
+    <!-- Planet (Top Celestial Body) Gradient -->
+    <linearGradient id="planetGrad" x1="30%" y1="20%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#93C5FD" />
+      <stop offset="45%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <!-- Satellite Gradient -->
+    <linearGradient id="satelliteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#BFDBFE" />
+      <stop offset="100%" stop-color="#60A5FA" />
+    </linearGradient>
+
+    <!-- Outer Rim Gradient -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(147, 197, 253, 0.45)" />
+      <stop offset="100%" stop-color="rgba(37, 99, 235, 0.2)" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Disc with subtle Cosmic Border for maximum contrast on light & dark tabs -->
+  <circle cx="16" cy="16" r="15.2" fill="url(#spaceBg)" stroke="url(#rimGrad)" stroke-width="0.8" />
+
+  <!-- The Orbital Arch (Space Trajectory) -->
+  <path d="M 8.6 23.4 C 9.2 13.8 12.5 9.2 16 9.2 C 19.5 9.2 22.8 13.8 23.4 23.4" 
+        fill="none" 
+        stroke="url(#orbitGrad)" 
+        stroke-width="2.9" 
+        stroke-linecap="round" />
+
+  <!-- Main Celestial Body (Planet at apex) -->
+  <circle cx="16" cy="9.4" r="3.5" fill="url(#planetGrad)" />
+  <!-- Crisp Center Specular Highlight -->
+  <circle cx="15.1" cy="8.4" r="1.1" fill="#FFFFFF" opacity="0.9" />
+
+  <!-- Orbiting Satellite (Moon on the right arc) with crisp dark halo to pop out -->
+  <circle cx="21.4" cy="17.6" r="2.4" fill="#080F1E" />
+  <circle cx="21.4" cy="17.6" r="1.8" fill="url(#satelliteGrad)" />
+  <circle cx="21.0" cy="17.1" r="0.6" fill="#FFFFFF" />
+</svg>
