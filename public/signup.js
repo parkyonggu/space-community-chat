@@ -125,6 +125,8 @@ function applySession(result) {
     '회원가입 후 자동 로그인되며, 이메일로 인증 링크를 보냅니다. 링크는 24시간 유효합니다. 휴대전화 본인인증은 제공하지 않습니다.' :
     '회원가입과 로그인은 가능합니다. 이메일 인증·비밀번호 재설정 메일은 메일 발송 서비스 연결 후 제공됩니다.';
   updateControls();
+  window.spaceAuth = { user: authUser, csrfToken, mailConfigured };
+  window.dispatchEvent(new CustomEvent('space-auth', { detail: window.spaceAuth }));
 }
 
 function refreshSession() {
@@ -426,6 +428,7 @@ window.addEventListener('focus', refreshVisibleSession);
 document.addEventListener('visibilitychange', refreshVisibleSession);
 setInterval(refreshVisibleSession, 60000);
 refreshVisibleSession();
+window.spaceOpenAuth = name => { if (dialogs[name]) openAuth(dialogs[name]); };
 if (window.location.hash === '#login') openAuth(loginDialog);
 if (window.location.hash === '#signup') openAuth(signupDialog);
 if (verificationToken) openAuth(verifyDialog);

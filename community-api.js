@@ -9,7 +9,7 @@ class ApiError extends Error {
   }
 }
 
-function createCommunityApi(dataDirectory, { storage, rateLimit } = {}) {
+function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false } = {}) {
   const filePath = path.join(dataDirectory, 'community.json');
   let pendingWrite = Promise.resolve();
   const requestWindows = new Map();
@@ -70,11 +70,11 @@ function createCommunityApi(dataDirectory, { storage, rateLimit } = {}) {
     }
   }
 
-  return async function handleCommunityApi(request, response, pathname) {
+  async function handleCommunityApi(request, response, pathname) {
     try {
       if (pathname === '/api/comments' && request.method === 'GET') {
         const store = await readStore();
-        sendJson(response, 200, { comments: store.comments });
+        sendJson(response, 200, { comments: store.comments.map(({ id, name, text, createdAt }) => ({ id, name, text, createdAt })) });
         return;
       }
       if (request.method !== 'POST') {
@@ -107,16 +107,24 @@ function createCommunityApi(dataDirectory, { storage, rateLimit } = {}) {
         });
         sendJson(response, 200, { message: '해당 이메일의 구독 신청이 있었다면 해지하고 즉시 삭제했습니다.' });
       } else if (pathname === '/api/comments') {
-        const name = typeof body.name === 'string' ? body.name.trim() : '';
+        let author = null;
+        if (authenticate) {
+          const auth = await authenticate(request, { csrf: true });
+          if (auth.error) throw new ApiError(auth.error.status, auth.error.message);
+          if (!auth.user) throw new ApiError(401, '로그인한 회원만 댓글을 쓸 수 있습니다.');
+          if (requireVerifiedEmail && !auth.user.emailVerified) throw new ApiError(403, '이메일 인증을 완료한 회원만 댓글을 쓸 수 있습니다.');
+          author = auth.user;
+        }
+        const name = author ? author.nickname : typeof body.name === 'string' ? body.name.trim() : '';
         const text = typeof body.text === 'string' ? body.text.trim() : '';
         if (!name || name.length > 40 || !text || text.length > 2000) {
           throw new ApiError(400, '닉네임 1~40자, 댓글 1~2,000자를 입력해 주세요.');
         }
-        const comment = { id: randomUUID(), name, text, createdAt: new Date().toISOString() };
+        const comment = { id: randomUUID(), name, text, createdAt: new Date().toISOString(), ...(author ? { authorId: author.id } : {}) };
         await updateStore(store => {
           store.comments.unshift(comment);
         });
-        sendJson(response, 201, { comment });
+        sendJson(response, 201, { comment: { id: comment.id, name, text, createdAt: comment.createdAt } });
       } else {
         const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
         if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true) {
@@ -137,7 +145,16 @@ function createCommunityApi(dataDirectory, { storage, rateLimit } = {}) {
         });
       }
     }
-  };
+  }
+  handleCommunityApi.anonymizeUser = userId => updateStore(store => {
+    for (const comment of store.comments) {
+      if (comment.authorId === userId) {
+        delete comment.authorId;
+        comment.name = '탈퇴한 회원';
+      }
+    }
+  });
+  return handleCommunityApi;
 }
 
 module.exports = { createCommunityApi };

@@ -6,6 +6,7 @@ const path = require('path');
 const { createCommunityApi } = require('./community-api');
 const { createAuthApi } = require('./auth-api');
 const { createMailer } = require('./mailer');
+const { createBoardApi } = require('./board-api');
 
 require('@next/env').loadEnvConfig(__dirname, process.env.NODE_ENV !== 'production');
 
@@ -18,16 +19,26 @@ const publicIndexPath = path.join(__dirname, 'public', 'index.html');
 const originalHomePath = path.join(__dirname, 'public', 'article.html');
 const originalFaviconPath = path.join(__dirname, 'public', 'favicon.svg');
 const siteUrl = new URL(process.env.SITE_URL || 'https://withpluces.com').origin;
-const communityApi = createCommunityApi(process.env.DATA_DIR || path.join(__dirname, 'data'));
+const dataDirectory = process.env.DATA_DIR || path.join(__dirname, 'data');
 const mailer = createMailer();
 if (!mailer.configured) console.warn('SMTP not configured: email verification and password recovery cannot send mail.');
-const authApi = createAuthApi(process.env.DATA_DIR || path.join(__dirname, 'data'), { siteUrl, mailer });
+const adminEmails = (process.env.ADMIN_EMAILS || '').split(',');
+const authApi = createAuthApi(dataDirectory, {
+  siteUrl, mailer, adminEmails,
+  onAccountDeleted: userId => Promise.all([boardApi.anonymizeUser(userId), communityApi.anonymizeUser(userId)]),
+});
+const communityApi = createCommunityApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
+const boardApi = createBoardApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
 
 app.prepare().then(() => {
   const httpServer = createServer((request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname.startsWith('/api/auth/')) {
       authApi(request, response, pathname);
+      return;
+    }
+    if (pathname === '/api/board' || pathname.startsWith('/api/board/')) {
+      boardApi(request, response, pathname);
       return;
     }
     if (pathname === '/api/comments' || pathname === '/api/newsletter' || pathname === '/api/newsletter/unsubscribe') {

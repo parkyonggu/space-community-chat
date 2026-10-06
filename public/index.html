@@ -187,9 +187,9 @@
       <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select><span class="label">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" placeholder="글 제목을 입력하세요" aria-label="글 제목"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
     <section id="reader-section" class="surface" aria-labelledby="reader-title">
       <div class="section-head"><div><div class="eyebrow">READER COMMUNITY</div><h2 id="reader-title">독자 소통 공간</h2></div><span id="reader-comment-count" class="tag">댓글 불러오는 중</span></div>
-      <p class="intro">의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 독자에게 공개됩니다. 개인정보를 적지 마세요.</p>
+      <p class="intro">의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 방문자에게 공개되며, 작성은 로그인한 회원만 할 수 있습니다. 개인정보를 적지 마세요.</p>
       <form id="reader-comment-form" class="reader-form">
-        <label for="reader-name">닉네임</label><input id="reader-name" name="name" required maxlength="40" autocomplete="nickname" placeholder="독자 닉네임">
+        <p class="intro" id="reader-author-note">로그인한 회원의 닉네임으로 등록됩니다.</p>
         <label for="reader-text">댓글 내용</label><textarea id="reader-text" name="text" required maxlength="2000" placeholder="의견이나 질문을 남겨주세요."></textarea>
         <button type="submit" class="submitPolicy">댓글 등록</button>
       </form>
@@ -217,9 +217,9 @@
     <section id="guide-section" class="surface" aria-labelledby="guide-title">
       <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title">회원과 운영 안내</h2>
       <div class="policy-columns">
-        <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>메일 발송 설정 후 이메일 인증·비밀번호 재설정 메일을 발송합니다.</li><li>휴대전화 본인인증·인증회원 등급 및 게시판 접근 제한은 아직 적용되지 않았습니다.</li></ul></div>
+        <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>메일 발송 설정 후 이메일 인증·비밀번호 재설정 메일을 발송합니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>학술·논문·소고·이야기는 회원만 읽고 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
         <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
-        <div><h3>신고와 제재 · 운영 계획</h3><ul><li>공개 운영 전에 신고·제재 절차를 마련할 예정입니다.</li><li>24~48시간 내 1차 검토 후 임시조치·소명을 진행하는 것을 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지</li><li>중대 위반은 영구 정지 및 관계기관 통보</li><li>통보 후 7일 이내 이의제기할 수 있도록 준비합니다.</li></ul></div>
+        <div><h3>신고와 제재 · 운영 원칙</h3><ul><li>작성한 글은 작성자가 직접 삭제할 수 없으며, 부적절한 글은 신고를 통해 운영자가 처리합니다.</li><li>회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김(임시조치) 처리됩니다.</li><li>운영자는 검토 후 글을 삭제하거나 다시 공개합니다. 24~48시간 내 1차 검토를 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지, 중대 위반은 영구 정지 및 관계기관 통보</li><li>본인 글의 삭제가 꼭 필요하면 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 요청해 주세요.</li></ul></div>
       </div>
     </section>
   </main>
@@ -299,27 +299,11 @@
       <button class="signup-submit" type="submit" disabled>탈퇴하기</button>
     </form>
   </dialog>
+  <script defer src="/boards.js"></script>
   <script defer src="/reader-community.js"></script>
   <footer class="site-footer"><div class="site-footer-inner"><p>© 2026 스페이스 커뮤니티 · 서로 존중하는 문화</p><p>운영: (주)위드플러시아 · 문의 <a href="mailto:dragon600120@gmail.com" style="color:inherit">dragon600120@gmail.com</a> · <a href="/privacy" style="color:inherit"><strong>개인정보처리방침</strong></a></p></div></footer>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const categories = [{ title:"재정·경제산업부", depts:[{id:"economy",name:"기획재정부"},{id:"industry",name:"산업통상자원부"},{id:"finance",name:"금융위원회"},{id:"sme",name:"중소벤처기업부"}] },{ title:"사회·교육·문화", depts:[{id:"education",name:"교육부"},{id:"culture",name:"문화체육관광부"},{id:"welfare",name:"보건복지부"},{id:"labor",name:"고용노동부"},{id:"gender",name:"여성가족부"},{id:"environment",name:"환경부"}] },{ title:"외교·안보·통일", depts:[{id:"foreign",name:"외교부"},{id:"unification",name:"통일부"},{id:"defense",name:"국방부"}] },{ title:"과학·인프라", depts:[{id:"science",name:"과학기술정보통신부"},{id:"landtransport",name:"국토교통부"},{id:"agriculture",name:"농림축산식품부"},{id:"ocean",name:"해양수산부"}] },{ title:"일반행정·법무", depts:[{id:"safety",name:"행정안전부"},{id:"justice",name:"법무부"},{id:"personnel",name:"인사혁신처"}] }];
-    const categoryContainer=document.getElementById("categoryContainer"), opinionsData={}; let currentSort="latest",searchKeyword="";
-    categories.forEach(category=>{const group=document.createElement("div");group.className="category-group";group.innerHTML=`<h3>${category.title}</h3>`;const grid=document.createElement("div");grid.className="policy-grid";category.depts.forEach(dept=>{opinionsData[dept.id]=[];const card=document.createElement("article");card.className="policy-category";card.innerHTML=`<h4>${dept.name}</h4><textarea placeholder="${dept.name} 관련 의견을 작성하세요"></textarea><button class="submitPolicy" data-dept="${dept.id}">제안 등록</button><div class="policy-output" id="output-${dept.id}"></div>`;grid.appendChild(card);});group.appendChild(grid);categoryContainer.appendChild(group);});
-    function escapeHtml(value){const div=document.createElement("div");div.textContent=value;return div.innerHTML;}
-    function renderOutput(deptId){const output=document.getElementById(`output-${deptId}`);output.innerHTML="";let items=opinionsData[deptId].filter(op=>!searchKeyword||op.text.includes(searchKeyword));items.sort((a,b)=>currentSort==="likes"?b.likes-a.likes:b.time-a.time);items.forEach(op=>{const item=document.createElement("div");item.className="opinion";item.innerHTML=`<span class="opinion-text">${escapeHtml(op.text)}</span><button class="like-btn">추천 ${op.likes}</button>`;item.querySelector(".like-btn").addEventListener("click",()=>{op.likes++;renderOutput(deptId);});output.appendChild(item);});}
-    categoryContainer.addEventListener("click",event=>{if(!event.target.classList.contains("submitPolicy"))return;const textarea=event.target.previousElementSibling,text=textarea.value.trim();if(!text){alert("의견을 입력해주세요.");return;}opinionsData[event.target.dataset.dept].unshift({text,likes:0,time:new Date()});textarea.value="";renderOutput(event.target.dataset.dept);});
-    document.querySelectorAll(".sort-btn").forEach(button=>button.addEventListener("click",()=>{currentSort=button.dataset.sort;document.querySelectorAll(".sort-btn").forEach(item=>item.classList.remove("active"));button.classList.add("active");Object.keys(opinionsData).forEach(renderOutput);}));
-    function runSearch(){searchKeyword=document.getElementById("searchInput").value.trim();Object.keys(opinionsData).forEach(renderOutput);document.getElementById("policy-section").scrollIntoView({behavior:"smooth"});} document.getElementById("searchBtn").addEventListener("click",runSearch);document.getElementById("searchInput").addEventListener("keydown",event=>{if(event.key==="Enter")runSearch();});
-    const communityPosts = [], voicePosts = [];
-    function renderPosts(posts, targetId, includeCategory) { const target = document.getElementById(targetId); target.innerHTML = ""; posts.forEach(post => { const item = document.createElement("article"); item.className = "post-item"; item.innerHTML = `${includeCategory ? `<strong>${escapeHtml(post.category)}</strong>` : ""}<strong>${escapeHtml(post.title)}</strong><p>${escapeHtml(post.text)}</p>`; target.appendChild(item); }); }
-    function addPost(inputId, targetId, posts, categoryId, title) { const input = document.getElementById(inputId); const text = input.value.trim(); if (!text) { alert("내용을 입력해주세요."); return; } posts.unshift({ category: categoryId ? document.getElementById(categoryId).value : "", title, text }); input.value = ""; renderPosts(posts, targetId, Boolean(categoryId)); }
-    document.getElementById("communitySubmit").addEventListener("click", () => addPost("communityInput", "communityPosts", communityPosts, "", "새로운 이야기"));
-    document.getElementById("voiceSubmit").addEventListener("click", () => addPost("voiceInput", "voicePosts", voicePosts, "voiceCategory", "시민의 소리"));
-    const researchPosts = [];
-    function renderResearchPosts() { const filter = document.getElementById("researchFilter").value; const filteredPosts = filter === "all" ? researchPosts : researchPosts.filter(post => post.category === filter); renderPosts(filteredPosts, "researchPosts", true); }
-    document.getElementById("researchSubmit").addEventListener("click", () => { const titleInput = document.getElementById("researchTitle"); const contentInput = document.getElementById("researchInput"); const title = titleInput.value.trim(); const text = contentInput.value.trim(); if (!title || !text) { alert("제목과 내용을 입력해주세요."); return; } researchPosts.unshift({ category: document.getElementById("researchType").value, title, text }); titleInput.value = ""; contentInput.value = ""; renderResearchPosts(); });
-    document.getElementById("researchFilter").addEventListener("change", renderResearchPosts);
     const tabSections = ["chat-section", "community-section", "voice-section", "policy-section", "research-section"];
     function showSection(sectionId, scroll = true) { tabSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === sectionId)); document.querySelectorAll(".section-tab").forEach(button => button.classList.toggle("active", button.dataset.target === sectionId)); if (scroll) document.getElementById(sectionId).scrollIntoView({ behavior: "smooth", block: "start" }); }
     document.querySelectorAll(".section-tab").forEach(button => button.addEventListener("click", () => { const sectionId = button.dataset.target; if (window.location.hash === `#${sectionId}`) showSection(sectionId); else window.location.hash = sectionId; }));

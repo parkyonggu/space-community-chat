@@ -27,7 +27,11 @@ function publicUser(user) {
   return { id: user.id, email: user.email, nickname: user.nickname, emailVerified: Boolean(user.emailVerifiedAt) };
 }
 
-function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now = Date.now, mailer, storage, rateLimit, maxDerivations = 4 } = {}) {
+function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now = Date.now, mailer, storage, rateLimit, maxDerivations = 4,
+  adminEmails = [], onAccountDeleted } = {}) {
+  const admins = new Set(adminEmails.map(email => email.trim().toLowerCase()).filter(Boolean));
+  const isAdmin = user => Boolean(user.emailVerifiedAt) && admins.has(user.email);
+  const userView = user => ({ ...publicUser(user), admin: isAdmin(user) });
   const filePath = path.join(dataDirectory, 'auth.json');
   const allowedOrigin = new URL(siteUrl).origin;
   let writes = Promise.resolve();
@@ -202,7 +206,19 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
     return { entry, user };
   }
 
-  return async function handleAuthApi(request, response, pathname) {
+  async function authenticate(request, { csrf = false } = {}) {
+    const ctx = context(request);
+    if (csrf && !ctx.validOrigin) return { error: { status: 403, message: '이 사이트에서만 요청할 수 있습니다.' } };
+    const store = await readStore();
+    const session = ctx.sessionHash && store.sessions.find(entry => entry.tokenHash === ctx.sessionHash && entry.expiresAt > now());
+    if (csrf && (!session || !sameToken(request.headers['x-csrf-token'], session.csrfToken))) {
+      return { error: { status: 403, message: '세션이 만료되었거나 요청을 확인할 수 없습니다. 새로고침 후 다시 시도해 주세요.' } };
+    }
+    const user = session?.userId ? store.users.find(entry => entry.id === session.userId) : null;
+    return { user: user ? userView(user) : null };
+  }
+
+  async function handleAuthApi(request, response, pathname) {
     try {
       const ctx = context(request);
       const ip = request.socket.remoteAddress;
@@ -227,7 +243,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
           session = created.session;
           setCookie(response, ctx, created.value);
         }
-        send(response, 200, { user: user ? publicUser(user) : null, csrfToken: session.csrfToken, expiresAt: session.expiresAt, mailConfigured: Boolean(mailer?.configured) });
+        send(response, 200, { user: user ? userView(user) : null, csrfToken: session.csrfToken, expiresAt: session.expiresAt, mailConfigured: Boolean(mailer?.configured) });
         return;
       }
       if (!ctx.validOrigin) throw new AuthError(403, '요청 출처를 확인할 수 없습니다.');
@@ -261,6 +277,13 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
           current.sessions = current.sessions.filter(entry => entry.userId !== user.id && entry.tokenHash !== ctx.sessionHash);
           current.mailTokens = current.mailTokens.filter(entry => entry.userId !== user.id);
         });
+        if (onAccountDeleted) {
+          try {
+            await onAccountDeleted(user.id);
+          } catch (error) {
+            console.error('Account content anonymization failed:', error);
+          }
+        }
         setCookie(response, ctx, '', false, true);
         send(response, 200, { user: null, message: '회원 탈퇴가 완료되어 계정과 개인정보를 삭제했습니다.' });
         return;
@@ -374,7 +397,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         }
       }
       send(response, pathname === '/api/auth/register' ? 201 : 200, {
-        user: publicUser(user), csrfToken: created.session.csrfToken, expiresAt: created.session.expiresAt,
+        user: userView(user), csrfToken: created.session.csrfToken, expiresAt: created.session.expiresAt,
         message: pathname === '/api/auth/register' ? '회원가입과 로그인이 완료되었습니다.' : '로그인되었습니다.',
         mailConfigured: Boolean(mailer?.configured), verificationError,
       });
@@ -384,7 +407,9 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         error: error instanceof AuthError ? error.message : '계정 처리 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
       });
     }
-  };
+  }
+  handleAuthApi.authenticate = authenticate;
+  return handleAuthApi;
 }
 
 module.exports = { createAuthApi };

@@ -28,5 +28,6 @@
   "vars": {
     "SITE_URL": "https://withpluces.com"
     , "MAIL_FROM": "no-reply@withpluces.com"
+    , "ADMIN_EMAILS": "dragon600120@gmail.com"
   }
 }

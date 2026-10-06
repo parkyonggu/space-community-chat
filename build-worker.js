@@ -10,9 +10,9 @@ assert.ok(socketLine, 'Chat initialization was not found');
 html = html.replace(socketLine, '');
 html = html.replace('<script src="/socket.io/socket.io.js"></script>', '<script defer src="/worker-chat.js"></script>');
 html = html.replace('<body>', `<body>
-  <aside class="surface" role="note" style="margin:16px 20px"><strong>무료 시범 운영</strong><p>회원·댓글·구독 신청은 서버에 저장되며 <a href="/privacy">개인정보처리방침</a>에 따라 처리합니다. 채팅은 현재 접속자에게만 전달됩니다. 사용량이 많으면 일시적으로 이용이 제한될 수 있습니다. 뉴스레터 발송은 아직 준비 중입니다.</p></aside>`);
+  <aside class="surface" role="note" style="margin:16px 20px"><strong>무료 시범 운영</strong><p>회원·댓글·구독 신청은 서버에 저장되며 <a href="/privacy">개인정보처리방침</a>에 따라 처리합니다. 채팅은 현재 접속자에게만 전달됩니다. 사용량이 많으면 일시적으로 이용이 제한될 수 있습니다. 게시판·댓글·채팅 글쓰기는 로그인한 회원만 할 수 있습니다. 뉴스레터 발송은 아직 준비 중입니다.</p></aside>`);
 fs.mkdirSync(output, { recursive: true });
-for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml']) {
+for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml', 'boards.js']) {
   fs.copyFileSync(path.join(source, file), path.join(output, file));
 }
 fs.cpSync(path.join(source, 'icons'), path.join(output, 'icons'), { recursive: true });

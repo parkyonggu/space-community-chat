@@ -305,3 +305,22 @@ test('account deletion requires the current password and removes the user, sessi
   assert.equal((await browser.request('login', credentials)).response.status, 401);
   assert.equal((await browser.request('register', credentials)).response.status, 201);
 });
+
+test('authenticate exposes the signed-in user, admin flag and CSRF protection for other APIs', async t => {
+  const f = await fixture(t);
+  const browser = f.client();
+  await browser.request('session');
+  await browser.request('register', credentials);
+  const { createAuthApi: create } = require('./auth-api');
+  const api = create(f.directory, { adminEmails: [credentials.email] });
+  const cookieValue = browser.cookie;
+  const request = (headers = {}) => ({ headers: { host: 'example.com', cookie: cookieValue, ...headers }, socket: { remoteAddress: '203.0.113.5' } });
+  // Local cookie name differs, so a remote-looking request without the remote cookie is a guest
+  assert.equal((await api.authenticate(request())).user, null);
+  const local = (headers = {}) => ({ headers: { host: '127.0.0.1', cookie: cookieValue, ...headers }, socket: { remoteAddress: '127.0.0.1' } });
+  const result = await api.authenticate(local());
+  assert.equal(result.user.email, credentials.email);
+  assert.equal(result.user.admin, false, 'unverified email is never admin');
+  assert.equal((await api.authenticate(local(), { csrf: true })).error.status, 403);
+  assert.equal((await api.authenticate(local({ origin: 'http://127.0.0.1', 'x-csrf-token': browser.csrf }), { csrf: true })).user.email, credentials.email);
+});

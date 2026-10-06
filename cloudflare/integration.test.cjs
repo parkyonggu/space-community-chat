@@ -72,8 +72,16 @@ test('Worker authentication retains scrypt, CSRF, sessions and logout behavior',
 });
 
 test('Worker comments persist, subscriptions remain private, invalid requests fail', async () => {
-  let result = await request('/api/comments', { name: '테스트', text: `worker-comment-${runId}` });
+  await request('/api/auth/session');
+  let result = await request('/api/comments', { text: `guest-comment-${runId}` });
+  assert.equal(result.response.status, 401, 'guests cannot comment');
+  result = await request('/api/auth/register', {
+    email: `commenter-${runId}@example.test`, password: 'Worker-Safe-Test-Password-2026', nickname: '댓글 테스트', terms: true, privacy: true,
+  });
   assert.equal(result.response.status, 201, JSON.stringify(result.result));
+  result = await request('/api/comments', { text: `worker-comment-${runId}` });
+  assert.equal(result.response.status, 201, JSON.stringify(result.result));
+  assert.equal(result.result.comment.name, '댓글 테스트');
   const id = result.result.comment.id;
   result = await request('/api/comments');
   assert.ok(result.result.comments.some(comment => comment.id === id));
@@ -93,4 +101,37 @@ test('Worker comments persist, subscriptions remain private, invalid requests fa
   result = await request('/api/comments', { name: '테스트', text: 'bad' }, { Origin: 'https://invalid.example' });
   assert.equal(result.response.status, 403);
   assert.equal((await fetch(origin + '/api/missing')).status, 404);
+});
+
+test('Worker boards persist posts and keep research members-only', async () => {
+  cookie = '';
+  csrfToken = undefined;
+  await request('/api/auth/session');
+  let result = await request('/api/board?board=research');
+  assert.equal(result.response.status, 401);
+  result = await request('/api/board/posts', { board: 'community', text: 'guest' });
+  assert.equal(result.response.status, 401);
+  result = await request('/api/auth/register', {
+    email: `board-${runId}@example.test`, password: 'Worker-Safe-Test-Password-2026', nickname: '게시판 테스트', terms: true, privacy: true,
+  });
+  assert.equal(result.response.status, 201, JSON.stringify(result.result));
+  result = await request('/api/board/posts', { board: 'research', category: '논문', title: `제목-${runId}`, text: '초록' });
+  assert.equal(result.response.status, 201, JSON.stringify(result.result));
+  const id = result.result.post.id;
+  result = await request('/api/board?board=research');
+  assert.ok(result.result.posts.some(post => post.id === id));
+  result = await request('/api/board/moderate', { postId: id, action: 'delete' });
+  assert.equal(result.response.status, 403, 'members cannot delete');
+  result = await request('/api/auth/account/delete', { password: 'Worker-Safe-Test-Password-2026' });
+  assert.equal(result.response.status, 200);
+  await request('/api/auth/session');
+  cookie = '';
+  csrfToken = undefined;
+  await request('/api/auth/session');
+  await request('/api/auth/register', {
+    email: `reader-${runId}@example.test`, password: 'Worker-Safe-Test-Password-2026', nickname: '읽기 테스트', terms: true, privacy: true,
+  });
+  result = await request('/api/board?board=research');
+  const kept = result.result.posts.find(post => post.id === id);
+  assert.equal(kept.authorName, '탈퇴한 회원');
 });

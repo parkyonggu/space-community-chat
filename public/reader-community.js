@@ -15,7 +15,8 @@ function setStatus(element, message, isError = false) {
 async function apiRequest(url, body) {
   const response = await fetch(url, body ? {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' },
     body: JSON.stringify(body),
   } : { cache: 'no-store' });
   if (!response.headers.get('content-type')?.includes('application/json')) {
@@ -65,7 +66,6 @@ commentForm.addEventListener('submit', async event => {
   setStatus(commentStatus, '댓글을 저장하고 있습니다.');
   try {
     const { comment } = await apiRequest('/api/comments', {
-      name: document.getElementById('reader-name').value,
       text: document.getElementById('reader-text').value,
     });
     commentList.prepend(renderComment(comment));
@@ -75,9 +75,23 @@ commentForm.addEventListener('submit', async event => {
   } catch (error) {
     setStatus(commentStatus, error.message, true);
   } finally {
-    button.disabled = false;
+    updateCommentForm();
   }
 });
+
+function updateCommentForm() {
+  const auth = window.spaceAuth;
+  const user = auth?.user;
+  const allowed = Boolean(user && (user.emailVerified || !auth.mailConfigured));
+  const textarea = document.getElementById('reader-text');
+  textarea.disabled = !allowed;
+  commentForm.querySelector('button').disabled = !allowed;
+  textarea.placeholder = allowed ? '의견이나 질문을 남겨주세요.' :
+    user ? '이메일 인증을 완료하면 댓글을 쓸 수 있습니다.' : '로그인한 회원만 댓글을 쓸 수 있습니다.';
+  document.getElementById('reader-author-note').textContent = allowed ? `${user.nickname} 님의 닉네임으로 등록됩니다.` : '로그인한 회원의 닉네임으로 등록됩니다.';
+}
+window.addEventListener('space-auth', updateCommentForm);
+updateCommentForm();
 
 newsletterForm.addEventListener('submit', async event => {
   event.preventDefault();

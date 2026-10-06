@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { createHash } from 'node:crypto';
 import auth from '../auth-api.js';
 import community from '../community-api.js';
+import board from '../board-api.js';
 
 const json = (body, status = 200) => Response.json(body, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
@@ -73,27 +74,40 @@ export class CommunityService extends DurableObject {
         await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: '스페이스 커뮤니티' }, subject, text });
       },
     } : undefined;
+    const adminEmails = (env.ADMIN_EMAILS || '').split(',');
     this.auth = auth.createAuthApi('/private', {
       siteUrl: env.SITE_URL,
       mailer,
+      adminEmails,
+      onAccountDeleted: userId => Promise.all([this.board.anonymizeUser(userId), this.community.anonymizeUser(userId)]),
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,
     });
+    const requireVerifiedEmail = Boolean(mailer);
     this.community = community.createCommunityApi('/private', {
       storage: new SqlStore(state, 'community', ['comments', 'subscribers']), rateLimit,
+      authenticate: this.auth.authenticate, requireVerifiedEmail,
     });
+    this.board = board.createBoardApi('/private', {
+      storage: new SqlStore(state, 'board', ['posts', 'likes', 'reports']), rateLimit,
+      authenticate: this.auth.authenticate, requireVerifiedEmail,
+    });
+    this.requireVerifiedEmail = requireVerifiedEmail;
   }
 
   async fetch(request) {
-    const pathname = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    const pathname = url.pathname;
     const headers = Object.fromEntries(request.headers);
+    if (Number(request.headers.get('content-length') || 0) > 128 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
+    const body = request.body ? Buffer.from(await request.arrayBuffer()) : null;
+    if (body && body.length > 128 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
     const source = {
-      method: request.method, headers,
+      method: request.method, headers, url: url.pathname + url.search,
       socket: { remoteAddress: request.headers.get('CF-Connecting-IP') || 'unknown' },
       async *[Symbol.asyncIterator]() {
-        if (!request.body) return;
-        for await (const chunk of request.body) yield Buffer.from(chunk);
+        if (body) yield body;
       },
     };
     let status = 200;
@@ -109,7 +123,14 @@ export class CommunityService extends DurableObject {
       },
       end(body) { resolve(new Response(body, { status, headers: responseHeaders })); },
     };
-    await (pathname.startsWith('/api/auth/') ? this.auth : this.community)(source, target, pathname);
+    if (pathname === '/internal/chat-identity') {
+      const { user } = await this.auth.authenticate(source);
+      const canSend = Boolean(user && (!this.requireVerifiedEmail || user.emailVerified));
+      return json({ name: canSend ? user.nickname : null, signedIn: Boolean(user) });
+    }
+    const handler = pathname.startsWith('/api/auth/') ? this.auth :
+      pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board : this.community;
+    await handler(source, target, pathname);
     return completed;
   }
 }
@@ -119,9 +140,13 @@ export class ChatRoom extends DurableObject {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'WebSocket 연결이 필요합니다.' }, 426);
     if (request.headers.get('Origin') !== this.env.SITE_URL) return json({ error: '이 사이트에서만 채팅할 수 있습니다.' }, 403);
     if (this.ctx.getWebSockets().length >= 100) return json({ error: '채팅 접속자가 많습니다. 잠시 후 다시 시도해 주세요.' }, 503);
+    let name = null;
+    try { name = request.headers.get('X-Chat-Name') ? decodeURIComponent(request.headers.get('X-Chat-Name')) : null; } catch { name = null; }
+    const signedIn = request.headers.get('X-Chat-Signed-In') === '1';
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment({ start: Date.now(), count: 0 });
+    pair[1].serializeAttachment({ start: Date.now(), count: 0, name });
+    pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn }));
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -137,11 +162,12 @@ export class ChatRoom extends DurableObject {
     if (!text || text.length > 2000) { error('채팅은 1~2,000자로 입력해 주세요.'); return; }
     const now = Date.now();
     let window = socket.deserializeAttachment();
-    if (now - window.start >= 60000) window = { start: now, count: 0 };
+    if (!window.name) { error('로그인한 회원만 채팅을 보낼 수 있습니다.'); return; }
+    if (now - window.start >= 60000) window = { start: now, count: 0, name: window.name };
     window.count += 1;
     socket.serializeAttachment(window);
     if (window.count > 30) { error('채팅 전송이 많습니다. 잠시 후 다시 시도해 주세요.'); return; }
-    const output = JSON.stringify({ text });
+    const output = JSON.stringify({ name: window.name, text });
     for (const peer of this.ctx.getWebSockets()) {
       try { peer.send(output); } catch (failure) {
         console.error('Chat broadcast failed:', failure);
@@ -161,12 +187,21 @@ export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
-      if (url.pathname.startsWith('/api/auth/') || ['/api/comments', '/api/newsletter', '/api/newsletter/unsubscribe'].includes(url.pathname)) {
+      if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
+          ['/api/comments', '/api/newsletter', '/api/newsletter/unsubscribe'].includes(url.pathname)) {
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);
       if (url.pathname === '/ws/chat') {
-        return await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch(request);
+        const identityRequest = new Request(new URL('/internal/chat-identity', url), {
+          headers: { cookie: request.headers.get('cookie') || '', host: url.host, 'CF-Connecting-IP': request.headers.get('CF-Connecting-IP') || '' },
+        });
+        const identity = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(identityRequest)).json();
+        const forwarded = new Request(request);
+        forwarded.headers.delete('X-Chat-Name');
+        forwarded.headers.set('X-Chat-Signed-In', identity.signedIn ? '1' : '0');
+        if (identity.name) forwarded.headers.set('X-Chat-Name', encodeURIComponent(identity.name));
+        return await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch(forwarded);
       }
       return await env.ASSETS.fetch(request);
     } catch (error) {
