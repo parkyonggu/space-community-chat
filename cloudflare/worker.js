@@ -114,6 +114,7 @@ export class CommunityService extends DurableObject {
     });
     this.portal = portal.createPortalApi({
       ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', rateLimit,
+      molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {
         const response = await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/status');

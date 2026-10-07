@@ -80,3 +80,25 @@ test('reports an invalid key without throwing', async () => {
   assert.equal(result.coverage.ready, 0);
   assert.match(result.problems[0], /HTTP 401 Unauthorized/);
 });
+
+test('uses a separate key per API and retries at once when a key changes', async () => {
+  const memory = new Map();
+  const store = { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
+  const calls = [];
+  const clock = Date.parse('2026-10-07T04:00:00Z');
+  const fetchImpl = async url => {
+    calls.push(url);
+    const ok = url.includes('LandTrade') ? url.includes('serviceKey=LANDKEY') : url.includes('serviceKey=APTKEY');
+    if (!ok) return { ok: false, status: 403, text: async () => '<OpenAPI_ServiceResponse><cmmMsgHeader><errMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</errMsg><returnAuthMsg>등록되지 않은 서비스키</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>' };
+    return { ok: true, status: 200, text: async () => xml([]) };
+  };
+  let realEstate = createRealEstate({ key: 'LANDKEY', fetchImpl, store, now: () => clock });
+  for (let round = 0; round < 10; round += 1) await realEstate.load();
+  const first = await realEstate.load();
+  assert.equal(first.coverage.ready, REGIONS.length * 2, 'only land works with the shared key');
+  calls.length = 0;
+  realEstate = createRealEstate({ key: 'LANDKEY', keys: { apt: 'APTKEY' }, fetchImpl, store, now: () => clock });
+  await realEstate.load();
+  assert.ok(calls.length > 0 && calls.every(url => url.includes('AptTrade')), 'changed key is retried immediately');
+  assert.ok(calls.every(url => url.includes('serviceKey=APTKEY')));
+});

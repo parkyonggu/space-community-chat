@@ -359,6 +359,6 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 ## 오늘의 부동산 동향 (국토교통부 실거래가)
 
 - 공공데이터포털에서 '국토교통부_아파트 매매 실거래가 자료', '국토교통부_상업업무용 부동산 매매 실거래가 자료', '국토교통부_토지 매매 실거래가 자료'를 활용신청합니다.
-- 일반 인증키(Decoding)를 `npx wrangler secret put MOLIT_API_KEY`로 등록합니다.
+- API마다 인증키가 다르면 종류별로 등록합니다: `npx wrangler secret put MOLIT_APT_KEY`(아파트), `MOLIT_BLDG_KEY`(상업업무용), `MOLIT_LAND_KEY`(토지). 따로 등록하지 않은 종류는 `MOLIT_API_KEY`를 씁니다. 키를 바꾸면 다음 조회 때 바로 다시 받아 옵니다.
 - 주요 14개 시군구 × 3종 × 2개월 = 84개 단위를 몇 분에 걸쳐 나눠 받아 저장하고, 이번 달 자료는 6시간, 지난달 자료는 24시간마다 새로 받습니다(하루 API별 약 100회 이하).
 - 키 오류는 `/api/portal` 응답의 `realestate.problems`에서 확인할 수 있습니다.

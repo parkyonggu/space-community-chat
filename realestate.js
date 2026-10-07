@@ -126,36 +126,46 @@ function summarize(units, now) {
   return { from: String(from), to: String(to), categories };
 }
 
-function createRealEstate({ key = '', fetchImpl = fetch, store, now = Date.now }) {
+// Short fingerprint so a newly registered key is tried at once instead of waiting for the retry delay.
+function fingerprint(text) {
+  let hash = 0;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash.toString(36);
+}
+
+// keys: { apt, nrg, land } — 공공데이터포털이 API마다 다른 인증키를 줄 수 있어 종류별로 받는다.
+function createRealEstate({ key = '', keys = {}, fetchImpl = fetch, store, now = Date.now }) {
+  const keyOf = source => keys[source] || key;
   const unitKey = (source, lawd, ym) => `portal:re:${source}:${lawd}:${ym}`;
 
   function plan(at) {
     const months = [ymOf(at), ymOf(at - 30 * DAY)];
     if (months[0] === months[1]) months.pop();
     const units = [];
-    for (const source of Object.keys(SOURCES)) for (const [lawd] of REGIONS) for (const ym of months) units.push({ source, lawd, ym, current: ym === months[0] });
+    for (const source of Object.keys(SOURCES).filter(keyOf)) for (const [lawd] of REGIONS) for (const ym of months) units.push({ source, lawd, ym, current: ym === months[0] });
     return units;
   }
 
   // Refreshes up to BATCH stale units and returns the summary built from everything stored.
   async function load() {
-    if (!key) return null;
+    if (!Object.keys(SOURCES).some(keyOf)) return null;
     const at = now();
     const units = plan(at);
     const stored = await Promise.all(units.map(unit => store.get(unitKey(unit.source, unit.lawd, unit.ym))));
     const staleAfter = unit => (unit.current ? 6 : 24) * 60 * 60 * 1000;
     const due = units.map((unit, index) => ({ unit, index, entry: stored[index] }))
-      .filter(({ unit, entry }) => !entry || at - entry.at > (entry.error ? 30 * 60 * 1000 : staleAfter(unit)))
+      
+      .filter(({ unit, entry }) => !entry || entry.keyTag !== fingerprint(keyOf(unit.source)) || at - entry.at > (entry.error ? 30 * 60 * 1000 : staleAfter(unit)))
       .sort((a, b) => (a.entry?.at || 0) - (b.entry?.at || 0))
       .slice(0, BATCH);
     const errors = [];
     await Promise.all(due.map(async ({ unit, index, entry }) => {
       try {
-        const deals = await fetchUnit(fetchImpl, key, unit.source, unit.lawd, unit.ym);
-        stored[index] = { at, deals };
+        const deals = await fetchUnit(fetchImpl, keyOf(unit.source), unit.source, unit.lawd, unit.ym);
+        stored[index] = { at, deals, keyTag: fingerprint(keyOf(unit.source)) };
       } catch (error) {
         errors.push(`${SOURCES[unit.source].label}: ${error.message}`);
-        stored[index] = { at, deals: entry?.deals || [], error: error.message, ok: entry?.ok };
+        stored[index] = { at, deals: entry?.deals || [], error: error.message, ok: entry?.ok, keyTag: fingerprint(keyOf(unit.source)) };
       }
       if (!stored[index].error) stored[index].ok = true;
       await store.set(unitKey(unit.source, unit.lawd, unit.ym), stored[index]);

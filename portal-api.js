@@ -31,12 +31,12 @@ const REALESTATE_TTL = 60 * 60 * 1000;
 const REALESTATE_FILL_TTL = 3 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
   const key = ecosKey || 'sample';
-  const realEstate = createRealEstate({ key: molitKey, fetchImpl: (...args) => fetchImpl(...args), store, now });
+  const realEstate = createRealEstate({ key: molitKey, keys: molitKeys, fetchImpl: (...args) => fetchImpl(...args), store, now });
 
   async function loadIndicators() {
     const at = now();
