@@ -495,10 +495,55 @@
   loadLetters();
   $('sub-go').addEventListener('click', () => setTimeout(() => $('newsletter-email')?.focus({ preventScroll: true }), 500));
 
-  // ---------- AdSense units ----------
-  document.querySelectorAll('.ad-slot[data-ad]').forEach(container => {
+  // ---------- ad boxes: AdSense when a unit number is set, otherwise our own notices (house ads) ----------
+  // 승인 전이거나 Google이 광고를 채우지 못하면(unfilled) 같은 자리에 사이트 안내 배너가 돌아가며 나옵니다.
+  const HOUSE_ADS = [
+    { kicker: '스페이스 레터', title: '매주 월요일 아침 7시, 경제·정책 브리핑', text: '한국은행·한국부동산원 공식 통계로 정리한 지표와 이번 주 정책을 무료로 받아 보세요.', cta: '무료 구독하기', href: '#newsletter-section', icon: 'mail' },
+    { kicker: '정책비평·제안', title: '우리 동네를 바꾸는 한 줄 제안', text: '20개 부처별로 의견을 남기고, 공감하는 제안에 추천을 눌러 주세요.', cta: '제안하러 가기', href: '#policy-section', icon: 'idea' },
+    { kicker: '스페이스 톡', title: '회원끼리 나누는 단체 대화방', text: '모임방을 만들고 초대 링크 하나로 함께 이야기해요. 새 메시지 알림도 받을 수 있어요.', cta: '대화방 열기', href: '/chat', icon: 'chat' },
+    { kicker: '지난 레터', title: '지난 경제·정책 브리핑 모아 보기', text: '발행된 스페이스 레터를 누구나 다시 읽을 수 있습니다.', cta: '레터 보기', href: '/letter', icon: 'book' },
+    { kicker: '학술·논문·소고', title: '칼럼·서평·짧은 이야기를 나눠요', text: '회원이 쓴 생각의 단상과 연구를 유형별로 모아 읽는 공간입니다.', cta: '둘러보기', href: '#research-section', icon: 'pen' },
+  ];
+  const ICONS = {
+    mail: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
+    idea: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+    chat: '<path d="M4 5h16v10H9l-5 4z"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7"/>',
+    pen: '<path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/>',
+  };
+  function houseAd(container, offset) {
+    container.querySelector('.house-ad')?.remove();
+    container.querySelector('.ad-label').textContent = '스페이스 커뮤니티 안내';
+    const box = make('div', 'house-ad');
+    let index = offset % HOUSE_ADS.length;
+    const render = () => {
+      const ad = HOUSE_ADS[index];
+      const link = make('a', 'house-ad-card');
+      link.href = ad.href;
+      const icon = make('span', 'house-ad-icon');
+      icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[ad.icon]}</svg>`;
+      const copy = make('span', 'house-ad-copy');
+      copy.append(make('span', 'house-ad-kicker', ad.kicker), make('strong', 'house-ad-title', ad.title), make('span', 'house-ad-text', ad.text));
+      link.append(icon, copy, make('span', 'house-ad-cta', `${ad.cta} ›`));
+      box.replaceChildren(link);
+      const dots = make('span', 'house-ad-dots');
+      dots.setAttribute('aria-hidden', 'true');
+      HOUSE_ADS.forEach((_, dot) => dots.appendChild(make('i', dot === index ? 'on' : '')));
+      box.appendChild(dots);
+    };
+    render();
+    container.appendChild(box);
+    container.hidden = false;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let paused = false;
+      container.addEventListener('mouseenter', () => { paused = true; });
+      container.addEventListener('mouseleave', () => { paused = false; });
+      setInterval(() => { if (!paused && document.visibilityState === 'visible') { index = (index + 1) % HOUSE_ADS.length; render(); } }, 7000);
+    }
+  }
+  document.querySelectorAll('.ad-slot[data-ad]').forEach((container, offset) => {
     const slot = AD_SLOTS[container.dataset.ad];
-    if (!slot) return;
+    if (!slot) { houseAd(container, offset * 2); return; }
     const ins = document.createElement('ins');
     ins.className = 'adsbygoogle';
     ins.style.display = 'block';
@@ -508,7 +553,11 @@
     ins.dataset.fullWidthResponsive = 'true';
     container.appendChild(ins);
     container.hidden = false;
-    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (error) { console.error('AdSense push failed:', error); }
+    // Google marks a unit it could not fill with data-ad-status="unfilled": show our notice in its place.
+    new MutationObserver(() => {
+      if (ins.dataset.adStatus === 'unfilled') { ins.remove(); houseAd(container, offset * 2); }
+    }).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (error) { console.error('AdSense push failed:', error); houseAd(container, offset * 2); }
   });
 
   if (window.spaceBoards) renderBoards();
