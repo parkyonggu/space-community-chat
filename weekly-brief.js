@@ -214,8 +214,9 @@ async function rebHousing(fetchImpl, key, now = Date.now()) {
   }
   if (!tableSets.some(([label]) => label === '전세')) problems.push(`주간 전세가격지수 통계표를 찾지 못함 (주간 통계표 후보: ${weekly.map(table => table.STATBL_NM).slice(0, 8).join(', ') || '없음'})`);
   if (!lines.length) throw new Error(problems.join(' / ') || 'REB no regional rows');
+  const surveyDate = /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(week)) week = `${Number(week.slice(5, 7))}월 ${Number(week.slice(8, 10))}일 조사`;
-  return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems, data: { week, series } };
+  return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems, data: { week, surveyDate, series } };
 }
 
 function highlightLines(posts, siteUrl) {

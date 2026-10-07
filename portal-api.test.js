@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createPortalApi } = require('./portal-api');
+const { createPortalApi, nextReleaseOf } = require('./portal-api');
 
 function call(handler, method = 'GET', pathname = '/api/portal') {
   return new Promise(resolve => {
@@ -20,6 +20,7 @@ const series = {
   '817Y002/010200000': [['20260929', '2.51'], ['20261002', '2.534']],
   '722Y001/0101000': [['20261002', '2.5']],
   '902Y003/010102': [['202607', '70'], ['202608', '72.1']],
+  '902Y003/040101': [['202607', '4075.1'], ['202608', '4418.54']],
 };
 
 function ecosFetch(counter) {
@@ -43,6 +44,9 @@ test('portal returns indicators with day-over-day change, caches upstream calls 
   assert.deepEqual([byId.ktb3y.change, byId.ktb3y.changeUnit], [0.024, '%p']);
   assert.equal(byId.base.value, 2.5);
   assert.deepEqual([byId.dubai.value, byId.dubai.changePercent], [72.1, 3]);
+  assert.deepEqual([byId.gold.value, byId.gold.changePercent, byId.gold.date], [4418.5, 8.4, '202608']);
+  assert.equal(byId.kospi.date, '20261002');
+  assert.equal(first.body.indicators.today, '20261004');
   assert.equal(first.body.housing, null);
   assert.equal(first.body.online, 7);
   const calls = counter.count;
@@ -64,4 +68,10 @@ test('portal keeps the last good figures when the upstream fails', async () => {
   const second = await call(handler);
   assert.deepEqual(second.body.indicators, first.body.indicators);
   assert.equal((await call(handler, 'POST')).status, 405);
+});
+
+test('weekly housing release falls on Thursday (KST)', () => {
+  assert.equal(nextReleaseOf(Date.parse('2026-10-07T03:00:00Z')), '20261008'); // 수요일 → 목요일
+  assert.equal(nextReleaseOf(Date.parse('2026-10-08T03:00:00Z')), '20261008'); // 목요일 당일
+  assert.equal(nextReleaseOf(Date.parse('2026-10-09T16:00:00Z')), '20261015'); // 토요일 새벽(KST) → 다음 목요일
 });

@@ -348,7 +348,7 @@
   function deltaOf(item) {
     if (item.changePercent !== undefined) {
       const value = item.changePercent;
-      return { text: `${value > 0 ? '▲' : value < 0 ? '▼' : ''}${number(Math.abs(value), item.id === 'dubai' ? 1 : 2)}%`, cls: value > 0 ? 'up' : value < 0 ? 'down' : 'flat' };
+      return { text: `${value > 0 ? '▲' : value < 0 ? '▼' : ''}${number(Math.abs(value), item.id === 'dubai' || item.id === 'gold' ? 1 : 2)}%`, cls: value > 0 ? 'up' : value < 0 ? 'down' : 'flat' };
     }
     if (item.change !== undefined) {
       const value = item.change;
@@ -365,12 +365,15 @@
       $('eco-updated').textContent = '';
       return;
     }
-    const kospi = data.items.find(item => item.id === 'kospi' && item.date);
-    $('eco-updated').textContent = kospi ? `${dateLabel(kospi.date)} 기준` : '';
+    const today = data.today || '';
+    $('eco-updated').textContent = today ? `${dateLabel(today)} 조회 · 항목별 최신 발표` : '';
     box.replaceChildren(...data.items.map(item => {
       const row = make('div', 'indicator');
       const name = make('span', 'name', item.name);
-      if (item.note || (item.date && item.date.length === 6)) name.appendChild(make('small', '', [item.note, item.date && item.date.length === 6 ? `${dateLabel(item.date)}` : ''].filter(Boolean).join(' · ')));
+      const when = item.date ? (item.date.length === 6 ? dateLabel(item.date) : item.date === today ? '오늘' : dateLabel(item.date)) : '';
+      const closing = item.id === 'kospi' || item.id === 'kosdaq' ? ' 종가' : '';
+      const meta = [item.note, when ? `${when}${closing}` : ''].filter(Boolean).join(' · ');
+      if (meta) name.appendChild(make('small', '', meta));
       const figure = make('span', 'figure');
       if (item.value === null || item.value === undefined) {
         figure.appendChild(make('span', 'delta flat', '자료 없음'));
@@ -393,7 +396,8 @@
       body.replaceChildren(make('p', 'feed-empty', '이번 주 자료를 준비하고 있습니다. 한국부동산원 발표 후 자동으로 표시됩니다.'));
       return;
     }
-    $('house-week').textContent = `${data.week} 기준`;
+    const md = text => text ? `${Number(text.slice(4, 6))}/${Number(text.slice(6, 8))}` : '';
+    $('house-week').textContent = `${data.week} 기준${data.nextRelease ? ` · 다음 발표 ${md(data.nextRelease)}(목)` : ''}`;
     const table = make('table', 'housing-table');
     const head = make('tr');
     head.appendChild(make('th', '', '지역'));

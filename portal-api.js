@@ -9,6 +9,13 @@ const ymd = timestamp => kstDate(timestamp).toISOString().slice(0, 10).replace(/
 const ym = timestamp => kstDate(timestamp).toISOString().slice(0, 7).replace('-', '');
 const round = (value, digits) => Math.round(value * 10 ** digits) / 10 ** digits;
 
+// Next Thursday release date (KST, YYYYMMDD). On Thursday itself it is today.
+function nextReleaseOf(timestamp) {
+  const date = kstDate(timestamp);
+  const ahead = (4 - date.getUTCDay() + 7) % 7;
+  return ymd(timestamp + ahead * DAY);
+}
+
 const DAILY = [
   { id: 'kospi', name: 'KOSPI', code: '802Y001', item: '0001000', unit: '', digits: 2, change: 'percent' },
   { id: 'kosdaq', name: 'KOSDAQ', code: '802Y001', item: '0089000', unit: '', digits: 2, change: 'percent' },
@@ -18,6 +25,7 @@ const DAILY = [
 
 const INDICATOR_TTL = 30 * 60 * 1000;
 const HOUSING_TTL = 6 * 60 * 60 * 1000;
+const HOUSING_RELEASE_TTL = 60 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 
 function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
@@ -60,15 +68,35 @@ function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, 
     } catch (error) {
       items.push({ id: 'dubai', name: '두바이유', value: null, error: error.message });
     }
+    // 금 시세: 한국은행 국제상품가격(런던 금 월평균, 달러/트로이온스). KRX 일별 금 시세는 공공누리 제4유형(상업적 이용·재배포 금지)이라 쓰지 않는다.
+    try {
+      const rows = await ecos(fetchImpl, key, '902Y003', 'M', ym(at - 8 * 31 * DAY), ym(at), '040101');
+      const last = rows.at(-1);
+      const previous = rows.at(-2);
+      items.push({ id: 'gold', name: '국제 금', value: round(last.value, 1), unit: '달러', digits: 1, date: last.time, note: '온스당 월평균',
+        ...(previous ? { changePercent: round(((last.value - previous.value) / previous.value) * 100, 1), changeLabel: '전월 대비' } : {}) });
+    } catch (error) {
+      items.push({ id: 'gold', name: '국제 금', value: null, error: error.message });
+    }
     if (items.every(item => item.value === null)) throw new Error(items.map(item => item.error).join(' / '));
-    return { updatedAt: new Date(at).toISOString(), items, source: '한국은행 경제통계시스템(ECOS)' };
+    return { updatedAt: new Date(at).toISOString(), today: ymd(at), items, source: '한국은행 경제통계시스템(ECOS)' };
   }
 
   async function loadHousing() {
     if (!rebKey) return null;
     const result = await rebHousing(fetchImpl, rebKey, now());
     if (!result?.data?.series?.length) throw new Error('부동산원 자료 없음');
-    return { updatedAt: new Date(now()).toISOString(), week: result.data.week, series: result.data.series, source: '한국부동산원 R-ONE' };
+    const surveyDate = result.data.surveyDate || '';
+    let nextRelease = nextReleaseOf(now());
+    // 조사일(월요일) 주의 목요일 발표분이 이미 반영됐으면 다음 주 목요일이 다음 발표일이다.
+    if (surveyDate && nextRelease <= ymd(Date.parse(`${surveyDate}T00:00:00+09:00`) + 3 * DAY)) nextRelease = ymd(Date.parse(`${nextRelease.slice(0, 4)}-${nextRelease.slice(4, 6)}-${nextRelease.slice(6, 8)}T00:00:00+09:00`) + 7 * DAY);
+    return { updatedAt: new Date(now()).toISOString(), week: result.data.week, surveyDate, nextRelease, series: result.data.series, source: '한국부동산원 R-ONE' };
+  }
+
+  // 한국부동산원 주간 동향은 매주 목요일 오후에 발표된다. 목·금요일에는 1시간마다 새 주차를 확인한다.
+  function housingTtl() {
+    const day = kstDate(now()).getUTCDay();
+    return day === 4 || day === 5 ? HOUSING_RELEASE_TTL : HOUSING_TTL;
   }
 
   // Serves the cached value while fresh; refreshes once at a time; on failure keeps the last good value.
@@ -106,7 +134,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, 
     if (rateLimit && !rateLimit(`portal:${ip}`, 120, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
     const [indicators, housing, online] = await Promise.all([
       cached('indicators', INDICATOR_TTL, loadIndicators),
-      cached('housing', HOUSING_TTL, loadHousing),
+      cached('housing', housingTtl(), loadHousing),
       onlineCount().catch(() => null),
     ]);
     send(200, { indicators, housing, online });
@@ -115,4 +143,4 @@ function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, 
   return handlePortalApi;
 }
 
-module.exports = { createPortalApi };
+module.exports = { createPortalApi, nextReleaseOf };
