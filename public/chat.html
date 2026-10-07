@@ -63,6 +63,11 @@
         <div class="room-head"><h2 id="room-title"></h2><span id="room-sub"></span></div>
         <button type="button" class="icon" id="btn-room-menu" aria-label="대화방 메뉴" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       </header>
+      <div class="room-notice" id="room-notice" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
+        <button type="button" class="notice-text" id="notice-text" aria-expanded="false" title="눌러서 펼치기"></button>
+        <button type="button" class="notice-copy" id="notice-copy">복사</button>
+      </div>
       <div class="messages" id="messages" aria-live="polite" hidden>
         <button type="button" class="more" id="btn-older" hidden>이전 대화 더 보기</button>
         <div id="message-list"></div>

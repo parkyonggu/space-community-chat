@@ -159,6 +159,11 @@ export class ChatService extends DurableObject {
           return json({ ok: true });
         }
         if (method === 'POST' && action === 'mute') return json(this.core.mute(user, id, (await body()).muted));
+        if (method === 'POST' && action === 'notice') {
+          const result = this.core.setNotice(user, id, (await body()).text);
+          this.announce(id, result.memberIds, result.message);
+          return json({ room: result.room });
+        }
         if (method === 'POST' && action === 'update') {
           const result = this.core.update(user, id, await body());
           this.announce(id, result.memberIds, result.message);

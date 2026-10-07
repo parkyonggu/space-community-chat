@@ -53,6 +53,12 @@ test('group rooms: invite, unread counts, read receipts, members-only history, o
   assert.notEqual(updated.inviteCode, old);
   assert.throws(() => chat.join(users.carol, old), /초대 링크/);
 
+  assert.throws(() => chat.setNotice(users.bob, room.id, '공지'), /방장만/);
+  const noticed = chat.setNotice(users.alice, room.id, '  토요일 2시 도서관 3층  ');
+  assert.equal(noticed.room.notice.text, '토요일 2시 도서관 3층');
+  assert.equal(noticed.message.text, '앨리스님이 공지를 등록했습니다.');
+  assert.equal(chat.room(users.bob, room.id).notice.by, '앨리스');
+  assert.equal(chat.setNotice(users.alice, room.id, '').room.notice, null);
   const left = chat.leave(users.alice, room.id);
   assert.match(left.message.text, /방장이 밥님으로/);
   assert.equal(chat.room(users.bob, room.id).isOwner, true);

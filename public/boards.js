@@ -318,20 +318,24 @@
       [$('researchInput'), $('researchSubmit'), '연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요.'],
       ...[...categoryContainer.querySelectorAll('.policy-category')].map(card => [card.querySelector('textarea'), card.querySelector('button'), card.querySelector('textarea').dataset.placeholder]),
     ];
+    // Writing boxes stay open even before login so people can type or paste first;
+    // the login check happens when they press the register button and the text is kept.
     for (const [input, button, placeholder] of controls) {
-      input.disabled = !allowed;
-      button.disabled = !allowed;
-      input.placeholder = allowed ? placeholder : hint;
+      input.disabled = false;
+      button.disabled = false;
+      input.placeholder = allowed ? placeholder : `${placeholder} (${hint})`;
     }
-    $('researchTitle').disabled = !allowed;
-    $('voiceCategory').disabled = !allowed;
-    $('researchType').disabled = !allowed;
     const member = Boolean(state.user);
     researchLock.hidden = member;
     researchComposer.hidden = !member;
   }
 
   async function submit(board, payload, clear) {
+    if (!canWrite()) {
+      setStatus(board, `${writeHint()} 적은 내용은 그대로 남아 있으니 로그인 후 다시 등록을 눌러 주세요.`, true);
+      if (!state.user) window.spaceOpenAuth?.('login');
+      return;
+    }
     try {
       const { post, message } = await api('/api/board/posts', { board, ...payload });
       state.posts[board].unshift(post);
@@ -343,6 +347,43 @@
       setStatus(board, error.message, true);
     }
   }
+
+  // "붙여넣기" buttons: one tap pastes copied text (e.g. from 카카오톡 or 스페이스 톡) into the box.
+  for (const [inputId, board] of [['communityInput', 'community'], ['voiceInput', 'voice'], ['researchInput', 'research']]) {
+    const input = $(inputId);
+    const paste = make('button', 'like-btn paste-btn', '붙여넣기');
+    paste.type = 'button';
+    paste.title = '복사한 글을 이 칸에 붙여넣기';
+    paste.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) { setStatus(board, '복사한 글이 없습니다. 먼저 붙여넣을 글을 복사해 주세요.', true); return; }
+        const start = input.selectionStart ?? input.value.length;
+        input.value = input.value.slice(0, start) + text + input.value.slice(input.selectionEnd ?? start);
+        input.focus();
+        setStatus(board, '붙여넣었습니다. 내용을 확인하고 등록해 주세요.');
+      } catch {
+        input.focus();
+        setStatus(board, '이 브라우저는 버튼 붙여넣기를 막고 있어요. 글쓰기 칸을 길게 누르거나(휴대폰) Ctrl+V(PC)로 붙여넣어 주세요.', true);
+      }
+    });
+    input.after(paste);
+  }
+
+  // A draft carried over from 스페이스 톡 ("게시판에 옮겨 쓰기").
+  try {
+    const draft = JSON.parse(sessionStorage.getItem('space-draft') || 'null');
+    sessionStorage.removeItem('space-draft');
+    const target = draft && { community: 'communityInput', voice: 'voiceInput', research: 'researchInput' }[draft.board];
+    if (target && typeof draft.text === 'string') {
+      $(target).value = draft.text.slice(0, 20000);
+      setTimeout(() => {
+        window.spaceShowSection?.(sections[draft.board], false);
+        $(target).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setStatus(draft.board, '스페이스 톡에서 옮겨 온 내용입니다. 확인하고 등록해 주세요.');
+      }, 300);
+    }
+  } catch { /* storage unavailable or malformed draft */ }
 
   $('communitySubmit').addEventListener('click', () => {
     const input = $('communityInput');

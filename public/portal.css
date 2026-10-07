@@ -355,3 +355,5 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
   .house-ad-icon { width:44px; height:44px; }
   .house-ad-cta { width:100%; text-align:center; }
 }
+
+.paste-btn { margin-top:6px; }

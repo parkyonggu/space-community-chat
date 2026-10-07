@@ -24,6 +24,26 @@
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => { element.hidden = true; }, 2600);
   }
+  // Clipboard API first; falls back to a temporary textarea for browsers that block it (older phones, in-app browsers).
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      area.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      area.remove();
+      if (!ok) { toast('복사하지 못했어요. 글자를 길게 눌러 직접 복사해 주세요.'); return false; }
+    }
+    toast('복사했어요. 원하는 곳에 길게 눌러 붙여넣기 하세요.');
+    return true;
+  }
   function setConn(text, error = false) {
     $('conn').textContent = text;
     $('conn').dataset.error = String(error);
@@ -114,7 +134,7 @@
     const copy = make('button', 'btn navy', '복사');
     copy.type = 'button';
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(url); toast('링크를 복사했어요.'); } catch { input.select(); toast('링크를 길게 눌러 복사해 주세요.'); }
+      await copyText(url);
     });
     box.append(input, copy);
     return box;
@@ -212,6 +232,71 @@
     const online = (room.online || []).filter(id => id !== state.me.id).length;
     $('room-sub').textContent = room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
     $('btn-send').disabled = !$('input').value.trim();
+    renderNotice();
+  }
+  function renderNotice() {
+    const notice = state.room?.notice;
+    $('room-notice').hidden = !notice;
+    if (!notice) return;
+    const text = $('notice-text');
+    text.replaceChildren(linkify(notice.text), make('small', '', `${notice.by || ''} · ${listTime(notice.at)} 등록`));
+    text.setAttribute('aria-expanded', 'false');
+  }
+  $('notice-text').addEventListener('click', event => {
+    if (event.target.closest('a')) return;
+    const text = $('notice-text');
+    if (window.getSelection && String(window.getSelection()).length) return; // selecting text, not toggling
+    text.setAttribute('aria-expanded', String(text.getAttribute('aria-expanded') !== 'true'));
+  });
+  $('notice-copy').addEventListener('click', () => { if (state.room?.notice) copyText(state.room.notice.text); });
+  async function saveNotice(roomId, text) {
+    try {
+      const result = await api(`/api/chat/rooms/${roomId}/notice`, { method: 'POST', body: { text } });
+      if (state.current === roomId) { state.room = { ...state.room, notice: result.room.notice }; renderNotice(); }
+      toast(text ? '공지를 등록했어요.' : '공지를 내렸어요.');
+      return true;
+    } catch (error) { toast(error.message); return false; }
+  }
+  function noticeSheet(room) {
+    openSheet('공지사항', body => {
+      body.appendChild(make('p', '', '공지는 대화방 맨 위에 고정되어 모든 참여자에게 보입니다. 다른 곳에서 복사한 글을 붙여넣어도 됩니다.'));
+      const label = make('label', '', '공지 내용');
+      const area = make('textarea');
+      area.rows = 6;
+      area.maxLength = 1000;
+      area.value = room.notice?.text || '';
+      area.placeholder = '예: 이번 모임은 토요일 오후 2시, 도서관 3층 세미나실입니다.';
+      label.appendChild(area);
+      const save = make('button', 'btn gold block', '공지 등록');
+      save.type = 'button';
+      save.addEventListener('click', async () => {
+        if (!area.value.trim()) { toast('공지 내용을 입력해 주세요.'); return; }
+        if (await saveNotice(room.id, area.value)) closeSheet();
+      });
+      body.append(label, save);
+      if (room.notice) {
+        const remove = make('button', 'btn danger block', '공지 내리기');
+        remove.type = 'button';
+        remove.addEventListener('click', async () => { if (await saveNotice(room.id, '')) closeSheet(); });
+        body.appendChild(remove);
+      }
+      area.focus();
+    });
+  }
+  // Carry a chat message over to a board on the home page (소통·나눔 / 시민의 소리) as a draft.
+  function moveToBoard(text) {
+    openSheet('게시판에 옮겨 쓰기', body => {
+      body.appendChild(make('p', '', '고를 게시판의 글쓰기 칸에 이 내용이 미리 채워집니다. 확인하고 다듬은 뒤 등록하세요.'));
+      for (const [board, label] of [['community', '소통·나눔 광장'], ['voice', '시민의 소리'], ['research', '학술·논문·소고·이야기']]) {
+        const button = make('button', 'btn block', label);
+        button.type = 'button';
+        button.addEventListener('click', () => {
+          try { sessionStorage.setItem('space-draft', JSON.stringify({ board, text })); } catch { /* storage unavailable */ }
+          location.href = `/#${board}-section`;
+        });
+        body.appendChild(button);
+      }
+    });
   }
 
   // ---------- messages ----------
@@ -363,10 +448,9 @@
         button.addEventListener('click', action);
         menu.appendChild(button);
       };
-      if (message.kind === 'text') add('복사', async () => {
-        try { await navigator.clipboard.writeText(message.text); toast('복사했어요.'); } catch { toast('복사하지 못했어요.'); }
-        closeSheet();
-      });
+      if (message.kind === 'text') add('복사', async () => { closeSheet(); await copyText(message.text); });
+      if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
+      if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
       if (!mine && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
       const canDelete = (mine && Date.now() - new Date(message.createdAt) < 5 * 60 * 1000) || state.room.isOwner || state.me.admin;
       if (canDelete) add('삭제 (모두에게서)', async () => {
@@ -470,10 +554,21 @@
     }
     throw new Error('사진이 너무 큽니다.');
   }
-  $('file').addEventListener('change', async event => {
+  $('file').addEventListener('change', event => {
     const file = event.target.files[0];
     event.target.value = '';
+    sendPhoto(file);
+  });
+  // Pasting a copied picture into the message box sends it as a photo; pasted text goes in as usual.
+  input.addEventListener('paste', event => {
+    const file = [...(event.clipboardData?.files || [])].find(item => item.type.startsWith('image/'));
+    if (!file) return;
+    event.preventDefault();
+    if (confirm('복사한 사진을 보낼까요?')) sendPhoto(file);
+  });
+  async function sendPhoto(file) {
     if (!file || !state.current) return;
+    if (!file.type.startsWith('image/')) { toast('사진 파일만 보낼 수 있어요.'); return; }
     const roomId = state.current;
     const message = { id: `local-${crypto.randomUUID()}`, clientId: crypto.randomUUID(), roomId, userId: state.me.id, nickname: state.me.nickname,
       kind: 'image', text: '', createdAt: new Date().toISOString(), pending: true, localUrl: URL.createObjectURL(file) };
@@ -489,7 +584,7 @@
       message.pending = false;
       renderMessages();
     }
-  });
+  }
 
   // ---------- realtime ----------
   function send(payload) {
@@ -693,6 +788,8 @@
           closeSheet();
         } catch (error) { toast(error.message); }
       });
+      if (room.isOwner || room.kind === 'dm' || state.me.admin) add(room.notice ? '공지사항 수정·내리기' : '공지사항 등록', () => noticeSheet(room));
+      if (room.notice) add('공지 복사', () => { closeSheet(); copyText(room.notice.text); });
       if (room.kind === 'group' && room.isOwner) {
         add('대화방 이름 바꾸기', () => renameSheet(room));
         add('초대 링크 새로 만들기', async () => {

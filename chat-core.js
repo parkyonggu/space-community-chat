@@ -40,6 +40,9 @@ function createChatCore(sql, { now = Date.now } = {}) {
     created_at TEXT NOT NULL, resolved_at TEXT, UNIQUE (message_id, user_id))`);
   run(`CREATE TABLE IF NOT EXISTS chat_push (endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at TEXT NOT NULL)`);
   run(`CREATE TABLE IF NOT EXISTS chat_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+  // 공지사항 columns were added after the first release: add them to existing databases.
+  const roomColumns = all('PRAGMA table_info(chat_rooms)').map(column => column.name);
+  for (const column of ['notice', 'notice_at', 'notice_by']) if (!roomColumns.includes(column)) run(`ALTER TABLE chat_rooms ADD COLUMN ${column} TEXT`);
 
   function ensureUser(user) {
     if (!user?.id) throw new ChatError(401, '로그인한 회원만 이용할 수 있습니다.');
@@ -75,6 +78,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
       ownerId: room.owner_id, maxMembers: room.max_members, memberCount: list.length, members: list,
       inviteCode: room.kind === 'group' ? room.invite_code : null, isOwner: me?.role === 'owner',
       lastSeq: room.last_seq, lastAt: room.last_at || room.created_at, lastPreview: room.last_preview || '', unread, muted: Boolean(member?.muted),
+      notice: room.notice ? { text: room.notice, at: room.notice_at, by: room.notice_by } : null,
     };
   }
 
@@ -256,6 +260,16 @@ function createChatCore(sql, { now = Date.now } = {}) {
         }
       }
       if (resetInvite) run('UPDATE chat_rooms SET invite_code = ? WHERE id = ?', code(), room.id);
+      return { room: roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id), message, memberIds: members(room.id).map(entry => entry.id) };
+    },
+
+    setNotice(user, roomId, text) {
+      const { room, member } = membership(roomId, user.id);
+      if (room.kind === 'group' && member.role !== 'owner' && !user.admin) throw new ChatError(403, '공지는 방장만 등록할 수 있습니다.');
+      const body = typeof text === 'string' ? text.trim().slice(0, 1000) : '';
+      if (body) run('UPDATE chat_rooms SET notice = ?, notice_at = ?, notice_by = ? WHERE id = ?', body, iso(), user.nickname, room.id);
+      else run('UPDATE chat_rooms SET notice = NULL, notice_at = NULL, notice_by = NULL WHERE id = ?', room.id);
+      const message = addMessage(room, { kind: 'system', text: body ? `${user.nickname}님이 공지를 등록했습니다.` : `${user.nickname}님이 공지를 내렸습니다.` });
       return { room: roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id), message, memberIds: members(room.id).map(entry => entry.id) };
     },
 
