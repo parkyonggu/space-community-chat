@@ -83,7 +83,8 @@ export class CommunityService extends DurableObject {
       mailer,
       adminEmails,
       onAccountDeleted: userId => Promise.all([this.board.anonymizeUser(userId), this.community.anonymizeUser(userId),
-        env.TALK ? env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null]),
+        env.TALK ? env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null,
+        env.CHAT ? env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null]),
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,
@@ -175,23 +176,61 @@ export class CommunityService extends DurableObject {
   }
 }
 
+// 광장 채팅: 접속자에게 바로 전달하고, 최근 글은 SQLite 저장소에 45일간 보관해 나중에 들어온 사람도 볼 수 있다.
+const SQUARE_RETENTION_MS = 45 * 24 * 60 * 60 * 1000;
+const SQUARE_HISTORY = 200;
+const squareKey = (at, rand) => `m:${String(at).padStart(15, '0')}:${rand}`;
+const squareKeyOf = id => {
+  const match = /^(\d{10,15})-([a-z0-9]{6,16})$/.exec(String(id || ''));
+  return match ? squareKey(Number(match[1]), match[2]) : null;
+};
+
 export class ChatRoom extends DurableObject {
   async fetch(request) {
-    if (new URL(request.url).pathname === '/status') return json({ online: this.ctx.getWebSockets().length });
+    const url = new URL(request.url);
+    if (url.pathname === '/status') return json({ online: this.ctx.getWebSockets().length });
+    if (url.pathname === '/internal/user-deleted' && request.method === 'POST') {
+      const { userId } = await request.json().catch(() => ({}));
+      if (userId) await this.removeUser(String(userId));
+      return json({ ok: true });
+    }
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'WebSocket 연결이 필요합니다.' }, 426);
     if (request.headers.get('Origin') !== this.env.SITE_URL) return json({ error: '이 사이트에서만 채팅할 수 있습니다.' }, 403);
     if (this.ctx.getWebSockets().length >= 100) return json({ error: '채팅 접속자가 많습니다. 잠시 후 다시 시도해 주세요.' }, 503);
     let name = null;
     try { name = request.headers.get('X-Chat-Name') ? decodeURIComponent(request.headers.get('X-Chat-Name')) : null; } catch { name = null; }
     const signedIn = request.headers.get('X-Chat-Signed-In') === '1';
+    const uid = request.headers.get('X-Chat-User-Id') || '';
+    const admin = request.headers.get('X-Chat-Admin') === '1';
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment({ start: Date.now(), count: 0, name });
-    pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn, you: name || '' }));
+    pair[1].serializeAttachment({ start: Date.now(), count: 0, name, uid, admin });
+    pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn, you: name || '', admin }));
+    const history = await this.history(uid);
+    pair[1].send(JSON.stringify({ type: 'history', messages: history, retentionDays: SQUARE_RETENTION_MS / 86400000 }));
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
-  webSocketMessage(socket, message) {
+  async history(uid) {
+    const since = squareKey(Date.now() - SQUARE_RETENTION_MS, '');
+    const entries = await this.ctx.storage.list({ prefix: 'm:', start: since, reverse: true, limit: SQUARE_HISTORY });
+    return [...entries.values()].reverse().map(message => this.publicMessage(message, uid));
+  }
+
+  publicMessage(message, uid) {
+    return { type: 'message', id: message.id, name: message.name, text: message.text, at: message.at, own: Boolean(uid) && message.uid === uid };
+  }
+
+  broadcast(build) {
+    for (const peer of this.ctx.getWebSockets()) {
+      try { peer.send(JSON.stringify(build(peer.deserializeAttachment() || {}))); } catch (failure) {
+        console.error('Chat broadcast failed:', failure);
+        peer.close(1011, 'Message delivery failed');
+      }
+    }
+  }
+
+  async webSocketMessage(socket, message) {
     const error = text => socket.send(JSON.stringify({ error: text }));
     if (typeof message !== 'string' || message.length > 8192) {
       error('채팅 내용이 너무 큽니다.');
@@ -199,28 +238,57 @@ export class ChatRoom extends DurableObject {
     }
     let input;
     try { input = JSON.parse(message); } catch { error('올바른 채팅 요청이 아닙니다.'); return; }
+    let window = socket.deserializeAttachment();
+    if (!window.name) { error('로그인한 회원만 채팅을 보낼 수 있습니다.'); return; }
+    if (input?.type === 'delete') {
+      const key = squareKeyOf(input.id);
+      const stored = key ? await this.ctx.storage.get(key) : null;
+      if (!stored) { error('이미 삭제되었거나 없는 메시지입니다.'); return; }
+      if (!(window.admin || (window.uid && stored.uid === window.uid))) { error('내가 보낸 메시지만 삭제할 수 있습니다.'); return; }
+      await this.ctx.storage.delete(key);
+      this.broadcast(() => ({ type: 'deleted', id: stored.id }));
+      return;
+    }
     const text = typeof input?.text === 'string' ? input.text.trim() : '';
     if (!text || text.length > 2000) { error('채팅은 1~2,000자로 입력해 주세요.'); return; }
     const now = Date.now();
-    let window = socket.deserializeAttachment();
-    if (!window.name) { error('로그인한 회원만 채팅을 보낼 수 있습니다.'); return; }
-    if (now - window.start >= 60000) window = { start: now, count: 0, name: window.name };
+    if (now - window.start >= 60000) window = { ...window, start: now, count: 0 };
     window.count += 1;
     socket.serializeAttachment(window);
     if (window.count > 30) { error('채팅 전송이 많습니다. 잠시 후 다시 시도해 주세요.'); return; }
-    const output = JSON.stringify({ name: window.name, text, at: now });
-    for (const peer of this.ctx.getWebSockets()) {
-      try { peer.send(output); } catch (failure) {
-        console.error('Chat broadcast failed:', failure);
-        peer.close(1011, 'Message delivery failed');
-      }
-    }
+    const rand = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+    const stored = { id: `${now}-${rand}`, uid: window.uid || '', name: window.name, text, at: now };
+    await this.ctx.storage.put(squareKey(now, rand), stored);
+    if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(now + 24 * 60 * 60 * 1000);
+    this.broadcast(peer => this.publicMessage(stored, peer.uid));
   }
 
-  webSocketClose(socket, code, reason) { socket.close(code, reason); }
+  // 하루에 한 번 보관 기간이 지난 글을 지운다.
+  async alarm() {
+    const end = squareKey(Date.now() - SQUARE_RETENTION_MS, '');
+    for (;;) {
+      const old = await this.ctx.storage.list({ prefix: 'm:', end, limit: 500 });
+      if (!old.size) break;
+      const keys = [...old.keys()];
+      for (let index = 0; index < keys.length; index += 128) await this.ctx.storage.delete(keys.slice(index, index + 128));
+    }
+    const rest = await this.ctx.storage.list({ prefix: 'm:', limit: 1 });
+    if (rest.size) await this.ctx.storage.setAlarm(Date.now() + 24 * 60 * 60 * 1000);
+  }
+
+  async removeUser(userId) {
+    const all = await this.ctx.storage.list({ prefix: 'm:' });
+    const keys = [...all].filter(([, value]) => value.uid === userId).map(([key]) => key);
+    for (let index = 0; index < keys.length; index += 128) await this.ctx.storage.delete(keys.slice(index, index + 128));
+    for (const key of keys) this.broadcast(() => ({ type: 'deleted', id: all.get(key).id }));
+  }
+
+  webSocketClose(socket, code, reason) {
+    try { socket.close(code === 1005 || code === 1006 ? 1000 : code, reason); } catch { /* already closed */ }
+  }
   webSocketError(socket, error) {
     console.error('Chat WebSocket failed:', error);
-    socket.close(1011, 'Connection failed');
+    try { socket.close(1011, 'Connection failed'); } catch { /* already closed */ }
   }
 }
 
@@ -262,8 +330,12 @@ export default {
         const identity = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(identityRequest)).json();
         const forwarded = new Request(request);
         forwarded.headers.delete('X-Chat-Name');
+        forwarded.headers.delete('X-Chat-User-Id');
+        forwarded.headers.delete('X-Chat-Admin');
         forwarded.headers.set('X-Chat-Signed-In', identity.signedIn ? '1' : '0');
         if (identity.name) forwarded.headers.set('X-Chat-Name', encodeURIComponent(identity.name));
+        if (identity.user?.id) forwarded.headers.set('X-Chat-User-Id', String(identity.user.id));
+        forwarded.headers.set('X-Chat-Admin', identity.user?.admin ? '1' : '0');
         return await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch(forwarded);
       }
       return await env.ASSETS.fetch(request);

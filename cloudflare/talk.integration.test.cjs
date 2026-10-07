@@ -98,3 +98,41 @@ test('스페이스 톡: rooms, invites, realtime delivery, read receipts, photos
   aliceSocket.close();
   bobSocket.close();
 });
+
+test('광장 채팅: 보관된 대화가 나중에 들어온 사람에게 보이고, 보낸 사람만 삭제할 수 있다', async () => {
+  const square = client => new Promise((resolve, reject) => {
+    const socket = new WebSocket(`${origin.replace('http', 'ws')}/ws/chat`, { headers: { Cookie: client?.cookie || '', Origin: origin, 'CF-Connecting-IP': client?.ip || '10.79.0.9' } });
+    socket.events = [];
+    socket.addEventListener('message', event => socket.events.push(JSON.parse(event.data)));
+    socket.addEventListener('open', () => resolve(socket));
+    socket.addEventListener('error', reject);
+  });
+  const carol = await member('캐럴');
+  const dave = await member('데이브');
+  const carolSocket = await square(carol);
+  await until(() => carolSocket.events.find(event => event.type === 'history'));
+  const text = `11월 1일 모임 공지 ${runId}`;
+  carolSocket.send(JSON.stringify({ text }));
+  const sent = await until(() => carolSocket.events.find(event => event.type === 'message' && event.text === text));
+  assert.equal(sent.own, true);
+  assert.match(sent.id, /^\d+-[a-z0-9]+$/);
+
+  const guest = await square(null);
+  const history = await until(() => guest.events.find(event => event.type === 'history'));
+  const seen = history.messages.find(message => message.text === text);
+  assert.ok(seen, 'late visitor sees the stored message');
+  assert.equal(seen.own, false);
+  assert.equal(seen.uid, undefined, 'user id is not exposed');
+
+  const daveSocket = await square(dave);
+  await until(() => daveSocket.events.find(event => event.type === 'history'));
+  daveSocket.send(JSON.stringify({ type: 'delete', id: sent.id }));
+  assert.match((await until(() => daveSocket.events.find(event => event.error))).error, /내가 보낸 메시지만/);
+
+  carolSocket.send(JSON.stringify({ type: 'delete', id: sent.id }));
+  await until(() => guest.events.find(event => event.type === 'deleted' && event.id === sent.id));
+  const again = await square(null);
+  const after = await until(() => again.events.find(event => event.type === 'history'));
+  assert.ok(!after.messages.some(message => message.id === sent.id), 'deleted message is gone for everyone');
+  for (const socket of [carolSocket, guest, daveSocket, again]) socket.close();
+});

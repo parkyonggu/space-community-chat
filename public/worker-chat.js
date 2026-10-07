@@ -12,6 +12,8 @@ let stopped = false;
 let canSend = false;
 let chatIdentity = window.spaceAuth ? window.spaceAuth.user?.id || '' : null;
 let myName = '';
+let isAdmin = false;
+let squareMessages = [];
 
 // 대화방에 나온 순서대로 서로 다른 색을 준다(흰 글씨가 잘 보이는 진한 색, 서로 확실히 다른 색만).
 const CHAT_COLORS = ['#2f5bd3', '#c62828', '#1f7a54', '#7b3fb0', '#e65100', '#00838f', '#ad1457', '#5d4037', '#546e7a', '#6d8b00', '#283593', '#9e7700'];
@@ -33,16 +35,54 @@ function timeLabel(at) {
   return `${hours < 12 ? '오전' : '오후'} ${hours % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 const GROUP_GAP = 3 * 60 * 1000;
+function dayLabel(at) {
+  const date = new Date(at);
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${'일월화수목금토'[date.getDay()]})`;
+}
+function dayKey(at) { const date = new Date(at); return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`; }
+function lastMessageElement() {
+  const last = chatBox.lastElementChild;
+  return last && last.classList.contains('chat-message') ? last : null;
+}
+function deleteButton(id) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'chat-del';
+  button.textContent = '삭제';
+  let armed = null;
+  button.addEventListener('click', () => {
+    if (!armed) {
+      button.textContent = '정말 삭제';
+      button.classList.add('armed');
+      armed = setTimeout(() => { armed = null; button.textContent = '삭제'; button.classList.remove('armed'); }, 3000);
+      return;
+    }
+    clearTimeout(armed);
+    if (chatSocket?.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'delete', id }));
+  });
+  return button;
+}
 function renderChatMessage(result) {
   const name = typeof result.name === 'string' ? result.name : '';
   const at = Number.isFinite(result.at) ? result.at : Date.now();
-  const mine = Boolean(name) && name === myName;
-  const previous = chatBox.lastElementChild;
+  const mine = result.own === true || (Boolean(name) && name === myName);
+  const lastAny = chatBox.lastElementChild;
+  const lastDay = lastAny ? lastAny.dataset.day : null;
+  if (lastDay !== dayKey(at)) {
+    const divider = document.createElement('div');
+    divider.className = 'chat-day';
+    divider.dataset.day = dayKey(at);
+    divider.textContent = dayLabel(at);
+    chatBox.appendChild(divider);
+  }
+  const previous = lastMessageElement();
   const continued = previous && previous.dataset.name === name && at - Number(previous.dataset.at) < GROUP_GAP;
   const item = document.createElement('div');
   item.className = `chat-message${mine ? ' mine' : ''}${continued ? ' cont' : ''}`;
   item.dataset.name = name;
   item.dataset.at = String(at);
+  item.dataset.day = dayKey(at);
+  if (result.id) item.dataset.id = result.id;
   if (name) item.style.setProperty('--who', colorOf(name));
   if (!mine && !continued) {
     const avatar = document.createElement('span');
@@ -72,17 +112,24 @@ function renderChatMessage(result) {
   time.dateTime = new Date(at).toISOString();
   time.textContent = timeLabel(at);
   line.append(bubble, time);
+  if (result.id && (mine || isAdmin)) line.appendChild(deleteButton(result.id));
   body.appendChild(line);
   item.appendChild(body);
   // 화면 낭독기용: "닉네임: 내용"
   item.setAttribute('aria-label', `${mine ? '나' : name}, ${timeLabel(at)}: ${result.text}`);
-  const nearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
   chatBox.appendChild(item);
-  if (chatBox.childElementCount > 200) {
-    chatBox.firstElementChild.remove();
-    const first = chatBox.firstElementChild;
-    if (first && first.classList.contains('cont')) first.classList.remove('cont');
-  }
+}
+function renderAllChat() {
+  chatBox.replaceChildren();
+  squareMessages.forEach(renderChatMessage);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+function addChatMessage(result) {
+  const nearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
+  squareMessages.push(result);
+  if (squareMessages.length > 300) { squareMessages = squareMessages.slice(-200); renderAllChat(); return; }
+  renderChatMessage(result);
+  const mine = result.own === true || (result.name && result.name === myName);
   if (nearBottom || mine) chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -99,7 +146,7 @@ function connectChat() {
   chatSocket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`);
   chatSocket.addEventListener('open', () => {
     reconnectDelay = 1000;
-    chatStatus.textContent = '채팅 서버에 연결되었습니다. 메시지는 현재 접속자에게 전달되며 기록으로 보관하지 않습니다.';
+    chatStatus.textContent = '채팅 서버에 연결되었습니다. 광장 대화는 누구나 볼 수 있고, 올린 날부터 45일 동안 보관된 뒤 자동으로 삭제됩니다.';
     chatStatus.dataset.error = 'false';
   });
   chatSocket.addEventListener('message', event => {
@@ -113,7 +160,21 @@ function connectChat() {
     if (result.type === 'hello') {
       canSend = result.canSend === true;
       myName = typeof result.you === 'string' ? result.you : '';
+      isAdmin = result.admin === true;
       updateChatInput(result.signedIn === true);
+      return;
+    }
+    if (result.type === 'history') {
+      squareMessages = Array.isArray(result.messages) ? result.messages.filter(item => typeof item?.text === 'string') : [];
+      renderAllChat();
+      if (!squareMessages.length) chatBox.appendChild(Object.assign(document.createElement('p'), { className: 'chat-empty', textContent: `아직 올라온 대화가 없습니다. 광장 대화는 올린 날부터 ${result.retentionDays || 45}일 동안 보입니다.` }));
+      return;
+    }
+    if (result.type === 'deleted') {
+      squareMessages = squareMessages.filter(item => item.id !== result.id);
+      const scroll = chatBox.scrollTop;
+      renderAllChat();
+      chatBox.scrollTop = scroll;
       return;
     }
     if (result.error) {
@@ -127,7 +188,8 @@ function connectChat() {
       chatStatus.dataset.error = 'true';
       return;
     }
-    renderChatMessage(result);
+    chatBox.querySelector('.chat-empty')?.remove();
+    addChatMessage(result);
   });
   chatSocket.addEventListener('error', () => {
     chatStatus.textContent = '채팅 연결 오류가 발생했습니다. 연결 상태를 확인해 주세요.';

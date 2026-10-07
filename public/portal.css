@@ -414,3 +414,12 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .kr-item .c { font-size:12.5px; font-weight:700; }
 @keyframes kr-scroll { from { transform:translateX(0); } to { transform:translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .kr-track { animation:none; } .kr-tape { overflow-x:auto; } }
+
+/* 광장 채팅: 날짜 구분선, 삭제 버튼 */
+.chat-day { display:flex; align-items:center; gap:10px; margin:16px 0 4px; font-size:12px; font-weight:700; color:var(--muted); }
+.chat-day::before, .chat-day::after { content:""; flex:1; height:1px; background:var(--line); }
+.chat-day:first-child { margin-top:0; }
+.chat-del { flex:none; border:0; background:none; padding:0 2px; font-size:11px; color:var(--muted); cursor:pointer; text-decoration:underline; opacity:.55; }
+.chat-message:hover .chat-del, .chat-del:focus-visible, .chat-del.armed { opacity:1; }
+.chat-del.armed { color:var(--up); font-weight:800; text-decoration:none; }
+.chat-empty { margin:40px 0; text-align:center; color:var(--muted); font-size:14px; }
