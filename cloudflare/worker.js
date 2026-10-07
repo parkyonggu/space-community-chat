@@ -113,7 +113,7 @@ export class CommunityService extends DurableObject {
       adminEmails, ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', highlights: since => this.board.highlights(since),
     });
     this.portal = portal.createPortalApi({
-      ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', rateLimit,
+      ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', rateLimit,
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {
         const response = await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/status');

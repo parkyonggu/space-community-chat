@@ -419,6 +419,79 @@
     table.append(thead, tbody);
     body.replaceChildren(table);
   }
+  // ---------- 오늘의 부동산 동향 (국토교통부 실거래가) ----------
+  let realestate = null;
+  let reTab = 'apt';
+  function won(manwon) {
+    if (!Number.isFinite(manwon)) return '–';
+    const eok = Math.floor(manwon / 10000);
+    const rest = Math.round(manwon % 10000);
+    if (!eok) return `${number(rest, 0)}만`;
+    return rest ? `${eok}억 ${number(rest, 0)}만` : `${eok}억`;
+  }
+  function perArea(wonPerSquareMeter) {
+    if (!Number.isFinite(wonPerSquareMeter)) return '–';
+    return wonPerSquareMeter >= 10000 ? `㎡당 ${number(wonPerSquareMeter / 10000, 1)}만원` : `㎡당 ${number(wonPerSquareMeter, 0)}원`;
+  }
+  const md = text => `${Number(text.slice(4, 6))}/${Number(text.slice(6, 8))}`;
+  function renderRealEstate(data) {
+    if (data !== undefined) realestate = data;
+    const body = $('re-body');
+    const panel = $('realestate-panel');
+    if (!realestate) {
+      body.replaceChildren(make('p', 'feed-empty', '실거래가 자료를 연결하고 있습니다. 잠시 후 자동으로 표시됩니다.'));
+      return;
+    }
+    $('re-range').textContent = `${md(realestate.from)}~${md(realestate.to)} 계약 · 최근 30일 신고분`;
+    panel.querySelectorAll('[data-re]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.re === reTab)));
+    const category = realestate.categories?.find(item => item.id === reTab);
+    if (!category || !category.count) {
+      const waiting = realestate.coverage && realestate.coverage.ready < realestate.coverage.total;
+      const message = realestate.problems?.length && !realestate.coverage?.ready
+        ? '실거래가 자료를 받아 오지 못했습니다. 운영자가 확인하고 있습니다.'
+        : waiting ? `자료를 모으는 중입니다 (${realestate.coverage.ready}/${realestate.coverage.total}). 몇 분 뒤 다시 확인해 주세요.` : '최근 30일 안에 신고된 거래가 없습니다.';
+      body.replaceChildren(make('p', 'feed-empty', message));
+      return;
+    }
+    const isArea = category.metric === 'perSquareMeter';
+    const grid = make('div', 're-grid');
+    const left = make('div');
+    const sum = make('p', 're-sum');
+    sum.append(make('span', '', `${category.label} 거래`), make('strong', '', `${number(category.count, 0)}건`), make('span', '', `· ${category.regions.length}개 지역`));
+    const table = make('table', 're-table');
+    const head = make('tr');
+    head.append(make('th', '', '지역'), make('th', '', '건수'), make('th', '', isArea ? '㎡당 가격(중간값)' : '거래가(중간값)'));
+    const thead = make('thead');
+    thead.appendChild(head);
+    const tbody = make('tbody');
+    category.regions.slice(0, 8).forEach(region => {
+      const row = make('tr');
+      row.append(make('td', '', region.name), make('td', 'count', `${region.count}건`), make('td', '', isArea ? perArea(region.median).replace('㎡당 ', '') : won(region.median)));
+      tbody.appendChild(row);
+    });
+    table.append(thead, tbody);
+    left.append(sum, table);
+    const right = make('div', 're-recent');
+    right.appendChild(make('h3', '', '최근 계약된 거래'));
+    const list = make('ul');
+    category.recent.forEach(deal => {
+      const item = make('li');
+      const what = make('span', 'what');
+      const title = category.id === 'apt' ? `${deal.name}` : category.id === 'bldg' ? `${deal.name || '건물'}` : `${deal.name} ${number(deal.area, 0)}㎡`;
+      what.append(document.createTextNode(title), make('small', '', `${md(deal.date)} · ${deal.region} ${deal.dong}${category.id === 'apt' ? ` · ${number(deal.area, 0)}㎡ ${deal.floor ? `${deal.floor}층` : ''}` : category.id === 'bldg' && deal.area ? ` · 연면적 ${number(deal.area, 0)}㎡` : ''}`));
+      const price = make('span', 'price', won(deal.amount));
+      if (isArea && deal.area) price.appendChild(make('small', '', perArea((deal.amount * 10000) / deal.area)));
+      item.append(what, price);
+      list.appendChild(item);
+    });
+    right.appendChild(list);
+    grid.append(left, right);
+    const nodes = [grid];
+    if (realestate.coverage && realestate.coverage.ready < realestate.coverage.total) nodes.push(make('p', 're-note', `자료를 모으는 중입니다 (${realestate.coverage.ready}/${realestate.coverage.total}). 곧 모든 지역이 반영됩니다.`));
+    body.replaceChildren(...nodes);
+  }
+  $('realestate-panel').querySelectorAll('[data-re]').forEach(button => button.addEventListener('click', () => { reTab = button.dataset.re; renderRealEstate(); }));
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);
@@ -435,11 +508,13 @@
       const data = await response.json();
       renderIndicators(data.indicators);
       renderHousing(data.housing);
+      renderRealEstate(data.realestate);
       renderOnline(data.online);
     } catch (error) {
       console.error('Portal data failed:', error);
       if (!$('eco-list').querySelector('.indicator')) renderIndicators(null);
       if (!$('house-body').querySelector('table')) renderHousing(null);
+      if (!realestate) renderRealEstate(null);
     }
   }
   refreshPortal();

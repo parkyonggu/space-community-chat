@@ -141,6 +141,18 @@
           </section>
         </div>
 
+        <section class="panel panel-pad re-panel" id="realestate-panel" aria-labelledby="re-title">
+          <div class="panel-head"><h2 id="re-title">오늘의 부동산 동향</h2><span class="hint" id="re-range">최근 30일 실거래 신고분</span></div>
+          <div class="re-tabs" role="tablist" aria-label="부동산 종류">
+            <button type="button" class="chip" role="tab" data-re="apt" aria-selected="true">아파트</button>
+            <button type="button" class="chip" role="tab" data-re="bldg" aria-selected="false">건물</button>
+            <button type="button" class="chip" role="tab" data-re="forest" aria-selected="false">임야</button>
+            <button type="button" class="chip" role="tab" data-re="farm" aria-selected="false">농지</button>
+          </div>
+          <div id="re-body" aria-live="polite"><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source" id="re-source">출처: 국토교통부 실거래가 공개시스템(공공데이터포털) · 주요 14개 시군구 · 해제·지분 거래 제외 · 계약 후 30일 안에 신고되므로 최근 거래는 계속 늘어납니다. 투자 권유가 아닌 참고 자료입니다.</p>
+        </section>
+
         <section class="letter-band" aria-labelledby="letter-title">
           <div class="copy">
             <div class="eyebrow">스페이스 레터 · 매주 월요일 07:00</div>

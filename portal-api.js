@@ -2,6 +2,7 @@
 // (한국부동산원 R-ONE) and the live chat head count. Upstream calls are cached so page views never
 // hit the public APIs directly.
 const { ecos, rebHousing } = require('./weekly-brief');
+const { createRealEstate } = require('./realestate');
 
 const DAY = 24 * 60 * 60 * 1000;
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
@@ -26,13 +27,16 @@ const DAILY = [
 const INDICATOR_TTL = 30 * 60 * 1000;
 const HOUSING_TTL = 6 * 60 * 60 * 1000;
 const HOUSING_RELEASE_TTL = 60 * 60 * 1000;
+const REALESTATE_TTL = 60 * 60 * 1000;
+const REALESTATE_FILL_TTL = 3 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 
-function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
   const key = ecosKey || 'sample';
+  const realEstate = createRealEstate({ key: molitKey, fetchImpl: (...args) => fetchImpl(...args), store, now });
 
   async function loadIndicators() {
     const at = now();
@@ -108,7 +112,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, 
       inflight.set(name, (async () => {
         try {
           const value = await loader();
-          await store.set(`portal:${name}`, { value, freshUntil: now() + ttl });
+          await store.set(`portal:${name}`, { value, freshUntil: now() + (typeof ttl === 'function' ? ttl(value) : ttl) });
           return value;
         } catch (error) {
           console.error(`Portal ${name} refresh failed:`, error.message);
@@ -132,12 +136,13 @@ function createPortalApi({ ecosKey = '', rebKey = '', fetchImpl = fetch, cache, 
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`portal:${ip}`, 120, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
-    const [indicators, housing, online] = await Promise.all([
+    const [indicators, housing, realestate, online] = await Promise.all([
       cached('indicators', INDICATOR_TTL, loadIndicators),
       cached('housing', housingTtl(), loadHousing),
+      cached('realestate', value => (value?.complete ? REALESTATE_TTL : REALESTATE_FILL_TTL), realEstate.load),
       onlineCount().catch(() => null),
     ]);
-    send(200, { indicators, housing, online });
+    send(200, { indicators, housing, realestate, online });
   }
 
   return handlePortalApi;
