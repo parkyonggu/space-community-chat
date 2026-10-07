@@ -419,6 +419,33 @@
     table.append(thead, tbody);
     body.replaceChildren(table);
   }
+  // ---------- 미국 증시: TradingView 무료 위젯(화면에 보일 때만 불러옴) ----------
+  (function usMarket() {
+    const box = $('us-ticker');
+    if (!box) return;
+    const load = () => {
+      if (box.dataset.loaded) return;
+      box.dataset.loaded = '1';
+      const script = document.createElement('script');
+      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
+      script.async = true;
+      script.text = JSON.stringify({
+        symbols: [
+          { proName: 'FOREXCOM:NSXUSD', title: '나스닥 100' },
+          { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
+          { proName: 'NYSE:NYA', title: 'NYSE 종합' },
+          { proName: 'FOREXCOM:DJI', title: '다우존스' },
+        ],
+        showSymbolLogo: false, isTransparent: true, displayMode: 'compact', colorTheme: 'light', locale: 'kr',
+      });
+      box.appendChild(script);
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); load(); } }, { rootMargin: '200px' });
+      observer.observe(box);
+    } else load();
+  })();
+
   // ---------- 오늘의 부동산 동향 (국토교통부 실거래가) ----------
   let realestate = null;
   let reTab = 'apt';
