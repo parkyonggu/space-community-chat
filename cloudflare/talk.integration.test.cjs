@@ -111,6 +111,8 @@ test('광장 채팅: 보관된 대화가 나중에 들어온 사람에게 보이
   const dave = await member('데이브');
   const carolSocket = await square(carol);
   await until(() => carolSocket.events.find(event => event.type === 'history'));
+  const presence = await until(() => carolSocket.events.find(event => event.type === 'presence' && event.members.includes(`캐럴${runId}`)));
+  assert.ok(Number.isInteger(presence.guests));
   const text = `11월 1일 모임 공지 ${runId}`;
   carolSocket.send(JSON.stringify({ text }));
   const sent = await until(() => carolSocket.events.find(event => event.type === 'message' && event.text === text));
@@ -119,6 +121,8 @@ test('광장 채팅: 보관된 대화가 나중에 들어온 사람에게 보이
 
   const guest = await square(null);
   const history = await until(() => guest.events.find(event => event.type === 'history'));
+  const withGuest = await until(() => carolSocket.events.filter(event => event.type === 'presence').at(-1)?.guests >= 1 && carolSocket.events.filter(event => event.type === 'presence').at(-1));
+  assert.ok(!withGuest.members.some(name => name === ''), 'guests are counted, not named');
   const seen = history.messages.find(message => message.text === text);
   assert.ok(seen, 'late visitor sees the stored message');
   assert.equal(seen.own, false);

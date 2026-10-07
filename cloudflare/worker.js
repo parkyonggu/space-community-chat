@@ -208,7 +208,25 @@ export class ChatRoom extends DurableObject {
     pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn, you: name || '', admin }));
     const history = await this.history(uid);
     pair[1].send(JSON.stringify({ type: 'history', messages: history, retentionDays: SQUARE_RETENTION_MS / 86400000 }));
+    this.announcePresence();
     return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  // 지금 접속한 사람: 회원은 닉네임(중복 접속은 한 번만), 로그인하지 않았거나 인증 전인 방문자는 숫자만.
+  presence(leaving) {
+    const members = new Set();
+    let guests = 0;
+    for (const peer of this.ctx.getWebSockets()) {
+      if (peer === leaving) continue;
+      const info = peer.deserializeAttachment() || {};
+      if (info.name) members.add(info.name); else guests += 1;
+    }
+    return { type: 'presence', members: [...members].sort((a, b) => a.localeCompare(b, 'ko')), guests };
+  }
+
+  announcePresence(leaving) {
+    const update = this.presence(leaving);
+    this.broadcast(() => update, leaving);
   }
 
   async history(uid) {
@@ -221,8 +239,9 @@ export class ChatRoom extends DurableObject {
     return { type: 'message', id: message.id, name: message.name, text: message.text, at: message.at, own: Boolean(uid) && message.uid === uid };
   }
 
-  broadcast(build) {
+  broadcast(build, skip) {
     for (const peer of this.ctx.getWebSockets()) {
+      if (peer === skip) continue;
       try { peer.send(JSON.stringify(build(peer.deserializeAttachment() || {}))); } catch (failure) {
         console.error('Chat broadcast failed:', failure);
         peer.close(1011, 'Message delivery failed');
@@ -285,10 +304,12 @@ export class ChatRoom extends DurableObject {
 
   webSocketClose(socket, code, reason) {
     try { socket.close(code === 1005 || code === 1006 ? 1000 : code, reason); } catch { /* already closed */ }
+    this.announcePresence(socket);
   }
   webSocketError(socket, error) {
     console.error('Chat WebSocket failed:', error);
     try { socket.close(1011, 'Connection failed'); } catch { /* already closed */ }
+    this.announcePresence(socket);
   }
 }
 

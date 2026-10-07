@@ -119,6 +119,36 @@ function renderChatMessage(result) {
   item.setAttribute('aria-label', `${mine ? '나' : name}, ${timeLabel(at)}: ${result.text}`);
   chatBox.appendChild(item);
 }
+const chatPresence = document.getElementById('chatPresence');
+function renderPresence(result) {
+  if (!chatPresence) return;
+  const members = Array.isArray(result.members) ? result.members.filter(name => typeof name === 'string') : [];
+  const guests = Number.isFinite(result.guests) ? result.guests : 0;
+  const total = members.length + guests;
+  const label = document.createElement('span');
+  label.className = 'presence-label';
+  label.innerHTML = '<span class="dot" aria-hidden="true"></span>';
+  label.append(`지금 접속 ${total}명`);
+  const list = document.createElement('span');
+  list.className = 'presence-list';
+  // 내 이름을 맨 앞에, 나머지는 가나다순.
+  const ordered = members.includes(myName) ? [myName, ...members.filter(name => name !== myName)] : members;
+  ordered.forEach(name => {
+    const chip = document.createElement('span');
+    chip.className = 'presence-chip';
+    chip.style.setProperty('--who', colorOf(name));
+    chip.textContent = name === myName ? `${name}(나)` : name;
+    list.appendChild(chip);
+  });
+  if (guests) {
+    const rest = document.createElement('span');
+    rest.className = 'presence-guests';
+    rest.textContent = members.length ? `외 ${guests}명 보는 중` : `${guests}명 보는 중`;
+    rest.title = '로그인하지 않고 화면만 보고 있는 방문자';
+    list.appendChild(rest);
+  }
+  chatPresence.replaceChildren(label, list);
+}
 function renderAllChat() {
   chatBox.replaceChildren();
   squareMessages.forEach(renderChatMessage);
@@ -164,6 +194,7 @@ function connectChat() {
       updateChatInput(result.signedIn === true);
       return;
     }
+    if (result.type === 'presence') { renderPresence(result); return; }
     if (result.type === 'history') {
       squareMessages = Array.isArray(result.messages) ? result.messages.filter(item => typeof item?.text === 'string') : [];
       renderAllChat();
