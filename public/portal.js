@@ -389,6 +389,33 @@
       return row;
     }));
   }
+  // 국내 증시: 같은 지표를 옆으로 흐르는 띠로 보여 준다(전 거래일 종가).
+  function renderKrTape(data) {
+    const tape = $('kr-tape');
+    if (!tape) return;
+    const wanted = ['kospi', 'kosdaq', 'usdkrw', 'ktb3y'];
+    const items = (data?.items || []).filter(item => wanted.includes(item.id) && item.value !== null && item.value !== undefined);
+    if (!items.length) { if (!tape.dataset.sig) tape.replaceChildren(make('span', 'feed-empty', '국내 증시 자료를 불러오는 중입니다.')); return; }
+    const sig = items.map(item => `${item.id}:${item.value}:${item.date}`).join('|');
+    if (tape.dataset.sig === sig) return; // 값이 그대로면 흐름이 끊기지 않게 다시 그리지 않는다
+    tape.dataset.sig = sig;
+    const cell = item => {
+      const box = make('div', 'kr-item');
+      const delta = deltaOf(item);
+      const pct = item.changePercent !== undefined && item.change !== undefined ? ` (${item.change > 0 ? '+' : ''}${number(item.change, item.digits)})` : '';
+      box.append(make('span', 'n', `${item.name} · ${dateLabel(item.date)}`), make('span', 'v', `${number(item.value, item.digits)}${item.unit === '%' ? '%' : item.unit === '원' ? '원' : ''}`), make('span', `c ${delta.cls}`, `${delta.text}${pct}`));
+      return box;
+    };
+    const track = make('div', 'kr-track');
+    // 끊김 없이 흐르도록 같은 묶음을 두 번(폭이 좁으면 네 번) 이어 붙인다.
+    const copies = 4;
+    for (let index = 0; index < copies; index += 1) items.forEach(item => {
+      const node = cell(item);
+      if (index > 0) node.setAttribute('aria-hidden', 'true');
+      track.appendChild(node);
+    });
+    tape.replaceChildren(track);
+  }
   function renderHousing(data) {
     const body = $('house-body');
     if (!data?.series?.length) {
@@ -534,6 +561,7 @@
       if (!response.ok) throw new Error(String(response.status));
       const data = await response.json();
       renderIndicators(data.indicators);
+      renderKrTape(data.indicators);
       renderHousing(data.housing);
       renderRealEstate(data.realestate);
       renderOnline(data.online);

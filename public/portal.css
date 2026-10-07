@@ -385,3 +385,15 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .us-market h3 { margin:0 0 6px; font-size:14px; font-weight:800; color:var(--ink); }
 .us-market h3 small { font-weight:500; font-size:11.5px; color:var(--muted); margin-left:4px; }
 #us-ticker { min-height:72px; }
+
+/* ---------- 국내 증시 흐르는 띠 (한국은행 ECOS 자료) ---------- */
+.kr-tape { position:relative; overflow:hidden; min-height:46px; display:flex; align-items:center;
+  -webkit-mask-image:linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image:linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.kr-track { display:flex; width:max-content; animation:kr-scroll 28s linear infinite; }
+.kr-tape:hover .kr-track, .kr-tape:focus-within .kr-track { animation-play-state:paused; }
+.kr-item { display:flex; flex-direction:column; padding:4px 18px; border-right:1px solid var(--line-soft); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.kr-item .n { font-size:12.5px; color:var(--muted); font-weight:600; }
+.kr-item .v { font-size:15px; font-weight:800; color:var(--ink); }
+.kr-item .c { font-size:12.5px; font-weight:700; }
+@keyframes kr-scroll { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .kr-track { animation:none; } .kr-tape { overflow-x:auto; } }
