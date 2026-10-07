@@ -187,7 +187,7 @@ export class ChatRoom extends DurableObject {
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
     pair[1].serializeAttachment({ start: Date.now(), count: 0, name });
-    pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn }));
+    pair[1].send(JSON.stringify({ type: 'hello', canSend: Boolean(name), signedIn, you: name || '' }));
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -208,7 +208,7 @@ export class ChatRoom extends DurableObject {
     window.count += 1;
     socket.serializeAttachment(window);
     if (window.count > 30) { error('채팅 전송이 많습니다. 잠시 후 다시 시도해 주세요.'); return; }
-    const output = JSON.stringify({ name: window.name, text });
+    const output = JSON.stringify({ name: window.name, text, at: now });
     for (const peer of this.ctx.getWebSockets()) {
       try { peer.send(output); } catch (failure) {
         console.error('Chat broadcast failed:', failure);

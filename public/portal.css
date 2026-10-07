@@ -261,9 +261,26 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .policy-category textarea { min-height:84px; }
 .policy-output { max-height:240px; overflow-y:auto; }
 .policy-actions { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:16px; color:var(--muted); }
-.chat-box { height:300px; overflow-y:auto; padding:14px 16px; margin-bottom:10px; border:1px solid var(--line); border-radius:12px; background:#f8fafc; }
-.chat-message { padding:6px 0; border-bottom:1px solid var(--line-soft); white-space:pre-wrap; overflow-wrap:anywhere; }
-.chat-message strong { color:var(--c-chat); }
+.chat-box { height:380px; overflow-y:auto; padding:14px 16px 18px; margin-bottom:10px; border:1px solid var(--line); border-radius:12px; background:#eef1f7; }
+/* 사람마다 색(아바타·이름·말풍선 띠)이 다르고, 같은 사람이 3분 안에 이어 쓴 글은 한 묶음으로 보인다. 내 글은 오른쪽. */
+.chat-message { --who:var(--c-chat); display:flex; align-items:flex-start; gap:9px; margin-top:14px; }
+.chat-message:first-child { margin-top:0; }
+.chat-message.cont { margin-top:4px; padding-left:45px; }
+.chat-avatar { flex:none; width:36px; height:36px; border-radius:50%; background:var(--who); color:#fff; font-weight:800; font-size:15px; display:grid; place-items:center; box-shadow:0 1px 2px rgba(0,0,0,.15); }
+.chat-body { min-width:0; max-width:min(78%, 560px); display:flex; flex-direction:column; gap:3px; }
+.chat-meta { display:flex; align-items:baseline; gap:6px; }
+.chat-name { font-size:13px; font-weight:800; color:var(--who); }
+.chat-line { display:flex; align-items:flex-end; gap:6px; }
+.chat-text { background:#fff; color:var(--ink); border:1px solid var(--line); border-left:4px solid var(--who); border-radius:4px 14px 14px 14px; padding:8px 12px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; box-shadow:0 1px 1px rgba(15,23,42,.04); }
+.chat-message.cont .chat-text { border-radius:14px; }
+.chat-time { flex:none; font-size:11px; color:var(--muted); white-space:nowrap; }
+.chat-message.mine { justify-content:flex-end; }
+.chat-message.mine.cont { padding-left:0; }
+.chat-message.mine .chat-body { align-items:flex-end; }
+.chat-message.mine .chat-name { color:var(--muted); }
+.chat-message.mine .chat-line { flex-direction:row-reverse; }
+.chat-message.mine .chat-text { background:#1d2b5a; color:#fff; border:0; border-radius:14px 4px 14px 14px; }
+.chat-message.mine.cont .chat-text { border-radius:14px; }
 .chat-input { display:flex; gap:8px; }
 .chat-input textarea { flex:1; min-width:0; min-height:72px; }
 .chat-input button { border:0; border-radius:10px; padding:0 20px; background:var(--c-chat); color:#fff; font-weight:800; }

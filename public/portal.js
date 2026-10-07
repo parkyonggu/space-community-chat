@@ -587,9 +587,13 @@
     }
     list.replaceChildren(...messages.map(message => {
       const item = make('li');
-      const name = message.querySelector('strong');
-      if (name) item.appendChild(make('strong', '', name.textContent));
-      item.append(name ? message.textContent.slice(name.textContent.length) : message.textContent);
+      const name = message.dataset.name;
+      if (name) {
+        const who = make('strong', '', `${name}: `);
+        if (message.style.getPropertyValue('--who')) who.style.color = message.style.getPropertyValue('--who');
+        item.appendChild(who);
+      }
+      item.append(message.querySelector('.chat-text')?.textContent ?? message.textContent);
       return item;
     }));
   }
