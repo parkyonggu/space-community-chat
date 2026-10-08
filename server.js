@@ -39,7 +39,7 @@ const newsletterApi = createNewsletterApi(dataDirectory, {
   clearLegacySubscribers: () => communityApi.clearLegacySubscribers(),
   schedule: delay => scheduleNewsletter(delay),
   senderName: process.env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: process.env.CONTACT_EMAIL || '',
-  adminEmails, ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', highlights: since => boardApi.highlights(since),
+  adminEmails, ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', policyKey: process.env.POLICY_NEWS_KEY || '', highlights: since => boardApi.highlights(since),
 });
 let chatOnline = 0;
 const portalApi = createPortalApi({ ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', molitKey: process.env.MOLIT_API_KEY || '', molitKeys: { apt: process.env.MOLIT_APT_KEY || '', nrg: process.env.MOLIT_BLDG_KEY || '', land: process.env.MOLIT_LAND_KEY || '' }, onlineCount: async () => chatOnline });

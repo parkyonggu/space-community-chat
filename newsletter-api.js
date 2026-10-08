@@ -87,7 +87,7 @@ function emailHtml({ title, bodyHtml, footerHtml, pixelUrl, button }) {
 function createNewsletterApi(dataDirectory, {
   storage, rateLimit, authenticate, mailer, siteUrl = 'https://withpluces.com', now = Date.now,
   dailyLimit = 300, batchSize = 20, batchDelay = 60000, legacySubscribers, clearLegacySubscribers, schedule,
-  senderName = '(주)위드플러시아', contactEmail = '', adminEmails = [], ecosKey = '', rebKey = '', highlights, fetchImpl,
+  senderName = '(주)위드플러시아', contactEmail = '', adminEmails = [], ecosKey = '', rebKey = '', policyKey = '', highlights, fetchImpl,
 } = {}) {
   if (typeof authenticate !== 'function') throw new Error('Newsletter API requires an authenticate function');
   const origin = new URL(siteUrl).origin;
@@ -286,7 +286,7 @@ function createNewsletterApi(dataDirectory, {
         legacy: subscribers.filter(entry => entry.status === 'legacy').length,
         noticeDue,
       },
-      nextMonday: new Date(nextMondaySeven(now())).toISOString(), ecosKey: Boolean(ecosKey), rebKey: Boolean(rebKey),
+      nextMonday: new Date(nextMondaySeven(now())).toISOString(), ecosKey: Boolean(ecosKey), rebKey: Boolean(rebKey), policyKey: Boolean(policyKey),
       drafts: [...store.drafts].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 5)
         .map(draft => ({ id: draft.id, subject: draft.subject, createdAt: draft.createdAt, source: draft.source, notes: draft.notes || [] })),
       campaigns: [...store.campaigns].sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 50).map(campaign => ({
@@ -338,7 +338,7 @@ function createNewsletterApi(dataDirectory, {
   }
 
   async function generateWeekly({ source = 'auto', notify = true } = {}) {
-    const draft = await buildWeeklyDraft({ fetchImpl: fetchImpl || fetch, ecosKey, rebKey, now: now(), siteUrl: origin, highlights });
+    const draft = await buildWeeklyDraft({ fetchImpl: fetchImpl || fetch, ecosKey, rebKey, policyKey, now: now(), siteUrl: origin, highlights });
     const entry = { id: randomUUID(), subject: draft.subject, body: draft.body, createdAt: iso(), source, notes: Array.isArray(draft.notes) ? draft.notes.slice(0, 20) : [] };
     await updateStore(store => {
       store.drafts.push(entry);

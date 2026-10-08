@@ -2,6 +2,7 @@
 // Figures come from the Bank of Korea ECOS Open API (official statistics); news/commentary sections are left
 // for the operator to write ("[직접 작성]" markers block sending until they are filled in or removed).
 
+const { weeklyPolicyNews } = require('./policy-news');
 const MANUAL_MARK = '[직접 작성]';
 const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원부', finance: '금융위원회', sme: '중소벤처기업부', education: '교육부',
   culture: '문화체육관광부', welfare: '보건복지부', labor: '고용노동부', gender: '여성가족부', environment: '환경부', foreign: '외교부',
@@ -234,7 +235,7 @@ function highlightLines(posts, siteUrl) {
   return lines;
 }
 
-async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date.now(), siteUrl = 'https://withpluces.com', highlights }) {
+async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, policyKey = '', now = Date.now(), siteUrl = 'https://withpluces.com', highlights }) {
   const sendAt = nextMondaySeven(now);
   const sendDate = kstDate(sendAt);
   const title = `${sendDate.getUTCMonth() + 1}월 ${sendDate.getUTCDate()}일`;
@@ -253,6 +254,17 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
     notes.push(`한국부동산원: ${error.message}`);
   }
   if (!rebKey) notes.push('한국부동산원: 인증키(REB_API_KEY)가 없습니다.');
+  let policy = null;
+  try {
+    const result = await weeklyPolicyNews(fetchImpl, policyKey, now);
+    if (result) {
+      policy = result.count ? result.lines : null;
+      if (!result.count) notes.push('정책브리핑: 지난 한 주 경제 관련 정책뉴스를 찾지 못했습니다.');
+      for (const problem of result.problems) notes.push(`정책브리핑: ${problem}`);
+    }
+  } catch (error) {
+    notes.push(`정책브리핑: ${error.message}`);
+  }
   const posts = highlights ? await highlights(new Date(now - 7 * DAY).toISOString()) : { policy: [], voice: [], community: [], researchCount: 0 };
   const body = [
     `# ${title} 주간 경제·정책 브리핑`,
@@ -293,7 +305,8 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
     '',
     '## 이번 주 정부 정책',
     '',
-    `${MANUAL_MARK} 생활에 영향이 큰 정책 발표를 골라 요약과 원문 링크를 적어 주세요.`,
+    ...(policy ? [...policy, '', `${MANUAL_MARK} 위 정책뉴스 가운데 생활에 영향이 큰 것을 골라 한두 줄 해설을 덧붙이고, 관련 없는 항목은 지워 주세요.`]
+      : [`${MANUAL_MARK} 생활에 영향이 큰 정책 발표를 골라 요약과 원문 링크를 적어 주세요. 정책브리핑 인증키(POLICY_NEWS_KEY)를 등록하면 지난 한 주 경제 정책뉴스가 자동으로 채워집니다.`]),
     '',
     '## 커뮤니티에서 나온 목소리',
     '',
@@ -303,7 +316,7 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, now = Date
     '',
     '이 뉴스레터는 정보 제공을 위한 것이며 특정 금융상품이나 종목의 매매를 권유하지 않습니다. 투자 판단과 그 결과의 책임은 투자자 본인에게 있습니다.',
     '',
-    '자료 출처: 한국은행 경제통계시스템(ECOS) · 국제통화기금(IMF) World Economic Outlook(https://www.imf.org/external/datamapper)' + (housing ? ' · 한국부동산원 부동산통계정보시스템(R-ONE)' : '') + '. 국제 지표는 한국은행이 BIS·IMF·OECD 자료를 수록한 것입니다.',
+    '자료 출처: 한국은행 경제통계시스템(ECOS) · 국제통화기금(IMF) World Economic Outlook(https://www.imf.org/external/datamapper)' + (housing ? ' · 한국부동산원 부동산통계정보시스템(R-ONE)' : '') + (policy ? ' · 대한민국 정책브리핑(www.korea.kr, 공공누리 제1유형)' : '') + '. 국제 지표는 한국은행이 BIS·IMF·OECD 자료를 수록한 것입니다.',
   ].join('\n');
   return { subject: `스페이스 레터 · ${title} 주간 경제·정책 브리핑`, body, sendAt, notes: notes.map(note => note.slice(0, 300)) };
 }

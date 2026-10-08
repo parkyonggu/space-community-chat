@@ -63,7 +63,7 @@
     $('send').disabled = !summary.mailConfigured || sending || !s.confirmed;
     $('schedule').disabled = !summary.mailConfigured || sending;
     $('schedule').textContent = `${kstText(summary.nextMonday)} 예약 발송`;
-    $('ecos-note').textContent = `자료 연결: 한국은행 ECOS ${summary.ecosKey ? '인증키 사용 ✔' : '시험용 키(정식 키 등록 권장)'} · IMF 전망 ✔ · 한국부동산원 ${summary.rebKey ? '인증키 사용 ✔' : '미연결(REB_API_KEY 등록 시 주간 아파트 동향 자동 작성)'}`;
+    $('ecos-note').textContent = `자료 연결: 한국은행 ECOS ${summary.ecosKey ? '인증키 사용 ✔' : '시험용 키(정식 키 등록 권장)'} · IMF 전망 ✔ · 한국부동산원 ${summary.rebKey ? '인증키 사용 ✔' : '미연결(REB_API_KEY 등록 시 주간 아파트 동향 자동 작성)'} · 정책브리핑 ${summary.policyKey ? '인증키 사용 ✔' : '미연결(POLICY_NEWS_KEY 등록 시 이번 주 정부 정책 자동 작성)'}`;
     const draftTable = document.createElement('table');
     const draftHead = document.createElement('tr');
     ['만든 시각', '방식', '제목', ''].forEach(text => { const th = document.createElement('th'); th.textContent = text; draftHead.appendChild(th); });
