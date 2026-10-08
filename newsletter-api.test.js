@@ -378,3 +378,23 @@ test('confirm page can learn a link was already used and show 구독완료 befor
   assert.equal(await state('0'.repeat(48)), 'invalid');
   assert.equal(await state('bad'), 'invalid');
 });
+
+test('admin can see who received each campaign, with results and opens', async t => {
+  const f = await fixture(t);
+  for (const email of ['r1@example.com', 'r2@example.com', 'r3@example.com']) await f.post('/api/newsletter', { email, consent: true });
+  for (const message of [...f.sent]) await f.post('/api/newsletter/confirm', { token: f.tokenFrom(message, 'confirm') });
+  f.mailer.failFor.add('r2@example.com');
+  await f.post('/api/admin/newsletter/send', { subject: '받는 사람 시험', body: '본문' }, 'admin');
+  const { campaigns } = await (await f.get('/api/admin/newsletter', 'admin')).json();
+  const id = campaigns.find(entry => entry.kind === 'newsletter').id;
+  let list = await (await f.get(`/api/admin/newsletter/recipients?id=${id}`, 'admin')).json();
+  assert.deepEqual(list.recipients.map(entry => entry.result), ['queued', 'queued', 'queued']);
+  await f.drain();
+  list = await (await f.get(`/api/admin/newsletter/recipients?id=${id}`, 'admin')).json();
+  assert.equal(list.subject, '받는 사람 시험');
+  assert.deepEqual(list.recipients.map(entry => [entry.email, entry.result]), [['r1@example.com', 'sent'], ['r2@example.com', 'failed'], ['r3@example.com', 'sent']]);
+  assert.equal((await f.get(`/api/admin/newsletter/recipients?id=${id}`, 'member')).status, 403);
+  assert.equal((await f.get('/api/admin/newsletter/recipients?id=nope', 'admin')).status, 404);
+  const confirmCampaign = campaigns.find(entry => entry.kind === 'confirm');
+  if (confirmCampaign) assert.equal((await f.get(`/api/admin/newsletter/recipients?id=${confirmCampaign.id}`, 'admin')).status, 200);
+});

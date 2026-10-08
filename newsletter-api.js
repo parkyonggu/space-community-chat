@@ -316,7 +316,7 @@ function createNewsletterApi(dataDirectory, {
         body: content.body || '', ad: Boolean(content.ad), links: kind === 'newsletter' ? renderMarkup(content.body).links : [],
         status: sendAt ? 'scheduled' : 'sending', sendAt: sendAt ? new Date(sendAt).toISOString() : null,
         createdAt: iso(), createdBy: user.nickname, recipients: sendAt ? [] : ids, queue: sendAt ? [] : [...ids],
-        sent: 0, failed: 0, skipped: 0, opens: [], clicks: [], unsubscribes: 0, errors: [],
+        sent: 0, failed: 0, skipped: 0, opens: [], clicks: [], unsubscribes: 0, errors: [], delivered: [], failedIds: [],
       };
       store.campaigns.push(entry);
       return entry;
@@ -413,10 +413,14 @@ function createNewsletterApi(dataDirectory, {
     const more = await updateStore(store => {
       const campaign = store.campaigns.find(entry => entry.id === batch.campaign.id);
       if (campaign) {
+        // 받은 사람 보기: 사람별 발송 결과(구독자 id)를 남긴다.
+        campaign.delivered = campaign.delivered || [];
+        campaign.failedIds = campaign.failedIds || [];
         for (const outcome of outcomes) {
-          if (outcome.ok) campaign.sent += 1;
+          if (outcome.ok) { campaign.sent += 1; campaign.delivered.push(outcome.id); }
           else {
             campaign.failed += 1;
+            campaign.failedIds.push(outcome.id);
             campaign.errors.push(outcome.code);
             if (campaign.errors.length > 20) campaign.errors.splice(0, campaign.errors.length - 20);
           }
@@ -496,6 +500,36 @@ function createNewsletterApi(dataDirectory, {
           return;
         }
         sendJson(response, 200, { letters: letters.slice(0, 20).map(entry => ({ id: entry.id, subject: entry.subject, sentAt: entry.finishedAt || entry.createdAt })) });
+        return;
+      }
+
+      // 발송 건별 받은 사람 명단(관리자 전용): 발송 결과와 열람·클릭 여부
+      if (pathname === '/api/admin/newsletter/recipients') {
+        if (request.method !== 'GET') {
+          response.setHeader('Allow', 'GET');
+          throw new NewsletterError(405, '지원하지 않는 요청 방식입니다.');
+        }
+        await requireAdmin(request, false);
+        const id = new URL(request.url, 'http://localhost').searchParams.get('id');
+        const store = await readStore();
+        const campaign = store.campaigns.find(entry => entry.id === id);
+        if (!campaign) throw new NewsletterError(404, '발송 기록을 찾을 수 없습니다.');
+        const byId = new Map(store.subscribers.map(entry => [entry.id, entry]));
+        const delivered = new Set(campaign.delivered || []);
+        const failed = new Set(campaign.failedIds || []);
+        const queued = new Set(campaign.queue || []);
+        const opens = new Set(campaign.opens || []);
+        const clicks = new Set(campaign.clicks || []);
+        const recipients = (campaign.recipients || []).map(subscriberId => {
+          const subscriber = byId.get(subscriberId);
+          // 사람별 기록이 있는 발송(delivered 배열)은 정확히, 그 전 발송은 대기열 여부로만 판단한다.
+          const tracked = Array.isArray(campaign.delivered);
+          const result = delivered.has(subscriberId) ? 'sent' : failed.has(subscriberId) ? 'failed'
+            : campaign.status === 'cancelled' && (tracked || queued.has(subscriberId)) ? 'cancelled'
+              : queued.has(subscriberId) || tracked ? 'queued' : 'processed';
+          return { email: subscriber ? subscriber.email : null, result, opened: opens.has(subscriberId), clicked: clicks.has(subscriberId) };
+        });
+        sendJson(response, 200, { subject: campaign.subject, kind: campaign.kind, recipients });
         return;
       }
 

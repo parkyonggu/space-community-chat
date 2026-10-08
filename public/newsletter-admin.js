@@ -27,6 +27,44 @@
     return result;
   }
 
+  // 발송 건별 받은 사람 명단: 이메일, 발송 결과, (뉴스레터는) 열람·클릭 여부
+  async function showRecipients(campaign) {
+    const box = $('campaign-recipients');
+    box.hidden = false;
+    box.replaceChildren(document.createTextNode('명단을 불러오는 중입니다…'));
+    try {
+      const data = await api(`/api/admin/newsletter/recipients?id=${encodeURIComponent(campaign.id)}`);
+      const tracked = data.kind === 'newsletter';
+      const resultLabel = { sent: '보냄', failed: '실패', queued: '보낼 차례', cancelled: '취소됨', processed: '보냄(이전 기록)' };
+      const title = document.createElement('h3');
+      title.textContent = `「${data.subject}」 받은 사람 ${data.recipients.length}명`;
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = '닫기';
+      close.addEventListener('click', () => { box.hidden = true; });
+      const counts = data.recipients.reduce((sum, entry) => { sum[entry.result] = (sum[entry.result] || 0) + 1; return sum; }, {});
+      const note = document.createElement('p');
+      note.className = 'muted';
+      note.textContent = Object.entries(counts).map(([key, value]) => `${resultLabel[key] || key} ${value}명`).join(' · ') +
+        (tracked ? ` · 열람 ${data.recipients.filter(entry => entry.opened).length}명 · 클릭 ${data.recipients.filter(entry => entry.clicked).length}명` : '');
+      const table = document.createElement('table');
+      const head = document.createElement('tr');
+      ['#', '이메일', '발송 결과', ...(tracked ? ['열람', '클릭'] : [])].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
+      table.appendChild(head);
+      data.recipients.forEach((entry, index) => {
+        const tr = document.createElement('tr');
+        tr.append(cell(index + 1), cell(entry.email || '(구독 해지로 삭제됨)'), cell(resultLabel[entry.result] || entry.result),
+          ...(tracked ? [cell(entry.opened ? '✓' : ''), cell(entry.clicked ? '✓' : '')] : []));
+        table.appendChild(tr);
+      });
+      if (!data.recipients.length) { const tr = document.createElement('tr'); const td = cell('받은 사람이 없습니다.'); td.colSpan = 5; tr.appendChild(td); table.appendChild(tr); }
+      box.replaceChildren(title, note, table, close);
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      box.replaceChildren(document.createTextNode(error.message));
+    }
+  }
+
   function cell(text) {
     const td = document.createElement('td');
     td.textContent = text;
@@ -122,6 +160,13 @@
           try { setStatus('ops-status', (await api('/api/admin/newsletter/cancel', { id: campaign.id })).message); load(); } catch (error) { setStatus('ops-status', error.message, true); }
         });
         actions.appendChild(cancel);
+      }
+      if (campaign.status !== 'scheduled') {
+        const who = document.createElement('button');
+        who.type = 'button';
+        who.textContent = '받은 사람 보기';
+        who.addEventListener('click', () => showRecipients(campaign));
+        actions.appendChild(who);
       }
       const tracked = campaign.kind === 'newsletter';
       tr.append(cell(date(campaign.createdAt)), cell(kindLabel[campaign.kind] || campaign.kind),
