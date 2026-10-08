@@ -30,3 +30,10 @@ test('missing / members-only pages are noindex, sitemap lists posts', () => {
   assert.equal(headlineOf({ title: '', text: '\n\n  # 첫 줄 제목\n본문' }), '첫 줄 제목');
   assert.equal(bodyHtml('a\nb\n\nc'), '<p>a<br>b</p>\n<p>c</p>');
 });
+
+test('quoted or starred first lines become clean titles', () => {
+  assert.equal(headlineOf({ text: '"*주식투자운용전략에 대하여 *"\n본문' }), '주식투자운용전략에 대하여');
+  assert.equal(headlineOf({ text: "'습관은 실천할 때 완성된다'\n본문" }), '습관은 실천할 때 완성된다');
+  assert.equal(headlineOf({ text: '" 엔비디아 주식의 상승이유"\n' }), '엔비디아 주식의 상승이유');
+  assert.equal(headlineOf({ text: '하늘수목공원 조성사업' }), '하늘수목공원 조성사업');
+});

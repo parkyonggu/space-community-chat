@@ -22,7 +22,10 @@ const categoryLabel = post => (post.board === 'policy' ? DEPARTMENTS[post.catego
 function headlineOf(post) {
   if (post.title) return post.title.trim().slice(0, 80);
   const first = String(post.text || '').split('\n').map(line => line.replace(/^[\s•\-*#>]+/, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').trim()).find(Boolean) || '제목 없는 글';
-  return first.length > 60 ? `${first.slice(0, 58)}…` : first;
+  // 첫 줄을 따옴표·별표로 감싼 제목("…", '…', *…*)은 감싼 기호를 떼고 쓴다.
+  const wrapped = /^["'“‘*]/.test(first);
+  const cleaned = (wrapped ? first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, '') : first).replace(/\*\*/g, '').trim() || first;
+  return cleaned.length > 60 ? `${cleaned.slice(0, 58)}…` : cleaned;
 }
 function summaryOf(post, max = 150) {
   const plain = String(post.text || '').replace(/\[([^\]]*)\]\((https?:[^)]+)\)/g, '$1').replace(/https?:\/\/\S+/g, '').replace(/[#*>•]/g, '').replace(/\s+/g, ' ').trim();
