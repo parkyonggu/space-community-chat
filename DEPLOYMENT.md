@@ -389,6 +389,6 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 ## Google Play 앱 (TWA)
 
 - 패키지 이름: `com.withpluces.community` (바꾸려면 `ANDROID_PACKAGE` 변수).
-- 앱 연결 확인 파일: `/.well-known/assetlinks.json`을 Worker가 만들어 줍니다. Play Console 앱 서명 키와 업로드 키의 SHA-256 지문을 쉼표로 이어 `npx wrangler secret put ANDROID_CERT_SHA256`으로 넣습니다. 비어 있으면 `[]`를 돌려줍니다.
+- 앱 연결 확인 파일: `/.well-known/assetlinks.json`을 Worker가 만들어 줍니다. Play Console 앱 서명 키와 업로드 키의 SHA-256 지문을 쉼표로 이어 `wrangler.jsonc`의 `ANDROID_CERT_SHA256` 변수에 넣고 배포합니다(공개 값). 비어 있으면 `[]`를 돌려줍니다.
 - 앱 파일(.aab)은 PWABuilder(https://www.pwabuilder.com)로 만듭니다. 서명 키(signing.keystore)는 잃어버리면 업데이트할 수 없으니 따로 보관합니다.
 - 아이콘: `public/icons/icon-192.png`, `icon-512.png`(any), `maskable-192.png`, `maskable-512.png`(maskable).
