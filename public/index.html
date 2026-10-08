@@ -54,7 +54,7 @@
   <div class="nav-bar">
     <nav class="wrap section-nav" aria-label="주요 메뉴">
       <a href="#top" class="active" data-home>홈</a>
-      <a href="/chat">스페이스 톡</a>
+      <a href="/chat" class="nav-talk">💬 스페이스 톡</a>
       <a href="#chat-section" data-target="chat-section">광장 채팅<span class="nav-count" id="nav-online" hidden></span></a>
       <a href="#community-section" data-target="community-section">소통·나눔</a>
       <a href="#voice-section" data-target="voice-section">시민의 소리</a>
@@ -73,6 +73,7 @@
         <p class="lead">가까이 있든 멀리 있든, 우리는 서로의 이야기를 나눕니다. 안부와 소식, 가벼운 잡담부터 진지한 의견과 유용한 정책 제안까지 — 자유 시민 누구나 목소리를 내고 서로의 생각을 존중하는 공간입니다.</p>
         <div class="hero-actions">
           <button type="button" class="btn btn-gold" id="hero-write">지금 이야기 쓰기</button>
+          <a class="btn btn-ghost" href="/chat">💬 스페이스 톡</a>
           <a class="btn btn-ghost" href="#newsletter-section">스페이스 레터 구독</a>
         </div>
       </div>
@@ -435,5 +436,6 @@
     showLinkedSection(Boolean(window.location.hash));
 const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});
   </script>
+  <a class="talk-fab" href="/chat" aria-label="스페이스 톡 열기"><span aria-hidden="true">💬</span><span>스페이스 톡</span></a>
 </body>
 </html>
