@@ -149,9 +149,7 @@
   function inviteText(roomName) {
     return [
       `[스페이스 톡 초대] '${roomName}' 대화방에 초대합니다.`,
-      '① 아래 링크를 누르세요.',
-      '② 처음이면 회원가입(이메일 인증) 후 로그인하세요.',
-      '③ "들어가기"를 누르면 대화방에 들어옵니다.',
+      '아래 링크를 누르고 이름만 적으면 바로 들어옵니다. (회원가입 필요 없음)',
     ].join('\n');
   }
   function shareButton(url, text) {
@@ -471,7 +469,7 @@
       if (message.kind === 'text') add('카카오톡으로 보내기', () => { closeSheet(); shareText(`${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서 (${message.nickname || ''})`); });
       if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
       if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
-      if (!mine && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
+      if (!mine && !state.me.guest && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
       const canDelete = (mine && Date.now() - new Date(message.createdAt) < 5 * 60 * 1000) || state.room.isOwner || state.me.admin;
       if (canDelete) add('삭제 (모두에게서)', async () => {
         if (!confirm('이 메시지를 모두에게서 삭제할까요?')) return;
@@ -766,10 +764,12 @@
           who.appendChild(sub);
           const acts = make('div', 'acts');
           if (member.id !== state.me.id) {
-            const dm = make('button', '', '1:1 대화');
-            dm.type = 'button';
-            dm.addEventListener('click', () => { closeSheet(); startDm({ userId: member.id }); });
-            acts.appendChild(dm);
+            if (!state.me.guest) {
+              const dm = make('button', '', '1:1 대화');
+              dm.type = 'button';
+              dm.addEventListener('click', () => { closeSheet(); startDm({ userId: member.id }); });
+              acts.appendChild(dm);
+            }
             if (room.isOwner) {
               const kick = make('button', '', '내보내기');
               kick.type = 'button';
@@ -785,7 +785,7 @@
         }
         body.appendChild(make('div', 'section-title', '초대 링크'));
         const url = `${location.origin}/chat#join=${room.inviteCode}`;
-        body.appendChild(make('p', '', '링크를 받은 회원은 바로 이 방에 들어올 수 있습니다. 링크가 퍼졌다면 방장이 새 링크로 바꿀 수 있습니다.'));
+        body.appendChild(make('p', '', '링크를 받은 사람은 이름만 적고 회원가입 없이 바로 들어올 수 있습니다. 링크가 원치 않게 퍼졌다면 방장이 새 링크로 바꿀 수 있습니다.'));
         body.appendChild(linkBox(url));
         const share = shareButton(url, inviteText(room.name));
         if (share) body.appendChild(share);
@@ -887,7 +887,7 @@
   function inviteSheet(room) {
     const url = `${location.origin}/chat#join=${room.inviteCode}`;
     openSheet('친구 초대하기', body => {
-      body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 아래 링크를 카카오톡·문자로 보내 초대하세요. 받은 사람은 스페이스 커뮤니티에 로그인하면 바로 들어옵니다.`));
+      body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 아래 '카카오톡으로 보내기'로 초대하세요. 받은 사람은 링크를 누르고 이름만 적으면 회원가입 없이 바로 들어옵니다.`));
       body.appendChild(linkBox(url));
       const share = shareButton(url, inviteText(room.name));
       if (share) body.appendChild(share);
@@ -936,8 +936,15 @@
         button.addEventListener('click', action);
         menu.appendChild(button);
       };
-      add('새 대화방 만들기', createSheet);
-      add('내 1:1 대화 링크', myLinkSheet);
+      if (state.me.guest) {
+        body.appendChild(make('p', 'guest-badge', `${state.me.nickname}(으)로 참여 중입니다. 초대받은 대화방에서 대화할 수 있고, 이 휴대폰(브라우저)에서 계속 이어서 쓸 수 있어요. 대화방을 직접 만들거나 다른 기기에서도 쓰려면 회원가입을 해 주세요.`));
+        const join = make('a', '', '회원가입 하기');
+        join.href = '/#signup';
+        menu.appendChild(join);
+      } else {
+        add('새 대화방 만들기', createSheet);
+        add('내 1:1 대화 링크', myLinkSheet);
+      }
       add(pushEnabled() ? '이 기기 알림 끄기' : '이 기기 알림 켜기', () => { closeSheet(); pushEnabled() ? disablePush() : enablePush(); });
       if (state.me.admin) add('신고된 메시지 관리 (운영자)', reportsSheet);
       const home = make('a', '', '스페이스 커뮤니티 홈');
@@ -1074,6 +1081,32 @@
   }
   window.addEventListener('hashchange', route);
 
+  // ---------- 초대 링크로 바로 입장(회원가입 없이) ----------
+  async function guestGate(code, gate) {
+    let preview;
+    try { preview = await api(`/api/chat/invite/${encodeURIComponent(code)}`); } catch (error) { gate('초대 링크를 열 수 없어요', error.message); return; }
+    gate(`'${preview.name}' 대화방에 초대받았어요`, `현재 ${preview.memberCount}명이 대화하고 있어요. 이름만 적으면 바로 들어갈 수 있어요.`);
+    $('guest-form').hidden = false;
+    $('btn-new').hidden = true;
+    $('gate-login').classList.remove('gold');
+    $('gate-login').textContent = '회원 로그인';
+    const input = $('guest-name');
+    try { input.value = localStorage.getItem('space-guest-name') || ''; } catch { /* storage unavailable */ }
+    input.focus();
+    $('guest-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const nickname = input.value.trim();
+      if (nickname.length < 2) { toast('이름을 2자 이상 적어 주세요.'); input.focus(); return; }
+      $('guest-go').disabled = true;
+      try {
+        const { room } = await api('/api/chat/guest', { method: 'POST', body: { code, nickname } });
+        try { localStorage.setItem('space-guest-name', nickname); localStorage.removeItem('space-pending-invite'); } catch { /* storage unavailable */ }
+        location.replace(`/chat#room=${room.id}`);
+        location.reload();
+      } catch (error) { toast(error.message); $('guest-go').disabled = false; }
+    });
+  }
+
   // ---------- start ----------
   async function start() {
     let session;
@@ -1099,21 +1132,26 @@
     $('gate-signup').addEventListener('click', rememberInvite);
     const invited = /(^|[#&])(join|dm)=/.test(location.hash);
     if (invited) rememberInvite();
-    if (!session?.user) {
-      if (invited) gate('스페이스 톡에 초대받으셨어요', '스페이스 커뮤니티 회원이면 로그인, 처음이면 회원가입(1분)을 해 주세요. 가입과 이메일 인증을 마치고 다시 로그인하면 초대받은 대화방이 바로 열립니다.');
-      else gate('로그인이 필요해요', '스페이스 톡은 스페이스 커뮤니티 회원끼리 대화하는 공간입니다. 로그인하면 단체 대화방과 1:1 대화를 이용할 수 있어요.');
-      return;
+    const member = Boolean(session?.user) && (session.user.emailVerified || !session.mailConfigured);
+    state.csrf = session?.csrfToken || '';
+    if (!member) {
+      // 초대 링크로 이미 손님 입장한 브라우저면 그대로 이어서 쓴다.
+      let guestMe = null;
+      try { guestMe = await api('/api/chat/me'); } catch { guestMe = null; }
+      if (!guestMe?.user?.guest) {
+        const code = new URLSearchParams(location.hash.slice(1)).get('join');
+        if (code) { await guestGate(code, gate); return; }
+        if (!session?.user) { gate('로그인이 필요해요', '스페이스 톡은 스페이스 커뮤니티 회원끼리 대화하는 공간입니다. 로그인하면 단체 대화방과 1:1 대화를 이용할 수 있어요. 초대 링크를 받았다면 그 링크로 바로 들어올 수 있어요.'); return; }
+        gate('이메일 인증이 필요해요', '가입한 이메일로 받은 인증 링크를 눌러 인증을 마치면 스페이스 톡을 이용할 수 있어요. 메일이 없다면 홈 상단의 "인증 메일 보내기"를 눌러 주세요.');
+        $('gate-login').textContent = '홈으로 가기';
+        $('gate-signup').hidden = true;
+        return;
+      }
     }
-    if (!session.user.emailVerified && session.mailConfigured) {
-      gate('이메일 인증이 필요해요', '가입한 이메일로 받은 인증 링크를 눌러 인증을 마치면 스페이스 톡을 이용할 수 있어요. 메일이 없다면 홈 상단의 "인증 메일 보내기"를 눌러 주세요.');
-      $('gate-login').textContent = '홈으로 가기';
-      $('gate-signup').hidden = true;
-      return;
-    }
-    state.csrf = session.csrfToken;
     try {
       const me = await api('/api/chat/me');
-      state.me = { ...me.user, admin: Boolean(session.user.admin) };
+      state.me = { ...me.user, admin: Boolean(member && session.user.admin) };
+      if (state.me.guest) document.body.classList.add('guest-mode');
       state.vapidKey = me.vapidPublicKey;
       state.retentionDays = me.retentionDays;
       state.maxMembers = me.maxMembers;

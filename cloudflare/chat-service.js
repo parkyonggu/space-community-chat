@@ -5,6 +5,7 @@ import { loadVapid, sendPush } from './web-push.js';
 
 const { createChatCore, ChatError, RETENTION_DAYS, MAX_ROOM_MEMBERS } = chatCore;
 const DAY = 24 * 60 * 60 * 1000;
+const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 const json = (body, status = 200, extra = {}) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra } });
 
 export class ChatService extends DurableObject {
@@ -87,8 +88,30 @@ export class ChatService extends DurableObject {
         for (const socket of this.ctx.getWebSockets(userId)) socket.close(4001, 'Account deleted');
         return json({ ok: true });
       }
+      // 초대 미리보기와 손님 입장은 로그인 없이도 된다.
+      const invitePath = /^\/api\/chat\/invite\/([^/]+)$/.exec(path);
+      if (invitePath && request.method === 'GET') return json(this.core.invitePreview(decodeURIComponent(invitePath[1])));
       let user = null;
       try { user = JSON.parse(decodeURIComponent(request.headers.get('X-Talk-User') || '')); } catch { user = null; }
+      if (path === '/api/chat/guest' && request.method === 'POST') {
+        if (user?.id && user.verified) throw new ChatError(400, '이미 로그인되어 있습니다. 초대 링크로 바로 들어가세요.');
+        this.limit(`guest:${request.headers.get('X-Client-IP') || 'unknown'}`, 10, 60 * 60 * 1000);
+        let input = {};
+        try { input = await request.json(); } catch { throw new ChatError(400, '요청 내용을 확인해 주세요.'); }
+        this.core.invitePreview(input.code);
+        const token = [...crypto.getRandomValues(new Uint8Array(32))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+        const guest = this.core.createGuest(await sha256(token), input.nickname);
+        this.core.ensureUser(guest);
+        const result = this.core.join(guest, input.code);
+        if (result.message) this.announce(result.room.id, result.room.members.map(member => member.id), result.message);
+        const secure = new URL(request.url).protocol === 'https:' || !/^(localhost|127\.)/.test(new URL(request.url).hostname);
+        return json({ room: result.room }, 201, { 'Set-Cookie': `space_talk_guest=${token}; Path=/; Max-Age=${180 * 24 * 3600}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}` });
+      }
+      if (!user?.verified) {
+        const token = request.headers.get('X-Talk-Guest') || '';
+        const guest = /^[0-9a-f]{64}$/.test(token) ? this.core.guest(await sha256(token)) : null;
+        if (guest) user = guest;
+      }
       if (!user?.id) throw new ChatError(401, '로그인한 회원만 스페이스 톡을 이용할 수 있습니다.');
       if (!user.verified) throw new ChatError(403, '이메일 인증을 마친 회원만 스페이스 톡을 이용할 수 있습니다.');
       const me = this.core.ensureUser(user);
@@ -98,7 +121,7 @@ export class ChatService extends DurableObject {
         if (this.ctx.getWebSockets(user.id).length >= 6) throw new ChatError(429, '열려 있는 창이 너무 많습니다. 다른 창을 닫고 다시 시도해 주세요.');
         const pair = new WebSocketPair();
         this.ctx.acceptWebSocket(pair[1], [user.id]);
-        pair[1].serializeAttachment({ id: user.id, nickname: user.nickname, admin: Boolean(user.admin), visible: true, start: Date.now(), count: 0 });
+        pair[1].serializeAttachment({ id: user.id, nickname: user.nickname, admin: Boolean(user.admin), guest: Boolean(user.guest), visible: true, start: Date.now(), count: 0 });
         pair[1].send(JSON.stringify({ type: 'hello', user: me }));
         return new Response(null, { status: 101, webSocket: pair[0] });
       }
@@ -111,8 +134,9 @@ export class ChatService extends DurableObject {
       };
       const [first, id, action, sub, subAction] = parts;
 
+      const guestOnly = message => { if (user.guest) throw new ChatError(403, message); };
       if (first === 'me' && method === 'GET') {
-        return json({ user: me, vapidPublicKey: (await this.vapid()).publicKey, retentionDays: RETENTION_DAYS, maxMembers: MAX_ROOM_MEMBERS });
+        return json({ user: { ...me, guest: Boolean(user.guest) }, vapidPublicKey: (await this.vapid()).publicKey, retentionDays: RETENTION_DAYS, maxMembers: MAX_ROOM_MEMBERS });
       }
       if (first === 'unread' && method === 'GET') return json(this.core.unreadSummary(user));
       if (first === 'rooms' && !id) {
@@ -121,6 +145,7 @@ export class ChatService extends DurableObject {
           return json({ rooms: rooms.map(room => ({ ...room, members: undefined, online: this.online(room.members.map(member => member.id)).length })) });
         }
         if (method === 'POST') {
+          guestOnly('대화방 만들기는 회원만 할 수 있습니다. 회원가입 후 이용해 주세요.');
           this.limit(`create:${user.id}`, 10, 60 * 60 * 1000);
           const result = this.core.createGroup(user, await body());
           return json({ room: result.room }, 201);
@@ -184,6 +209,7 @@ export class ChatService extends DurableObject {
         return json({ room: result.room });
       }
       if (first === 'dm' && method === 'POST') {
+        guestOnly('1:1 대화는 회원만 시작할 수 있습니다. 회원가입 후 이용해 주세요.');
         this.limit(`dm:${user.id}`, 30, 60 * 60 * 1000);
         const input = await body();
         const room = this.core.startDm(user, { code: input.code, userId: input.userId });
@@ -200,6 +226,7 @@ export class ChatService extends DurableObject {
         return json(this.core.savePush(user, input.endpoint));
       }
       if (first === 'admin' && id === 'reports') {
+        guestOnly('권한이 없습니다.');
         if (method === 'GET') return json({ reports: this.core.reports(user) });
         if (method === 'POST') {
           const input = await body();

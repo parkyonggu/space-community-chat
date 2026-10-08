@@ -32,6 +32,8 @@ function createChatCore(sql, { now = Date.now } = {}) {
   run(`CREATE TABLE IF NOT EXISTS chat_members (room_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, joined_at TEXT NOT NULL,
     joined_seq INTEGER NOT NULL DEFAULT 0, last_read_seq INTEGER NOT NULL DEFAULT 0, muted INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (room_id, user_id))`);
   run(`CREATE INDEX IF NOT EXISTS chat_members_user ON chat_members (user_id)`);
+  // 초대 링크로 회원가입 없이 들어온 손님: 브라우저 쿠키의 토큰(해시로 저장)으로 알아본다.
+  run(`CREATE TABLE IF NOT EXISTS chat_guests (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, nickname TEXT NOT NULL, created_at TEXT NOT NULL, last_seen TEXT NOT NULL)`);
   run(`CREATE TABLE IF NOT EXISTS chat_messages (room_id TEXT NOT NULL, seq INTEGER NOT NULL, id TEXT NOT NULL UNIQUE, user_id TEXT, nickname TEXT,
     kind TEXT NOT NULL, text TEXT NOT NULL DEFAULT '', image_id TEXT, created_at TEXT NOT NULL, deleted_at TEXT, PRIMARY KEY (room_id, seq))`);
   run(`CREATE INDEX IF NOT EXISTS chat_messages_created ON chat_messages (created_at)`);
@@ -131,6 +133,21 @@ function createChatCore(sql, { now = Date.now } = {}) {
       addMember(room, user, 'owner');
       const message = addMessage(room, { kind: 'system', text: `${user.nickname}님이 대화방을 만들었습니다.` });
       return { room: roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id), message };
+    },
+
+    createGuest(tokenHash, nickname) {
+      const name = clean(nickname, 20);
+      if (!name || name.length < 2) throw new ChatError(400, '대화방에서 쓸 이름을 2~20자로 입력해 주세요.');
+      const userId = `guest-${code(12)}`;
+      run('INSERT INTO chat_guests (token_hash, user_id, nickname, created_at, last_seen) VALUES (?, ?, ?, ?, ?)', tokenHash, userId, `${name}(손님)`, iso(), iso());
+      return { id: userId, nickname: `${name}(손님)`, verified: true, guest: true };
+    },
+
+    guest(tokenHash) {
+      const row = one('SELECT * FROM chat_guests WHERE token_hash = ?', String(tokenHash || ''));
+      if (!row) return null;
+      if (Date.parse(row.last_seen) < now() - 60 * 60 * 1000) run('UPDATE chat_guests SET last_seen = ? WHERE token_hash = ?', iso(), row.token_hash);
+      return { id: row.user_id, nickname: row.nickname, verified: true, guest: true };
     },
 
     invitePreview(inviteCode) {
@@ -361,6 +378,8 @@ function createChatCore(sql, { now = Date.now } = {}) {
 
     purge() {
       const cutoff = new Date(now() - RETENTION_DAYS * DAY).toISOString();
+      // 어느 방에도 남아 있지 않고 30일 넘게 쓰지 않은 손님은 지운다.
+      run('DELETE FROM chat_guests WHERE last_seen < ? AND user_id NOT IN (SELECT user_id FROM chat_members)', new Date(now() - 30 * DAY).toISOString());
       run('DELETE FROM chat_messages WHERE created_at < ?', cutoff);
       run('DELETE FROM chat_images WHERE created_at < ?', cutoff);
       run('DELETE FROM chat_reports WHERE created_at < ?', cutoff);

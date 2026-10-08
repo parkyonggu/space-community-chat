@@ -55,6 +55,13 @@
         <img src="/icons/icon-512.png" alt="" width="64" height="64">
         <h2 id="gate-title">로그인이 필요해요</h2>
         <p id="gate-text">스페이스 톡은 이메일 인증을 마친 스페이스 커뮤니티 회원만 이용할 수 있습니다.</p>
+        <form class="guest-form" id="guest-form" hidden>
+          <label for="guest-name">대화방에서 쓸 이름</label>
+          <input id="guest-name" maxlength="20" autocomplete="nickname" placeholder="예: 홍길동, 김해 12회 박○○" required>
+          <button type="submit" class="btn gold block" id="guest-go">바로 입장하기</button>
+          <p class="guest-note">회원가입 없이 이 대화방에 들어갑니다. 이 휴대폰(브라우저)에서 계속 이용할 수 있어요.</p>
+          <p class="guest-or">이미 회원이라면</p>
+        </form>
         <button type="button" class="btn gold" id="gate-login">로그인하러 가기</button>
         <a class="btn" href="/#signup" id="gate-signup">회원가입</a>
       </div>

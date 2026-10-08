@@ -168,3 +168,14 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 /* 카카오톡으로 보내기 */
 .share-row { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
 .btn.kakao { background:#fee500; border-color:#fee500; color:#191919; }
+
+/* 초대 링크로 바로 입장(손님) */
+.guest-form { width:100%; max-width:340px; margin:14px auto 4px; text-align:left; }
+.guest-form label { display:block; font-weight:800; font-size:14px; color:var(--ink); margin-bottom:6px; }
+.guest-form input { width:100%; min-height:48px; padding:10px 14px; border:1.5px solid var(--line); border-radius:12px; font-size:16px; }
+.guest-form input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(242,183,5,.25); }
+.guest-form .btn { margin:10px 0 0; font-size:16px; min-height:50px; }
+.guest-note { font-size:12.5px; color:var(--muted); margin:8px 0 0; }
+.guest-or { text-align:center; font-size:12.5px; color:var(--muted); margin:16px 0 0; }
+.guest-badge { display:block; margin:0 0 10px; padding:10px 12px; border-radius:12px; background:#fff8e1; color:#6b5200; font-size:13px; line-height:1.5; }
+.guest-mode #btn-new, .guest-mode #empty-new, .guest-mode #empty-link { display:none !important; }

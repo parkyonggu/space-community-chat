@@ -340,7 +340,12 @@ export default {
         const target = new URL(isSocket ? '/ws' : url.pathname + url.search, url);
         const forwarded = new Request(target, request);
         forwarded.headers.delete('X-Talk-User');
+        forwarded.headers.delete('X-Talk-Guest');
+        forwarded.headers.set('X-Client-IP', request.headers.get('CF-Connecting-IP') || '');
         if (identity.user) forwarded.headers.set('X-Talk-User', encodeURIComponent(JSON.stringify(identity.user)));
+        // 초대 링크로 들어온 손님 쿠키도 전달한다(인증한 회원이면 회원 정보가 우선).
+        const guest = /(?:^|;\s*)space_talk_guest=([0-9a-f]{64})/.exec(request.headers.get('cookie') || '');
+        if (guest) forwarded.headers.set('X-Talk-Guest', guest[1]);
         return await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch(forwarded);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);

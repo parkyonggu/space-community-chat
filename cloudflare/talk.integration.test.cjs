@@ -140,3 +140,40 @@ test('광장 채팅: 보관된 대화가 나중에 들어온 사람에게 보이
   assert.ok(!after.messages.some(message => message.id === sent.id), 'deleted message is gone for everyone');
   for (const socket of [carolSocket, guest, daveSocket, again]) socket.close();
 });
+
+test('스페이스 톡 손님 입장: 초대 링크만으로 회원가입 없이 대화방에 들어와 대화한다', async () => {
+  const owner = await member('방장');
+  const created = await owner.call('/api/chat/rooms', { name: '동문회', maxMembers: 30 });
+  const room = created.result.room;
+  const guest = { cookie: '', ip: `10.88.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` };
+  const guestCall = async (route, input, extra = {}) => {
+    const response = await fetch(origin + route, {
+      method: input !== undefined ? 'POST' : 'GET',
+      headers: { Cookie: guest.cookie, Origin: origin, 'CF-Connecting-IP': guest.ip, ...(input !== undefined ? { 'Content-Type': 'application/json' } : {}), ...extra },
+      body: input !== undefined ? JSON.stringify(input) : undefined,
+    });
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) guest.cookie = setCookie.split(';')[0];
+    return { status: response.status, result: await response.json(), setCookie };
+  };
+  const preview = await guestCall(`/api/chat/invite/${room.inviteCode}`);
+  assert.equal(preview.status, 200);
+  assert.equal(preview.result.name, '동문회', 'preview works without login');
+  assert.equal((await guestCall('/api/chat/guest', { code: 'wrong-code', nickname: '홍길동' })).status, 404);
+  assert.equal((await guestCall('/api/chat/guest', { code: room.inviteCode, nickname: '홍' })).status, 400, 'name too short');
+  const entered = await guestCall('/api/chat/guest', { code: room.inviteCode, nickname: '홍길동' });
+  assert.equal(entered.status, 201, JSON.stringify(entered.result));
+  assert.match(entered.setCookie, /HttpOnly/);
+  assert.equal(entered.result.room.id, room.id);
+  const me = await guestCall('/api/chat/me');
+  assert.equal(me.result.user.guest, true);
+  assert.equal(me.result.user.nickname, '홍길동(손님)');
+  const sent = await guestCall(`/api/chat/rooms/${room.id}/messages`, { text: '초대 링크로 바로 들어왔어요!' });
+  assert.equal(sent.status, 201, JSON.stringify(sent.result));
+  const ownerView = await owner.call(`/api/chat/rooms/${room.id}/messages`);
+  assert.ok(ownerView.result.messages.some(message => message.text === '초대 링크로 바로 들어왔어요!' && message.nickname === '홍길동(손님)'));
+  assert.equal((await guestCall('/api/chat/rooms', { name: '손님방' })).status, 403, 'guests cannot create rooms');
+  assert.equal((await guestCall('/api/chat/rooms', { name: 'x' }, { Origin: 'https://evil.example' })).status, 403, 'cross-site refused');
+  const forged = await fetch(`${origin}/api/chat/me`, { headers: { 'X-Talk-Guest': 'a'.repeat(64), Origin: origin, 'CF-Connecting-IP': guest.ip } });
+  assert.equal(forged.status, 401, 'header from the outside is ignored');
+});
