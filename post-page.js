@@ -25,7 +25,7 @@ function headlineOf(post) {
   // 첫 줄을 따옴표·별표로 감싼 제목("…", '…', *…*)은 감싼 기호를 떼고 쓴다.
   const bracketed = /^\[[^\]]+\]$/.test(first);
   const wrapped = /^["'“‘*]/.test(first);
-  const cleaned = (bracketed ? first.slice(1, -1) : wrapped ? first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, '') : first).replace(/\*\*/g, '').trim() || first;
+  const cleaned = (bracketed ? first.slice(1, -1) : wrapped ? first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, '') : first).replace(/\*\*/g, '').replace(/\s+/g, ' ').trim() || first;
   return cleaned.length > 60 ? `${cleaned.slice(0, 58)}…` : cleaned;
 }
 function summaryOf(post, max = 150) {
