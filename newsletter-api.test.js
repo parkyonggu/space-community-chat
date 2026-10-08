@@ -366,3 +366,15 @@ test('pressing an already-used confirm link again says 구독완료 instead of a
   assert.match(body.message, /이미 구독이 완료/);
   assert.equal((await f.post('/api/newsletter/confirm', { token: 'f'.repeat(48) })).status, 400, 'unknown tokens still rejected');
 });
+
+test('confirm page can learn a link was already used and show 구독완료 before pressing', async t => {
+  const f = await fixture(t);
+  await f.post('/api/newsletter', { email: 'state@example.com', consent: true });
+  const token = f.tokenFrom(f.sent.at(-1), 'confirm');
+  const state = async value => (await (await f.post('/api/newsletter/confirm-status', { token: value })).json()).state;
+  assert.equal(await state(token), 'pending');
+  await f.post('/api/newsletter/confirm', { token });
+  assert.equal(await state(token), 'confirmed');
+  assert.equal(await state('0'.repeat(48)), 'invalid');
+  assert.equal(await state('bad'), 'invalid');
+});

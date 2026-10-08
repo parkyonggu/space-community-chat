@@ -618,6 +618,17 @@ function createNewsletterApi(dataDirectory, {
         return;
       }
 
+      // 확인 페이지를 열 때 상태만 알려 준다(구독을 처리하지는 않음): 이미 확인한 링크면 바로 '구독완료'로 보여 주기 위해.
+      if (pathname === '/api/newsletter/confirm-status') {
+        if (typeof input.token !== 'string' || !TOKEN.test(input.token)) { sendJson(response, 200, { state: 'invalid' }); return; }
+        const usedHash = createHash('sha256').update(input.token).digest('hex');
+        const store = await readStore();
+        const state = store.subscribers.some(entry => entry.confirmToken === input.token) ? 'pending'
+          : store.subscribers.some(entry => entry.usedConfirmHash === usedHash && entry.status === 'confirmed') ? 'confirmed' : 'invalid';
+        sendJson(response, 200, { state });
+        return;
+      }
+
       if (pathname === '/api/newsletter/confirm') {
         if (typeof input.token !== 'string' || !TOKEN.test(input.token)) throw new NewsletterError(400, '유효하지 않은 확인 링크입니다.');
         const usedHash = createHash('sha256').update(input.token).digest('hex');
