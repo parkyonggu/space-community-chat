@@ -100,7 +100,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const likes = store.likes.filter(entry => entry.postId === post.id);
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
-      id: post.id, board: post.board, category: post.category, title: post.title, text: post.text,
+      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text,
       authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
@@ -116,6 +116,28 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   }
 
   const text = (value, max) => typeof value === 'string' ? value.trim() : '';
+
+  // 글마다 고유 번호(withpluces.com/post/번호). 번호가 없는 예전 글은 올린 순서대로 매긴다.
+  function numberPosts(store) {
+    let max = store.posts.reduce((value, entry) => Math.max(value, entry.no || 0), 0);
+    const missing = store.posts.filter(entry => !entry.no).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    for (const post of missing) post.no = ++max;
+    return missing.length;
+  }
+  async function numberedStore() {
+    let store = await readStore();
+    if (store.posts.some(entry => !entry.no)) {
+      await updateStore(current => { numberPosts(current); });
+      store = await readStore();
+    }
+    return store;
+  }
+  const publicView = (post, store) => ({
+    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text,
+    authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null,
+    likes: store.likes.filter(entry => entry.postId === post.id).length,
+  });
+  const isPublic = post => BOARDS[post.board]?.publicRead && !post.hiddenAt;
 
   async function handleBoardApi(request, response, pathname) {
     try {
@@ -165,7 +187,11 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         limit(`board-post:${user.id}`, 10, 10 * 60000);
         const post = { id: randomUUID(), board, category, title, text: body, authorId: user.id, authorName: user.nickname,
           createdAt: new Date(now()).toISOString() };
-        await updateStore(store => { store.posts.push(post); });
+        await updateStore(store => {
+          numberPosts(store);
+          post.no = store.posts.reduce((max, entry) => Math.max(max, entry.no || 0), 0) + 1;
+          store.posts.push(post);
+        });
         send(response, 201, { post: view(post, { likes: [], reports: [] }, user), message: '글이 등록되었습니다.' });
         return;
       }
@@ -265,6 +291,21 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
       community: newest('community', 2),
       researchCount: recent.filter(post => post.board === 'research').length,
     };
+  };
+  // 검색엔진에 보여 줄 공개 글(회원 전용 게시판·숨김 글 제외)
+  handleBoardApi.publicPost = async no => {
+    const store = await numberedStore();
+    const post = store.posts.find(entry => entry.no === Number(no));
+    if (!post) return { status: 404 };
+    if (!BOARDS[post.board]?.publicRead) return { status: 403 };
+    if (post.hiddenAt) return { status: 410 };
+    const related = store.posts.filter(entry => entry.board === post.board && entry.no !== post.no && isPublic(entry))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, 8).map(entry => publicView(entry, store));
+    return { status: 200, post: publicView(post, store), related };
+  };
+  handleBoardApi.publicPosts = async () => {
+    const store = await numberedStore();
+    return store.posts.filter(isPublic).sort((left, right) => right.createdAt.localeCompare(left.createdAt)).map(entry => publicView(entry, store));
   };
   handleBoardApi.anonymizeUser = userId => updateStore(store => {
     for (const post of store.posts) {

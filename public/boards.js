@@ -111,6 +111,14 @@
     meta.style.gap = '8px';
     meta.style.alignItems = 'center';
     meta.appendChild(make('span', '', `${post.authorName} · ${new Date(post.createdAt).toLocaleString('ko-KR')}${post.editedAt ? ` · 수정됨 ${new Date(post.editedAt).toLocaleString('ko-KR')}` : ''}`));
+    // 공개 게시판 글은 고유 주소(withpluces.com/post/번호)로 바로 열고 공유할 수 있다.
+    if (post.no && post.board !== 'research' && !post.hidden) {
+      const permalink = make('a', 'like-btn', `🔗 글 주소 #${post.no}`);
+      permalink.href = `/post/${post.no}`;
+      permalink.title = '이 글만 따로 보기·공유하기';
+      permalink.style.textDecoration = 'none';
+      meta.appendChild(permalink);
+    }
     if (post.mine && !post.hidden && canWrite()) {
       const edit = make('button', 'like-btn', '수정');
       edit.type = 'button';

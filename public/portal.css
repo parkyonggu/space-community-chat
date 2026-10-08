@@ -111,7 +111,7 @@ a { color:var(--primary); }
 .feed-list { list-style:none; margin:0; padding:4px 20px 6px; min-height:220px; }
 .feed-item { border-bottom:1px solid var(--line-soft); }
 .feed-item:last-child { border-bottom:0; }
-.feed-link { display:flex; align-items:center; gap:12px; width:100%; padding:12px 0; background:none; border:0; text-align:left; color:var(--ink); }
+.feed-link { display:flex; align-items:center; gap:12px; width:100%; padding:12px 0; background:none; border:0; text-align:left; color:var(--ink); text-decoration:none; cursor:pointer; }
 .feed-link:hover .feed-title { color:var(--primary); text-decoration:underline; }
 .badge { flex:none; display:inline-block; min-width:76px; text-align:center; font-size:12px; font-weight:800; padding:3px 8px; border-radius:7px; }
 .badge.community { color:var(--c-community); background:var(--c-community-bg); }

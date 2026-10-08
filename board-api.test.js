@@ -136,3 +136,26 @@ test('authors can edit their own posts; others, hidden posts and empty edits are
   for (const user of ['bob', 'carol', 'admin']) await post('/api/board/report', { postId: voice.id, reason: '허위' }, user);
   assert.equal((await post('/api/board/edit', { postId: voice.id, text: '숨김 뒤 수정' }, 'alice')).status, 409);
 });
+
+test('posts get numbers for /post/번호; members-only and hidden posts are not public', async t => {
+  const { createBoardApi } = require('./board-api');
+  const fs = require('node:fs/promises'); const os = require('node:os'); const path = require('node:path');
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'board-no-'));
+  t.after(() => fs.rm(directory, { recursive: true }));
+  await fs.writeFile(path.join(directory, 'board.json'), JSON.stringify({ posts: [
+    { id: 'b', board: 'community', text: '두 번째', authorName: 'B', createdAt: '2026-10-02T00:00:00Z' },
+    { id: 'a', board: 'community', text: '첫 번째', authorName: 'A', createdAt: '2026-10-01T00:00:00Z' },
+    { id: 'r', board: 'research', title: '회원 글', text: '비공개', authorName: 'R', createdAt: '2026-10-03T00:00:00Z' },
+    { id: 'h', board: 'voice', text: '숨김', authorName: 'H', createdAt: '2026-10-04T00:00:00Z', hiddenAt: '2026-10-05T00:00:00Z' },
+  ], likes: [{ postId: 'a', userId: 'x' }], reports: [] }));
+  const api = createBoardApi(directory, { authenticate: async () => ({ user: null }) });
+  const list = await api.publicPosts();
+  assert.deepEqual(list.map(post => [post.no, post.text]), [[2, '두 번째'], [1, '첫 번째']]);
+  const first = await api.publicPost(1);
+  assert.equal(first.status, 200);
+  assert.equal(first.post.likes, 1);
+  assert.deepEqual(first.related.map(post => post.no), [2]);
+  assert.equal((await api.publicPost(3)).status, 403);
+  assert.equal((await api.publicPost(4)).status, 410);
+  assert.equal((await api.publicPost(99)).status, 404);
+});

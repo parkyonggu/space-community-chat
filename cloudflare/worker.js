@@ -6,6 +6,7 @@ import board from '../board-api.js';
 import newsletter from '../newsletter-api.js';
 import portal from '../portal-api.js';
 import policyNews from '../policy-news.js';
+import postPage from '../post-page.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -160,6 +161,12 @@ export class CommunityService extends DurableObject {
     if (pathname === '/internal/newsletter-weekly') {
       const draft = await this.newsletter.generateWeekly({ source: 'auto' });
       return json({ id: draft.id });
+    }
+    if (pathname === '/internal/public-post') {
+      return json(await this.board.publicPost(url.searchParams.get('no')));
+    }
+    if (pathname === '/internal/public-posts') {
+      return json({ posts: await this.board.publicPosts() });
     }
     if (pathname === '/internal/chat-identity') {
       const { user } = await this.auth.authenticate(source);
@@ -364,6 +371,19 @@ export default {
         const guest = /(?:^|;\s*)space_talk_guest=([0-9a-f]{64})/.exec(request.headers.get('cookie') || '');
         if (guest) forwarded.headers.set('X-Talk-Guest', guest[1]);
         return await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch(forwarded);
+      }
+      // 게시글 개별 페이지와 검색엔진 지도(글이 올라오면 자동으로 늘어난다)
+      const postMatch = /^\/post\/(\d{1,9})\/?$/.exec(url.pathname);
+      if (postMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+        const siteUrl = env.SITE_URL || url.origin;
+        const result = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(`https://internal.invalid/internal/public-post?no=${postMatch[1]}`)).json();
+        const html = result.status === 200 ? postPage.renderPostPage(result, siteUrl) : postPage.renderMissingPage(result.status, siteUrl);
+        return new Response(request.method === 'HEAD' ? null : html, { status: result.status === 200 ? 200 : result.status === 403 ? 403 : 404,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
+      }
+      if (url.pathname === '/sitemap.xml') {
+        const { posts } = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch('https://internal.invalid/internal/public-posts')).json();
+        return new Response(postPage.renderSitemap(posts, env.SITE_URL || url.origin), { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600' } });
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);
       if (url.pathname === '/ws/chat') {

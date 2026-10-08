@@ -117,8 +117,11 @@
     }
     feedList.replaceChildren(...items.map(post => {
       const item = make('li', 'feed-item');
-      const button = make('button', 'feed-link');
-      button.type = 'button';
+      // 공개 글은 진짜 링크(/post/번호)로: 검색엔진이 따라가고, 새 탭으로 열 수도 있다. 보통 클릭은 지금처럼 게시판에서 연다.
+      const linkable = post.no && post.board !== 'research';
+      const button = make(linkable ? 'a' : 'button', 'feed-link');
+      if (linkable) button.href = `/post/${post.no}`;
+      else button.type = 'button';
       button.appendChild(make('span', `badge ${post.board}`, BOARD_LABEL[post.board]));
       const title = make('span', 'feed-title', post.board === 'policy' && DEPTS[post.category] ? `[${DEPTS[post.category]}] ${titleOf(post)}` :
         post.board === 'voice' && post.category ? `[${post.category}] ${titleOf(post)}` : titleOf(post));
@@ -130,7 +133,11 @@
       meta.appendChild(make('span', 'when', timeAgo(post.createdAt)));
       button.appendChild(meta);
       button.setAttribute('aria-label', `${BOARD_LABEL[post.board]}: ${title.textContent}, ${post.authorName}, ${timeAgo(post.createdAt)}`);
-      button.addEventListener('click', () => openPost(post));
+      button.addEventListener('click', event => {
+        if (linkable && (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) return;
+        event.preventDefault();
+        openPost(post);
+      });
       item.appendChild(button);
       return item;
     }));
