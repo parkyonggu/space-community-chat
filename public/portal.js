@@ -648,6 +648,166 @@
   }));
   $('policy-panel')?.querySelectorAll('[data-pb]').forEach(button => button.addEventListener('click', () => { pbTab = button.dataset.pb; renderPolicy(); }));
 
+  // ---------- 우리 동네 신청 혜택 ----------
+  const bf = { region: 'uiryeong', aud: '', town: true, q: '', shown: 10, data: null, seq: 0 };
+  try {
+    const saved = new URLSearchParams(location.search).get('동네') || localStorage.getItem('bf-region');
+    const known = { yangsan: 'yangsan', gimhae: 'gimhae', uiryeong: 'uiryeong', 양산: 'yangsan', 김해: 'gimhae', 의령: 'uiryeong' };
+    if (known[saved]) bf.region = known[saved];
+  } catch { /* storage blocked */ }
+  const ymdLabel = value => `${Math.floor(value / 100) % 100}월 ${value % 100}일`;
+  function dueBadge(item) {
+    if (item.due) {
+      const due = new Date(Math.floor(item.due / 10000), Math.floor(item.due / 100) % 100 - 1, item.due % 100);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const days = Math.round((due - today) / 86400000);
+      return make('span', `bf-due${days <= 14 ? ' soon' : ''}`, days === 0 ? `오늘 마감` : `마감 D-${days} · ${ymdLabel(item.due)}`);
+    }
+    return make('span', 'bf-due always', item.always ? '상시 신청' : '기간 확인');
+  }
+  const SCOPE = { manual: '고시·공고', local: '', province: '경상남도', national: '정부' };
+  function renderBenefits() {
+    const list = $('bf-list');
+    if (!list) return;
+    const panel = $('benefit-panel');
+    panel.querySelectorAll('[data-bf-region]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.bfRegion === bf.region)));
+    const data = bf.data;
+    const regionName = { yangsan: '양산시', gimhae: '김해시', uiryeong: '의령군' }[bf.region];
+    if (!data) { list.replaceChildren(make('li', 'skeleton'), make('li', 'skeleton')); return; }
+    const audiences = $('bf-audiences');
+    const all = make('button', 'chip', '전체');
+    all.type = 'button';
+    all.setAttribute('aria-pressed', String(!bf.aud));
+    all.setAttribute('aria-selected', String(!bf.aud));
+    all.addEventListener('click', () => { bf.aud = ''; loadBenefits(); });
+    audiences.replaceChildren(all, ...(data.audiences || []).filter(entry => data.counts?.[entry.id] || bf.aud === entry.id).map(entry => {
+      const chip = make('button', 'chip', entry.label);
+      chip.type = 'button';
+      chip.appendChild(make('small', '', String(data.counts?.[entry.id] || 0)));
+      chip.setAttribute('aria-selected', String(bf.aud === entry.id));
+      chip.addEventListener('click', () => { bf.aud = bf.aud === entry.id ? '' : entry.id; loadBenefits(); });
+      return chip;
+    }));
+    if (!data.connected) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', '정부24 혜택 자료를 연결하고 있습니다. 곧 자동으로 표시됩니다.')); $('bf-more').hidden = true; return; }
+    if (!data.loaded && data.problems?.length) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', `혜택 자료를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요. (${data.problems[0]})`)); $('bf-more').hidden = true; return; }
+    if (!data.loaded) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', `${regionName} 혜택 자료를 처음 받아 오는 중입니다. 잠시 뒤 새로 고침해 주세요.`)); $('bf-more').hidden = true; return; }
+    $('bf-count').textContent = `${regionName}${bf.town ? ' · 읍·면·동 신청' : ''}${bf.aud ? ` · ${data.audiences.find(entry => entry.id === bf.aud)?.label}` : ''}${bf.q ? ` · '${bf.q}'` : ''} — ${data.matched}건 (마감 지난 혜택은 뺐습니다)`;
+    if (!data.items.length) { list.replaceChildren(make('li', 'feed-empty', bf.q ? '찾는 혜택이 없습니다. 다른 낱말로 찾아보세요.' : '조건에 맞는 혜택이 없습니다. \'읍·면·동 신청만\'을 끄면 더 많이 볼 수 있습니다.')); $('bf-more').hidden = true; return; }
+    const admin = Boolean(window.spaceAuth?.user?.admin);
+    list.replaceChildren(...data.items.slice(0, bf.shown).map(item => {
+      const li = make('li');
+      const head = make('div', 'bf-head');
+      head.appendChild(dueBadge(item));
+      if (SCOPE[item.scope]) head.appendChild(make('span', `bf-scope ${item.scope}`, SCOPE[item.scope]));
+      head.appendChild(make('span', 'bf-name', item.name));
+      li.appendChild(head);
+      if (item.summary) li.appendChild(make('p', 'bf-sum', item.summary));
+      const meta = make('p', 'bf-meta');
+      const addMeta = (label, value) => { if (!value) return; if (meta.childNodes.length) meta.appendChild(document.createElement('br')); meta.append(make('b', '', `${label} `), value); };
+      addMeta('대상', item.target);
+      addMeta('신청 기간', item.deadlineText);
+      addMeta('신청처', item.reception || item.method);
+      addMeta('문의', [item.agency, item.dept, item.phone].filter(Boolean).join(' '));
+      if (meta.childNodes.length) li.appendChild(meta);
+      const actions = make('div', 'bf-actions');
+      if (item.url) {
+        const link = make('a', '', item.manual ? '공고 원문 보기 ↗' : '자세히(정부24) ↗');
+        link.href = item.url; link.target = '_blank'; link.rel = 'noopener';
+        actions.appendChild(link);
+      }
+      if (admin && item.manual) {
+        const remove = make('button', '', '이 안내 삭제');
+        remove.type = 'button';
+        remove.addEventListener('click', async () => {
+          if (!window.confirm(`'${item.name}' 안내를 삭제할까요?`)) return;
+          await benefitAdmin({ remove: item.id });
+          loadBenefits();
+        });
+        actions.appendChild(remove);
+      }
+      if (actions.childNodes.length) li.appendChild(actions);
+      return li;
+    }));
+    $('bf-more').hidden = data.items.length <= bf.shown;
+    $('bf-admin').hidden = !admin;
+  }
+  async function loadBenefits() {
+    const seq = ++bf.seq;
+    bf.shown = 10;
+    const params = new URLSearchParams({ region: bf.region, town: bf.town ? '1' : '0' });
+    if (bf.aud) params.set('aud', bf.aud);
+    if (bf.q) params.set('q', bf.q);
+    try {
+      const response = await fetch(`/api/portal/benefits?${params}`, { credentials: 'same-origin' });
+      const data = await response.json();
+      if (seq !== bf.seq) return;
+      bf.data = response.ok ? data : { connected: true, loaded: false, problems: [data.error || String(response.status)], audiences: [], items: [] };
+    } catch (error) {
+      if (seq !== bf.seq) return;
+      bf.data = { connected: true, loaded: false, problems: ['인터넷 연결을 확인해 주세요.'], audiences: [], items: [] };
+    }
+    renderBenefits();
+  }
+  async function benefitAdmin(body) {
+    const response = await fetch('/api/portal/benefits/manual', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || '저장하지 못했습니다.');
+    return data;
+  }
+  if ($('benefit-panel')) {
+    $('benefit-panel').querySelectorAll('[data-bf-region]').forEach(button => button.addEventListener('click', () => {
+      bf.region = button.dataset.bfRegion;
+      try { localStorage.setItem('bf-region', bf.region); } catch { /* storage blocked */ }
+      loadBenefits();
+    }));
+    $('bf-town').addEventListener('change', event => { bf.town = event.target.checked; loadBenefits(); });
+    let typing;
+    $('bf-q').addEventListener('input', event => { clearTimeout(typing); typing = setTimeout(() => { bf.q = event.target.value.trim(); loadBenefits(); }, 350); });
+    $('bf-more').addEventListener('click', () => { bf.shown += 10; renderBenefits(); });
+    // 이장님·이웃에게 링크 하나로 알릴 수 있게: 지역이 담긴 주소를 카카오톡 등으로 공유한다.
+    $('bf-share').addEventListener('click', async () => {
+      const name = { yangsan: '양산', gimhae: '김해', uiryeong: '의령' }[bf.region];
+      const url = `${location.origin}/?동네=${encodeURIComponent(name)}#benefit-panel`;
+      const soon = (bf.data?.items || []).filter(item => item.due).slice(0, 3).map(item => `· ${item.name} (${ymdLabel(item.due)} 마감)`);
+      const text = [`[${name} 주민 신청 혜택 안내]`, '읍·면·동에 신청해야 받을 수 있는 혜택을 마감 순으로 모았습니다.', ...soon].join('\n');
+      try {
+        if (navigator.share) { await navigator.share({ title: `${name} 우리 동네 신청 혜택`, text, url }); return; }
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        $('bf-share').textContent = '✓ 복사됨 — 카톡에 붙여넣기';
+        setTimeout(() => { $('bf-share').textContent = '📤 카톡으로 알리기'; }, 2500);
+      } catch { /* share cancelled */ }
+    });
+    $('bf-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const form = event.target;
+      const status = $('bf-status');
+      const input = Object.fromEntries(new FormData(form));
+      status.textContent = '저장 중…';
+      try {
+        await benefitAdmin(input);
+        status.textContent = '추가했습니다.';
+        form.reset();
+        bf.region = input.region === 'all' ? bf.region : input.region;
+        loadBenefits();
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    });
+    document.querySelectorAll('a[href="#benefit-panel"]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const panel = $('benefit-panel');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      panel.classList.add('flash-target');
+      setTimeout(() => panel.classList.remove('flash-target'), 1600);
+    }));
+    window.addEventListener('space-auth', () => renderBenefits());
+    loadBenefits();
+  }
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);

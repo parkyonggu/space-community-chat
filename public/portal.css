@@ -485,3 +485,40 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .link-btn { border:0; background:none; padding:6px 2px; margin-left:10px; color:var(--muted); font-size:13px; text-decoration:underline; cursor:pointer; }
 #newsletter-form button.done, #newsletter-form button.done:disabled { background:#2e9e6e; color:#fff; opacity:1; cursor:default; }
 #letter-other { margin-left:10px; background:none; border:0; color:var(--primary); text-decoration:underline; font-size:13.5px; cursor:pointer; }
+
+/* ---------- 우리 동네 신청 혜택 ---------- */
+.bf-lead { margin:-4px 0 12px; color:var(--text); font-size:14.5px; line-height:1.6; }
+.bf-filters { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+.bf-filters .chip { min-height:34px; padding:5px 12px; font-size:13.5px; }
+.bf-filters .chip small { margin-left:4px; opacity:.75; font-weight:700; }
+.bf-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 8px; }
+.bf-town { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:700; color:var(--ink); }
+.bf-town input { width:18px; height:18px; }
+.bf-tools input[type=search] { flex:1 1 180px; min-height:38px; border:1px solid var(--line); border-radius:10px; padding:6px 12px; font-size:14.5px; }
+.bf-share { min-height:38px; padding:6px 14px; font-size:14px; }
+.bf-count { margin:4px 0 6px; font-size:13px; color:var(--muted); }
+.bf-list { list-style:none; margin:0; padding:0; }
+.bf-list > li { border-top:1px solid var(--line-soft); padding:12px 2px; }
+.bf-list > li:first-child { border-top:0; }
+.bf-head { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px; }
+.bf-due { font-size:12px; font-weight:800; border-radius:6px; padding:2px 8px; background:var(--primary-soft); color:var(--primary); white-space:nowrap; }
+.bf-due.soon { background:#fde8e8; color:#b42318; }
+.bf-due.always { background:#eef2f6; color:var(--muted); }
+.bf-scope { font-size:11.5px; font-weight:800; border-radius:6px; padding:2px 7px; background:var(--gold-soft); color:#8a5a00; white-space:nowrap; }
+.bf-scope.manual { background:#e7f6ec; color:#17663a; }
+.bf-name { font-size:15.5px; font-weight:800; color:var(--ink); line-height:1.45; }
+.bf-sum { margin:4px 0 0; font-size:13.5px; color:var(--text); line-height:1.55; }
+.bf-meta { margin:4px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; }
+.bf-meta b { color:var(--ink); font-weight:700; }
+.bf-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; font-size:13px; }
+.bf-actions a { color:var(--primary); font-weight:700; }
+.bf-actions button { background:none; border:0; padding:0; color:#b42318; font-size:13px; cursor:pointer; }
+.bf-more { margin-top:8px; width:100%; }
+.bf-admin { margin-top:14px; border:1px dashed var(--line); border-radius:12px; padding:10px 12px; }
+.bf-admin summary { cursor:pointer; font-weight:800; font-size:14px; }
+.bf-admin form { display:grid; gap:8px; margin-top:10px; }
+.bf-admin input, .bf-admin select { min-height:38px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:14px; width:100%; }
+.bf-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+@media (max-width:520px) { .bf-row { grid-template-columns:1fr; } }
+.bf-status { font-size:13px; color:var(--muted); }
+#benefit-panel.flash-target { box-shadow:0 0 0 3px var(--gold), var(--shadow); transition:box-shadow .3s; }

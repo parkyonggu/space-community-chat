@@ -117,6 +117,8 @@ export class CommunityService extends DurableObject {
     });
     this.portal = portal.createPortalApi({
       ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', rateLimit,
+      // 공공데이터포털 일반 인증키는 계정마다 하나라서, 따로 넣지 않았으면 정책브리핑 키를 함께 쓴다.
+      benefitKey: env.GOV_BENEFIT_KEY || env.POLICY_NEWS_KEY || '', authenticate: this.auth.authenticate,
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {
@@ -178,7 +180,7 @@ export class CommunityService extends DurableObject {
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
       pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/') ? this.newsletter :
-      pathname === '/api/portal' ? this.portal : this.community;
+      pathname === '/api/portal' || pathname.startsWith('/api/portal/') ? this.portal : this.community;
     await handler(source, target, pathname);
     return completed;
   }
@@ -348,7 +350,7 @@ export default {
       const url = new URL(request.url);
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
-          url.pathname === '/api/comments' || url.pathname === '/api/portal') {
+          url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/')) {
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
       if (url.pathname === '/ws/talk' || url.pathname === '/api/chat' || url.pathname.startsWith('/api/chat/')) {

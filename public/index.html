@@ -59,6 +59,7 @@
       <a href="#community-section" data-target="community-section">소통·나눔</a>
       <a href="#voice-section" data-target="voice-section">시민의 소리</a>
       <a href="#policy-panel" class="nav-policy">📰 정책브리핑</a>
+      <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
       <a href="#policy-section" data-target="policy-section">정책 제안</a>
       <a href="#research-section" data-target="research-section">칼럼·학술</a>
       <a href="#newsletter-section">스페이스 레터</a>
@@ -164,6 +165,45 @@
           </div>
           <ul class="pb-list" id="pb-list" aria-live="polite"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
           <p class="source">출처: 대한민국 정책브리핑(www.korea.kr) 정책뉴스 · 공공누리 제1유형 · 제목을 누르면 정책브리핑 원문으로 이동합니다.</p>
+        </section>
+
+        <section class="panel panel-pad benefit-panel" id="benefit-panel" aria-labelledby="bf-title">
+          <div class="panel-head"><h2 id="bf-title">우리 동네 신청 혜택</h2><span class="hint" id="bf-updated">신청해야 받을 수 있는 혜택 · 매일 자동 갱신</span></div>
+          <p class="bf-lead">읍·면사무소나 동 행정복지센터에 <b>직접 신청해야</b> 받을 수 있는 혜택을 마감이 가까운 순서로 모았습니다. 이장님 안내를 놓치셨다면 여기서 확인하세요.</p>
+          <div class="re-tabs" role="tablist" aria-label="지역">
+            <button type="button" class="chip" role="tab" data-bf-region="yangsan" aria-selected="false">양산시</button>
+            <button type="button" class="chip" role="tab" data-bf-region="gimhae" aria-selected="false">김해시</button>
+            <button type="button" class="chip" role="tab" data-bf-region="uiryeong" aria-selected="true">의령군</button>
+          </div>
+          <div class="bf-filters" id="bf-audiences" aria-label="대상"></div>
+          <div class="bf-tools">
+            <label class="bf-town"><input type="checkbox" id="bf-town" checked> 읍·면·동 신청만</label>
+            <input type="search" id="bf-q" placeholder="찾기: 직불금, 산림, 출산…" aria-label="혜택 찾기" maxlength="40">
+            <button type="button" class="btn btn-outline bf-share" id="bf-share">📤 카톡으로 알리기</button>
+          </div>
+          <p class="bf-count" id="bf-count" aria-live="polite"></p>
+          <ul class="bf-list" id="bf-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+          <button type="button" class="btn btn-outline bf-more" id="bf-more" hidden>더 보기</button>
+          <details class="bf-admin" id="bf-admin" hidden>
+            <summary>관리자: 고시·공고 안내 직접 추가 (예: 2027년 산림사업 신청)</summary>
+            <form id="bf-form">
+              <input name="name" required maxlength="80" placeholder="제목 (예: 2027년 조림·숲가꾸기 사업 신청)">
+              <div class="bf-row">
+                <select name="region" aria-label="지역"><option value="uiryeong">의령군</option><option value="gimhae">김해시</option><option value="yangsan">양산시</option><option value="all">세 지역 모두</option></select>
+                <input name="deadlineText" maxlength="80" placeholder="신청 기간 (예: 2026.11.02 ~ 2026.11.30)">
+              </div>
+              <input name="target" maxlength="160" placeholder="대상 (예: 관내 산주, 임업인)">
+              <input name="summary" maxlength="200" placeholder="내용 한 줄 요약">
+              <div class="bf-row">
+                <input name="reception" maxlength="60" placeholder="신청처 (기본: 읍·면·동 행정복지센터)">
+                <input name="phone" maxlength="60" placeholder="문의 전화">
+              </div>
+              <input name="url" maxlength="300" placeholder="공고 원문 링크 (https://…)">
+              <button type="submit" class="btn btn-primary">안내 추가</button>
+              <span class="bf-status" id="bf-status" role="status"></span>
+            </form>
+          </details>
+          <p class="source" id="bf-source">출처: 행정안전부 「대한민국 공공서비스(혜택) 정보」(정부24 보조금24) · 공공데이터포털. 정확한 조건과 기간은 '자세히'에서 꼭 확인하세요.</p>
         </section>
 
         <section class="letter-band" aria-labelledby="letter-title">
@@ -285,7 +325,7 @@
       <section id="newsletter-section" class="surface" aria-labelledby="newsletter-title">
         <div class="eyebrow">SPACE LETTER</div><h2 id="newsletter-title" style="margin:4px 0 0;font-size:clamp(22px,3vw,30px);color:var(--ink)">스페이스 레터 구독</h2>
         <p class="intro">매주 월요일 아침 7시, 한국은행·한국부동산원 공식 통계로 정리한 경제 지표와 이번 주 정부 정책, 커뮤니티의 목소리를 이메일로 보내드립니다. 신청 후 받은 확인 메일의 <strong>구독 확인하기</strong> 버튼을 눌러야 구독이 완료됩니다.</p>
-        <p class="letter-subscribed" id="letter-subscribed" hidden>✓ 이 브라우저에서 스페이스 레터 구독을 완료했습니다. 매주 월요일 아침 7시에 메일로 받아 보세요. 다른 이메일로도 받으려면 아래에서 신청할 수 있습니다.</p>
+        <p class="letter-subscribed" id="letter-subscribed" hidden>✓ 스페이스 레터 구독을 완료했습니다. 매주 월요일 아침 7시에 메일로 받아 보세요.</p>
         <form id="newsletter-form" class="reader-form">
           <label for="newsletter-email">이메일 주소</label><input id="newsletter-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
           <label class="reader-consent"><input id="newsletter-consent" type="checkbox" required><span>뉴스레터 신청 관리 및 발송을 위한 이메일 수집·이용에 동의합니다. 동의는 선택이며, 미동의 시 신청할 수 없습니다. 구독 종료 또는 철회 시 즉시 삭제합니다. 발송 통계를 위해 메일 열람·링크 클릭 여부를 기록합니다.</span></label>

@@ -4,6 +4,7 @@
 const { ecos, rebHousing } = require('./weekly-brief');
 const { createRealEstate } = require('./realestate');
 const { recentPolicyNews } = require('./policy-news');
+const localBenefits = require('./local-benefits');
 
 const DAY = 24 * 60 * 60 * 1000;
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
@@ -32,13 +33,17 @@ const POLICY_TTL = 30 * 60 * 1000;
 const REALESTATE_TTL = 60 * 60 * 1000;
 const REALESTATE_FILL_TTL = 3 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
+const BENEFITS_TTL = 12 * 60 * 60 * 1000;
+const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
   const key = ecosKey || 'sample';
   const realEstate = createRealEstate({ key: molitKey, keys: molitKeys, fetchImpl: (...args) => fetchImpl(...args), store, now });
+  const benefits = localBenefits.createLocalBenefits({ key: benefitKey, fetchImpl: (...args) => fetchImpl(...args), now });
+  const lastErrors = new Map();
 
   async function loadIndicators() {
     const at = now();
@@ -120,10 +125,12 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       inflight.set(name, (async () => {
         try {
           const value = await loader();
+          lastErrors.delete(name);
           await store.set(`portal:${name}`, { value, freshUntil: now() + (typeof ttl === 'function' ? ttl(value) : ttl) });
           return value;
         } catch (error) {
           console.error(`Portal ${name} refresh failed:`, error.message);
+          lastErrors.set(name, error.message);
           await store.set(`portal:${name}`, { value: entry?.value ?? null, freshUntil: now() + RETRY_AFTER_FAILURE });
           return entry?.value ?? null;
         } finally {
@@ -134,12 +141,85 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     return inflight.get(name);
   }
 
+  // ---------- 우리 동네 신청 혜택 ----------
+  const manualKey = 'portal:benefits-manual';
+  async function manualItems() {
+    return (await store.get(manualKey)) || [];
+  }
+  async function readJson(request) {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of request) {
+      size += chunk.length;
+      if (size > 16 * 1024) throw Object.assign(new Error('입력 내용이 너무 큽니다.'), { status: 413 });
+      chunks.push(Buffer.from(chunk));
+    }
+    try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { throw Object.assign(new Error('요청 형식을 확인해 주세요.'), { status: 400 }); }
+  }
+
+  async function handleBenefits(request, send, pathname) {
+    const ip = request.socket?.remoteAddress || 'unknown';
+    if (rateLimit && !rateLimit(`benefits:${ip}`, 120, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    if (pathname === '/api/portal/benefits/manual') {
+      if (request.method !== 'POST') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+      const auth = authenticate ? await authenticate(request, { csrf: true }) : { error: { status: 403, message: '관리자만 쓸 수 있습니다.' } };
+      if (auth.error) { send(auth.error.status, { error: auth.error.message }); return; }
+      if (!auth.user?.admin) { send(403, { error: '관리자만 쓸 수 있습니다.' }); return; }
+      try {
+        const input = await readJson(request);
+        const list = await manualItems();
+        if (input.remove) {
+          await store.set(manualKey, list.filter(item => item.id !== input.remove));
+          send(200, { ok: true });
+          return;
+        }
+        const item = localBenefits.cleanManual(input, now());
+        await store.set(manualKey, [item, ...list].slice(0, 200));
+        send(200, { ok: true, item });
+      } catch (error) {
+        send(error.status || 400, { error: error.message });
+      }
+      return;
+    }
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    const region = localBenefits.REGIONS.find(entry => entry.id === params.get('region')) || localBenefits.REGIONS[2];
+    const audience = params.get('aud') || '';
+    const townOnly = params.get('town') !== '0';
+    const query = String(params.get('q') || '').trim().slice(0, 40);
+    const [local, province, national, manual] = await Promise.all([
+      cached(`benefits-${region.id}`, BENEFITS_TTL, () => benefits.region(region.id)),
+      cached('benefits-province', BENEFITS_TTL, benefits.province),
+      cached('benefits-national', BENEFITS_TTL, benefits.national),
+      manualItems(),
+    ]);
+    const tag = (items, scope) => (items || []).map(item => ({ ...item, scope }));
+    const seen = new Set();
+    const all = localBenefits.arrange([
+      ...tag(manual.filter(item => item.regions.includes(region.id) || item.regions.includes('all')), 'manual'),
+      ...tag(local, 'local'), ...tag(province, 'province'), ...tag(national, 'national'),
+    ].filter(item => { if (!item.id || seen.has(item.id)) return false; seen.add(item.id); return true; }), now());
+    const base = all.filter(item => !townOnly || item.townOffice);
+    const counts = Object.fromEntries(localBenefits.AUDIENCES.map(({ id }) => [id, base.filter(item => item.audiences.includes(id)).length]));
+    const matches = base.filter(item => (!audience || item.audiences.includes(audience)) &&
+      (!query || `${item.name} ${item.summary} ${item.target}`.includes(query)));
+    const connected = Boolean(benefitKey);
+    const problems = [`benefits-${region.id}`, 'benefits-province', 'benefits-national'].map(name => lastErrors.get(name)).filter(Boolean);
+    send(200, {
+      connected, region, regions: localBenefits.REGIONS, audiences: localBenefits.AUDIENCES,
+      total: base.length, all: all.length, counts, matched: matches.length, items: matches.slice(0, BENEFITS_PAGE),
+      loaded: local !== null, problems: [...new Set(problems)].slice(0, 2),
+      source: '행정안전부 대한민국 공공서비스(혜택) 정보(정부24 보조금24) · 공공데이터포털',
+    });
+  }
+
   async function handlePortalApi(request, response, pathname) {
     const send = (status, body) => {
       const payload = JSON.stringify(body);
       response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=60' : 'no-store', 'X-Content-Type-Options': 'nosniff' });
       response.end(payload);
     };
+    if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual') { await handleBenefits(request, send, pathname); return; }
     if (pathname !== '/api/portal') { send(404, { error: '요청한 기능이 없습니다.' }); return; }
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
