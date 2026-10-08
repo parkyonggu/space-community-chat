@@ -75,7 +75,9 @@ test('double opt-in, legacy migration, admin sending with daily limit, tracking 
   for (const message of f.sent.slice(0, 3)) {
     assert.equal((await f.post('/api/newsletter/confirm', { token: f.tokenFrom(message, 'confirm') })).status, 200);
   }
-  assert.equal((await f.post('/api/newsletter/confirm', { token: f.tokenFrom(f.sent[0], 'confirm') })).status, 400, 'one-time token');
+  const reused = await f.post('/api/newsletter/confirm', { token: f.tokenFrom(f.sent[0], 'confirm') });
+  assert.equal(reused.status, 200, 'used link reports the finished subscription');
+  assert.equal((await reused.json()).already, true);
   assert.equal((await f.post('/api/newsletter', { email: 'a@example.com', consent: true })).status, 200);
   assert.equal(f.sent.length, 4, 'confirmed subscriber gets no extra mail');
 
@@ -349,4 +351,18 @@ test('member can see their own subscription status (구독완료 on every device
   const token = f.tokenFrom(f.sent.at(-1), 'confirm');
   await f.post('/api/newsletter/confirm', { token });
   assert.equal((await (await f.get('/api/newsletter/status', 'member')).json()).status, 'confirmed');
+});
+
+test('pressing an already-used confirm link again says 구독완료 instead of an error', async t => {
+  const f = await fixture(t);
+  await f.post('/api/newsletter', { email: 'again@example.com', consent: true });
+  const token = f.tokenFrom(f.sent.at(-1), 'confirm');
+  const first = await (await f.post('/api/newsletter/confirm', { token })).json();
+  assert.equal(first.already, false);
+  const second = await f.post('/api/newsletter/confirm', { token });
+  assert.equal(second.status, 200);
+  const body = await second.json();
+  assert.equal(body.already, true);
+  assert.match(body.message, /이미 구독이 완료/);
+  assert.equal((await f.post('/api/newsletter/confirm', { token: 'f'.repeat(48) })).status, 400, 'unknown tokens still rejected');
 });

@@ -21,6 +21,7 @@
     .status { min-height:24px; margin-top:16px; color:var(--ink); }
     .status[data-error="true"] { color:#ff9c9c; }
     a { color:var(--blue); }
+    #action.done, #action.done:disabled { background:#2e9e6e; border-color:#2e9e6e; color:#fff; opacity:1; cursor:default; }
   </style>
 </head>
 <body>
@@ -66,7 +67,14 @@
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || '처리하지 못했습니다.');
           status.textContent = result.message;
-          button.hidden = true;
+          if (mode === 'confirm') {
+            // 버튼을 '✓ 구독완료'로 바꿔 보여 준다(이미 확인한 링크를 다시 눌러도 같다).
+            button.textContent = '✓ 구독완료';
+            button.disabled = true;
+            button.classList.add('done');
+          } else {
+            button.hidden = true;
+          }
           title.textContent = mode === 'confirm' ? '구독이 완료되었습니다' : '수신거부가 완료되었습니다';
           description.hidden = true;
           // 이 브라우저에 구독 상태를 기억해, 첫 화면의 '구독 신청' 안내를 더 이상 보여 주지 않는다.

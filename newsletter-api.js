@@ -1,6 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { randomUUID, randomBytes } = require('node:crypto');
+const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK } = require('./weekly-brief');
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -620,15 +620,25 @@ function createNewsletterApi(dataDirectory, {
 
       if (pathname === '/api/newsletter/confirm') {
         if (typeof input.token !== 'string' || !TOKEN.test(input.token)) throw new NewsletterError(400, '유효하지 않은 확인 링크입니다.');
-        await updateStore(store => {
+        const usedHash = createHash('sha256').update(input.token).digest('hex');
+        const already = await updateStore(store => {
           const subscriber = store.subscribers.find(entry => entry.confirmToken === input.token);
-          if (!subscriber) throw new NewsletterError(400, '유효하지 않거나 이미 사용한 확인 링크입니다. 이미 확인하셨다면 구독이 완료된 상태입니다.');
+          if (!subscriber) {
+            // 이미 확인을 마친 링크를 다시 눌러도 '구독완료'로 알려 준다.
+            const done = store.subscribers.find(entry => entry.usedConfirmHash === usedHash && entry.status === 'confirmed');
+            if (done) return true;
+            throw new NewsletterError(400, '이미 사용했거나 만료된 확인 링크입니다. 이 링크로 구독 확인을 이미 하셨다면 구독이 완료된 상태이니 그대로 두시면 됩니다.');
+          }
           subscriber.status = 'confirmed';
           subscriber.confirmedAt = iso();
           subscriber.consentAt = iso();
+          subscriber.usedConfirmHash = usedHash;
           delete subscriber.confirmToken;
+          return false;
         });
-        sendJson(response, 200, { message: '구독이 확인되었습니다. 스페이스 레터를 보내드릴게요. 메일 하단의 수신거부로 언제든 해지할 수 있습니다.' });
+        sendJson(response, 200, { already: Boolean(already), message: already
+          ? '이미 구독이 완료된 상태입니다. 매주 월요일 아침 7시에 스페이스 레터를 보내드려요.'
+          : '구독이 확인되었습니다. 스페이스 레터를 보내드릴게요. 메일 하단의 수신거부로 언제든 해지할 수 있습니다.' });
         return;
       }
 
