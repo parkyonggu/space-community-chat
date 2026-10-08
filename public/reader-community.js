@@ -105,6 +105,7 @@ newsletterForm.addEventListener('submit', async event => {
     });
     newsletterForm.reset();
     setStatus(newsletterStatus, result.message);
+    button.textContent = '확인 메일을 보냈어요';
   } catch (error) {
     setStatus(newsletterStatus, error.message, true);
   } finally {

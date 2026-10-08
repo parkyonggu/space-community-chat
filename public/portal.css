@@ -480,3 +480,7 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 /* 스페이스 레터 구독을 마친 브라우저 */
 .letter-subscribed { margin:10px 0 14px; padding:12px 14px; border-radius:12px; background:#e9f7ef; color:#1f6b45; font-weight:700; font-size:14px; line-height:1.6; }
 .sub-box.done h2::before { content:'✓ '; color:#2e9e6e; }
+.submitPolicy.is-done, #newsletter-form button.is-done { background:#2e9e6e !important; border-color:#2e9e6e !important; color:#fff !important; opacity:1 !important; cursor:default; }
+.link-btn { border:0; background:none; padding:6px 2px; margin-left:10px; color:var(--muted); font-size:13px; text-decoration:underline; cursor:pointer; }
+#newsletter-form button.done, #newsletter-form button.done:disabled { background:#2e9e6e; color:#fff; opacity:1; cursor:default; }
+#letter-other { margin-left:10px; background:none; border:0; color:var(--primary); text-decoration:underline; font-size:13.5px; cursor:pointer; }

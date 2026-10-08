@@ -468,6 +468,19 @@ function createNewsletterApi(dataDirectory, {
         return;
       }
 
+      // 로그인한 회원 본인 이메일의 구독 상태(다른 기기에서도 '구독완료'로 보이게). 다른 사람 이메일은 조회할 수 없다.
+      if (pathname === '/api/newsletter/status') {
+        if (request.method !== 'GET') throw new NewsletterError(405, '지원하지 않는 요청 방식입니다.');
+        limit(`newsletter-status:${ip}`, 60, 60000);
+        const auth = await authenticate(request, {});
+        const email = typeof auth?.user?.email === 'string' ? auth.user.email.trim().toLowerCase() : '';
+        if (!email) { sendJson(response, 200, { status: 'unknown' }); return; }
+        const store = await readStore();
+        const subscriber = store.subscribers.find(entry => entry.email === email);
+        sendJson(response, 200, { status: subscriber ? (subscriber.status === 'confirmed' ? 'confirmed' : 'pending') : 'none' });
+        return;
+      }
+
       // Public archive of letters that finished sending (the same content subscribers received).
       if (pathname === '/api/newsletter/archive') {
         if (request.method !== 'GET') throw new NewsletterError(405, '지원하지 않는 요청 방식입니다.');

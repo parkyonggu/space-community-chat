@@ -338,3 +338,15 @@ test('weekly change spans holiday gaps', async t => {
   const draft = await f.generate({ notify: false });
   assert.ok(draft.body.includes('**KOSPI** 6,930 (1주 전 대비 +5.00%)') || draft.body.includes('**KOSPI** 6,930.00 (1주 전 대비 +5.00%)'), draft.body.split('\n').find(line => line.includes('KOSPI')));
 });
+
+test('member can see their own subscription status (구독완료 on every device)', async t => {
+  const f = await fixture(t);
+  const memberEmail = member.email;
+  assert.equal((await (await f.get('/api/newsletter/status')).json()).status, 'unknown', 'guests get nothing');
+  assert.equal((await (await f.get('/api/newsletter/status', 'member')).json()).status, 'none');
+  await f.post('/api/newsletter', { email: memberEmail, consent: true });
+  assert.equal((await (await f.get('/api/newsletter/status', 'member')).json()).status, 'pending');
+  const token = f.tokenFrom(f.sent.at(-1), 'confirm');
+  await f.post('/api/newsletter/confirm', { token });
+  assert.equal((await (await f.get('/api/newsletter/status', 'member')).json()).status, 'confirmed');
+});

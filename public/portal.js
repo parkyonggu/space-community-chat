@@ -551,15 +551,12 @@
   }
   $('realestate-panel').querySelectorAll('[data-re]').forEach(button => button.addEventListener('click', () => { reTab = button.dataset.re; renderRealEstate(); }));
 
-  // ---------- 스페이스 레터: 구독을 마친 브라우저에서는 '구독 신청' 안내를 감춘다 ----------
-  (function letterSubscribed() {
-    let done = null;
-    try { done = localStorage.getItem('space-letter-subscribed'); } catch { done = null; }
-    if (!done) return;
+  // ---------- 스페이스 레터: 구독을 마치면 '구독하기' → '구독완료' (이 기기 기록 + 로그인 회원은 서버 확인) ----------
+  function applyLetterSubscribed() {
     const box = document.querySelector('.sub-box');
-    if (box) {
+    if (box && !box.classList.contains('done')) {
       box.classList.add('done');
-      $('sub-title').textContent = '스페이스 레터 구독 중';
+      $('sub-title').textContent = '스페이스 레터 구독완료';
       box.querySelector('p').textContent = '매주 월요일 아침 7시에 경제·정책 브리핑을 메일로 보내 드립니다. 지난 레터도 언제든 다시 읽을 수 있어요.';
       const go = $('sub-go');
       go.textContent = '지난 레터 보기';
@@ -569,8 +566,35 @@
     const note = $('letter-subscribed');
     if (note) note.hidden = false;
     const title = $('newsletter-title');
-    if (title) title.textContent = '스페이스 레터 (구독 중)';
-  })();
+    if (title) title.textContent = '스페이스 레터 (구독완료)';
+    const button = document.querySelector('#newsletter-form button[type="submit"]');
+    if (button && !button.dataset.other) {
+      button.textContent = '✓ 구독완료';
+      button.disabled = true;
+      button.classList.add('done');
+      if (!$('letter-other')) {
+        const other = make('button', 'link-btn', '다른 이메일로도 받기');
+        other.type = 'button';
+        other.id = 'letter-other';
+        other.addEventListener('click', () => { button.dataset.other = '1'; button.disabled = false; button.textContent = '구독하기'; button.classList.remove('done'); other.remove(); $('newsletter-email')?.focus(); });
+        button.after(other);
+      }
+    }
+  }
+  try { if (localStorage.getItem('space-letter-subscribed')) applyLetterSubscribed(); } catch { /* storage unavailable */ }
+  async function syncLetterStatus() {
+    try {
+      const response = await fetch('/api/newsletter/status', { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) return;
+      const { status } = await response.json();
+      if (status === 'confirmed') {
+        try { localStorage.setItem('space-letter-subscribed', new Date().toISOString()); } catch { /* storage unavailable */ }
+        applyLetterSubscribed();
+      }
+    } catch { /* offline */ }
+  }
+  window.addEventListener('space-auth', event => { if (event.detail?.user) syncLetterStatus(); });
+  syncLetterStatus();
 
   // ---------- 오늘의 정책브리핑 ----------
   let policyData;
