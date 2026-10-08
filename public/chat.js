@@ -941,7 +941,7 @@
   }
   function myLinkSheet() {
     const url = `${location.origin}/chat#dm=${state.me.code}`;
-    openSheet('내 1:1 대화 링크', body => {
+    openSheet('초대하기 (1:1 대화)', body => {
       body.appendChild(make('p', '', '이 링크를 받은 회원은 나와 바로 1:1 대화를 시작할 수 있어요. 링크를 아는 회원만 대화를 걸 수 있습니다.'));
       body.appendChild(linkBox(url));
       const share = shareButton(url, `[스페이스 톡] ${state.me.nickname}님과 1:1 대화해요.\n아래 링크를 누르고 로그인하면 바로 대화가 시작됩니다. (처음이면 회원가입 후 이용)`);
@@ -967,7 +967,7 @@
         menu.appendChild(join);
       } else {
         add('새 대화방 만들기', createSheet);
-        add('내 1:1 대화 링크', myLinkSheet);
+        add('초대하기', myLinkSheet);
       }
       add(pushEnabled() ? '이 기기 알림 끄기' : '이 기기 알림 켜기', () => { closeSheet(); pushEnabled() ? disablePush() : enablePush(); });
       if (state.me.admin) add('신고된 메시지 관리 (운영자)', reportsSheet);
