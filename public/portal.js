@@ -576,6 +576,9 @@
     document.querySelectorAll('[data-letter-cta]').forEach(link => { link.textContent = '지난 레터 보기'; link.href = '/letter'; });
     const note = $('letter-subscribed');
     if (note) note.hidden = false;
+    const intro = $('letter-intro');
+    if (intro) intro.textContent = '매주 월요일 아침 7시, 한국은행·한국부동산원 공식 통계로 정리한 경제 지표와 이번 주 정부 정책, 커뮤니티의 목소리를 이메일로 보내드립니다.';
+    document.querySelectorAll('[data-letter-mark]').forEach(button => { button.hidden = true; });
     const title = $('newsletter-title');
     if (title) title.textContent = '스페이스 레터 (구독완료)';
     const button = document.querySelector('#newsletter-form button[type="submit"]');
@@ -593,6 +596,11 @@
     }
   }
   try { if (localStorage.getItem('space-letter-subscribed')) applyLetterSubscribed(); } catch { /* storage unavailable */ }
+  // 다른 기기(PC 등)나 메일 앱 안 브라우저에서 구독을 마친 경우: 이 기기에도 '구독완료'로 표시만 한다(서버 정보는 바꾸지 않음).
+  document.querySelectorAll('[data-letter-mark]').forEach(button => button.addEventListener('click', () => {
+    try { localStorage.setItem('space-letter-subscribed', new Date().toISOString()); } catch { /* storage unavailable */ }
+    applyLetterSubscribed();
+  }));
   async function syncLetterStatus() {
     try {
       const response = await fetch('/api/newsletter/status', { credentials: 'same-origin', cache: 'no-store' });

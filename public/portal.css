@@ -522,3 +522,5 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 @media (max-width:520px) { .bf-row { grid-template-columns:1fr; } }
 .bf-status { font-size:13px; color:var(--muted); }
 #benefit-panel.flash-target { box-shadow:0 0 0 3px var(--gold), var(--shadow); transition:box-shadow .3s; }
+.link-btn.letter-mark { display:block; margin:8px 0 0; text-align:left; line-height:1.5; }
+.link-btn.letter-mark[hidden] { display:none; }
