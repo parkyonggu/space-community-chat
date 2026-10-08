@@ -9,7 +9,7 @@
     culture: '문화체육관광부', welfare: '보건복지부', labor: '고용노동부', gender: '여성가족부', environment: '환경부', foreign: '외교부',
     unification: '통일부', defense: '국방부', science: '과학기술정보통신부', landtransport: '국토교통부', agriculture: '농림축산식품부',
     ocean: '해양수산부', safety: '행정안전부', justice: '법무부', personnel: '인사혁신처' };
-  const BOARD_LABEL = { community: '소통·나눔', voice: '시민의 소리', policy: '정책 제안', research: '학술·이야기' };
+  const BOARD_LABEL = { community: '소통·나눔', voice: '시민의 소리', policy: '정책 제안', research: '칼럼·학술' };
   const BOARD_SECTION = { community: 'community-section', voice: 'voice-section', policy: 'policy-section', research: 'research-section' };
   const HOUR = 60 * 60 * 1000;
   const DAY = 24 * HOUR;

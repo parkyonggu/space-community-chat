@@ -3,7 +3,7 @@ const communityMenus = [
   ['community-section', '소통·나눔'],
   ['voice-section', '시민의 소리'],
   ['policy-section', '정책 제안'],
-  ['research-section', '학술·이야기'],
+  ['research-section', '칼럼·학술'],
 ];
 
 const homeHeader = document.querySelector('body > header');
