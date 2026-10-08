@@ -585,6 +585,15 @@
       return li;
     }));
   }
+  // 메뉴의 '정책브리핑'을 누르면 상자로 부드럽게 내려가 잠시 강조한다.
+  document.querySelectorAll('a[href="#policy-panel"]').forEach(link => link.addEventListener('click', event => {
+    const panel = $('policy-panel');
+    if (!panel) return;
+    event.preventDefault();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.classList.add('flash-target');
+    setTimeout(() => panel.classList.remove('flash-target'), 1600);
+  }));
   $('policy-panel')?.querySelectorAll('[data-pb]').forEach(button => button.addEventListener('click', () => { pbTab = button.dataset.pb; renderPolicy(); }));
 
   function renderOnline(count) {
