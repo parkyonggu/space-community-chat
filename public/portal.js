@@ -689,9 +689,10 @@
       return chip;
     }));
     if (!data.connected) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', '정부24 혜택 자료를 연결하고 있습니다. 곧 자동으로 표시됩니다.')); $('bf-more').hidden = true; return; }
-    if (!data.loaded && data.problems?.length) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', `혜택 자료를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요. (${data.problems[0]})`)); $('bf-more').hidden = true; return; }
-    if (!data.loaded) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', `${regionName} 혜택 자료를 처음 받아 오는 중입니다. 잠시 뒤 새로 고침해 주세요.`)); $('bf-more').hidden = true; return; }
-    $('bf-count').textContent = `${regionName}${bf.town ? ' · 읍·면·동 신청' : ''}${bf.aud ? ` · ${data.audiences.find(entry => entry.id === bf.aud)?.label}` : ''}${bf.q ? ` · '${bf.q}'` : ''} — ${data.matched}건 (마감 지난 혜택은 뺐습니다)`;
+    // 정부24 자료가 아직 연결되지 않았어도 관리자가 넣은 고시·공고 안내는 보여 준다.
+    const waiting = !data.loaded ? (data.problems?.length ? '정부24 혜택 자료 연결 승인을 기다리고 있습니다. 승인되면 자동으로 채워집니다.' : `${regionName} 혜택 자료를 받아 오는 중입니다. 잠시 뒤 새로 고침해 주세요.`) : '';
+    if (waiting && !data.items?.length) { $('bf-count').textContent = ''; list.replaceChildren(make('li', 'feed-empty', waiting)); $('bf-more').hidden = true; $('bf-admin').hidden = !window.spaceAuth?.user?.admin; return; }
+    $('bf-count').textContent = waiting ? `${waiting} 아래는 직접 올린 고시·공고 안내입니다.` : `${regionName}${bf.town ? ' · 읍·면·동 신청' : ''}${bf.aud ? ` · ${data.audiences.find(entry => entry.id === bf.aud)?.label}` : ''}${bf.q ? ` · '${bf.q}'` : ''} — ${data.matched}건 (마감 지난 혜택은 뺐습니다)`;
     if (!data.items.length) { list.replaceChildren(make('li', 'feed-empty', bf.q ? '찾는 혜택이 없습니다. 다른 낱말로 찾아보세요.' : '조건에 맞는 혜택이 없습니다. \'읍·면·동 신청만\'을 끄면 더 많이 볼 수 있습니다.')); $('bf-more').hidden = true; return; }
     const admin = Boolean(window.spaceAuth?.user?.admin);
     list.replaceChildren(...data.items.slice(0, bf.shown).map(item => {
