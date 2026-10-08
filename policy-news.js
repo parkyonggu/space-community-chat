@@ -10,12 +10,16 @@ const ymd = timestamp => kst(timestamp).toISOString().slice(0, 10).replace(/-/g,
 const ECONOMY_DEPARTMENTS = /금융위원회|금융감독|재정경제|기획재정|기획예산|국토교통|산업통상|중소벤처|고용노동|공정거래|국세청|관세청|통계청|조달청|국무조정실|한국은행/;
 const ECONOMY_WORDS = /금융|펀드|금리|대출|투자|경제|성장|물가|부동산|주택|전세|청약|세제|세법|예산|재정|수출|산업|기업|일자리|고용|소상공인|자영업|민생|채무|연금|보험|가계|관세|무역|반도체|AI|인공지능/;
 
+const ENTITIES = { lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', middot: '·', hellip: '…', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', bull: '•', ndash: '–', mdash: '—', sim: '∼', times: '×', amp: '&' };
+const entities = text => text
+  .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+  .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(Number(num)))
+  .replace(/&([a-z]+);/gi, (match, name) => ENTITIES[name.toLowerCase()] ?? match);
+
 function decode(text) {
-  return String(text || '')
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ').trim();
+  // 정책브리핑 자료는 기호가 두 번 감싸여(&amp;middot;) 오는 경우가 있어 두 번 푼다.
+  const once = entities(String(text || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
+  return entities(once.replace(/<[^>]+>/g, ' ')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function parseNews(text) {
