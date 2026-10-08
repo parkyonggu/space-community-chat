@@ -553,15 +553,20 @@
 
   // ---------- 오늘의 정책브리핑 ----------
   let policyData;
-  let pbTab = 'all';
+  let pbTab = 'news';
   function renderPolicy(data) {
     if (data !== undefined) policyData = data;
     const list = $('pb-list');
     if (!list) return;
     $('policy-panel').querySelectorAll('[data-pb]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.pb === pbTab)));
-    const items = (policyData?.items || []).filter(item => pbTab === 'all' || item.economy);
+    const items = (policyData?.items || []).filter(item => {
+      const fact = item.kind === 'fact';
+      if (pbTab === 'fact') return fact;
+      if (pbTab === 'economy') return !fact && item.economy;
+      return !fact;
+    });
     if (!policyData) { list.replaceChildren(make('li', 'feed-empty', '정책브리핑 자료를 연결하고 있습니다. 곧 자동으로 표시됩니다.')); return; }
-    if (!items.length) { list.replaceChildren(make('li', 'feed-empty', pbTab === 'all' ? '오늘 새로 올라온 정책뉴스가 아직 없습니다.' : '오늘은 경제·금융·부동산 분야 정책뉴스가 아직 없습니다.')); return; }
+    if (!items.length) { list.replaceChildren(make('li', 'feed-empty', ({ news: '오늘 새로 올라온 정책뉴스가 아직 없습니다.', economy: '오늘은 경제·금융·부동산 분야 정책뉴스가 아직 없습니다.', fact: '최근 이틀 동안 올라온 \'사실은 이렇습니다\'(보도 설명 자료)가 없습니다.' })[pbTab])); return; }
     const when = at => {
       if (!at) return '';
       const date = new Date(at);

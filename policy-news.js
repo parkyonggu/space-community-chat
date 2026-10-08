@@ -38,6 +38,10 @@ function parseNews(text) {
   });
 }
 
+// 언론 보도에 대한 정부 설명('사실은 이렇습니다')은 일반 정책뉴스와 따로 보여 준다.
+const FACT_PREFIX = /^\s*\[사실은 이렇습니다\]\s*/;
+const isFact = item => FACT_PREFIX.test(item.Title || '') || /fact/i.test(item.GroupingCode || '');
+
 // 'MM/DD/YYYY HH:mm:ss' → timestamp
 function approvedAt(value) {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(String(value || ''));
@@ -69,7 +73,7 @@ async function weeklyPolicyNews(fetchImpl, key, now, { limit = 8 } = {}) {
   if (!items.length && problems.length) throw new Error(problems[0]);
   const seen = new Set();
   const picked = items
-    .filter(item => item.Title && item.OriginalUrl && isTypeOne(item.KoglType))
+    .filter(item => item.Title && item.OriginalUrl && isTypeOne(item.KoglType) && !isFact(item))
     .filter(item => ECONOMY_DEPARTMENTS.test(item.MinisterCode || '') || ECONOMY_WORDS.test(`${item.Title} ${item.SubTitle1 || ''}`))
     .filter(item => { const id = item.NewsItemId || item.OriginalUrl; if (seen.has(id)) return false; seen.add(id); return true; })
     .map(item => ({ ...item, at: approvedAt(item.ApproveDate) }))
@@ -85,7 +89,7 @@ async function weeklyPolicyNews(fetchImpl, key, now, { limit = 8 } = {}) {
 }
 
 // 첫 화면 '오늘의 정책브리핑': 최근 이틀 동안의 정책뉴스(제1유형) 전체를 최신순으로. 경제 관련 표시를 붙인다.
-async function recentPolicyNews(fetchImpl, key, now, { limit = 10 } = {}) {
+async function recentPolicyNews(fetchImpl, key, now, { limit = 40 } = {}) {
   if (!key) return null;
   const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
   const url = `https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2?serviceKey=${serviceKey}&startDate=${ymd(now - DAY)}&endDate=${ymd(now)}`;
@@ -98,12 +102,13 @@ async function recentPolicyNews(fetchImpl, key, now, { limit = 10 } = {}) {
     .filter(item => { const id = item.NewsItemId || item.OriginalUrl; if (seen.has(id)) return false; seen.add(id); return true; })
     .map(item => ({
       id: item.NewsItemId || item.OriginalUrl,
-      title: item.Title,
+      title: item.Title.replace(FACT_PREFIX, ''),
+      kind: isFact(item) ? 'fact' : 'news',
       sub: (item.SubTitle1 || '').slice(0, 140),
       dept: item.MinisterCode || '정부',
       at: approvedAt(item.ApproveDate) || null,
       url: /^https?:\/\//.test(item.OriginalUrl) ? item.OriginalUrl : `https://www.korea.kr${item.OriginalUrl}`,
-      economy: ECONOMY_DEPARTMENTS.test(item.MinisterCode || '') || ECONOMY_WORDS.test(`${item.Title} ${item.SubTitle1 || ''}`),
+      economy: !isFact(item) && (ECONOMY_DEPARTMENTS.test(item.MinisterCode || '') || ECONOMY_WORDS.test(`${item.Title} ${item.SubTitle1 || ''}`)),
     }))
     .sort((a, b) => (b.at || 0) - (a.at || 0))
     .slice(0, limit);

@@ -46,11 +46,22 @@ test('오늘의 정책브리핑: recent 제1유형 news, newest first, marked wh
   const items = await recentPolicyNews(async url => { calls.push(url); return { ok: true, status: 200, text: async () => xml(sample) }; }, 'P', Date.parse('2026-10-08T03:00:00Z'));
   assert.equal(calls.length, 1);
   assert.ok(calls[0].includes('startDate=20261007') && calls[0].includes('endDate=20261008'));
-  assert.deepEqual(items.map(item => [item.title, item.economy]), [['국민성장펀드 200조원으로 확대', true], ['가을 축제 안내', false], ['소상공인 정책자금 금리 인하', true]]);
+  assert.deepEqual(items.map(item => [item.title, item.economy, item.kind]), [['국민성장펀드 200조원으로 확대', true, 'news'], ['가을 축제 안내', false, 'news'], ['소상공인 정책자금 금리 인하', true, 'news']]);
   assert.equal(items[2].url, 'https://www.korea.kr/news/4');
 });
 
 test('decodes double-encoded symbols in titles', () => {
   const [news] = parseNews(xml([item({ Title: '청년&amp;middot;지방&middot;교육 &#8216;지원&#8217; &quot;확대&quot;', OriginalUrl: '/x', KoglType: '1' })]));
   assert.equal(news.Title, "청년·지방·교육 ‘지원’ \"확대\"");
+});
+
+test('"사실은 이렇습니다" items are kept apart from policy news', async () => {
+  const facts = [...sample, item({ NewsItemId: '9', Title: '[사실은 이렇습니다] 기초연금 삭감 보도 관련', MinisterCode: '보건복지부', ApproveDate: '10/08/2026 11:00:00', OriginalUrl: '/news/9', KoglType: '1' })];
+  const fetchImpl = async () => ({ ok: true, status: 200, text: async () => xml(facts) });
+  const items = await recentPolicyNews(fetchImpl, 'P', Date.parse('2026-10-08T03:00:00Z'));
+  const fact = items.find(entry => entry.kind === 'fact');
+  assert.equal(fact.title, '기초연금 삭감 보도 관련', 'prefix removed');
+  assert.equal(fact.economy, false);
+  const weekly = await weeklyPolicyNews(fetchImpl, 'P', Date.parse('2026-10-08T03:00:00Z'));
+  assert.ok(!weekly.lines.join('').includes('기초연금 삭감'), 'not in the newsletter policy list');
 });

@@ -148,7 +148,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       cached('indicators', INDICATOR_TTL, loadIndicators),
       cached('housing', housingTtl(), loadHousing),
       cached('realestate', value => (value?.complete ? REALESTATE_TTL : REALESTATE_FILL_TTL), realEstate.load),
-      cached('policy', POLICY_TTL, loadPolicy),
+      cached('policy-v2', POLICY_TTL, loadPolicy),
       onlineCount().catch(() => null),
     ]);
     send(200, { indicators, housing, realestate, policy, online });
