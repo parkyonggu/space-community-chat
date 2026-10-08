@@ -139,12 +139,31 @@
     box.append(input, copy);
     return box;
   }
+  // 카카오톡 등으로 보내기: 휴대폰·지원 브라우저는 공유 창(카카오톡 선택), 그 밖에는 보낼 문구를 복사한다.
+  async function shareText(text, url) {
+    if (navigator.share) {
+      try { await navigator.share(url ? { title: '스페이스 톡', text, url } : { title: '스페이스 톡', text }); return; } catch (error) { if (error?.name === 'AbortError') return; }
+    }
+    if (await copyText(url ? `${text}\n${url}` : text)) toast('복사했어요. 카카오톡 대화방에 길게 눌러 붙여넣기 하세요.');
+  }
+  function inviteText(roomName) {
+    return [
+      `[스페이스 톡 초대] '${roomName}' 대화방에 초대합니다.`,
+      '① 아래 링크를 누르세요.',
+      '② 처음이면 회원가입(이메일 인증) 후 로그인하세요.',
+      '③ "들어가기"를 누르면 대화방에 들어옵니다.',
+    ].join('\n');
+  }
   function shareButton(url, text) {
-    if (!navigator.share) return null;
-    const button = make('button', 'btn gold block', '카톡·문자로 공유하기');
-    button.type = 'button';
-    button.addEventListener('click', () => navigator.share({ title: '스페이스 톡', text, url }).catch(() => {}));
-    return button;
+    const wrap = make('div', 'share-row');
+    const kakao = make('button', 'btn kakao block', '카카오톡으로 보내기');
+    kakao.type = 'button';
+    kakao.addEventListener('click', () => shareText(text, url));
+    const copy = make('button', 'btn block', '초대 문구 복사 (카톡·문자에 붙여넣기)');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => { if (await copyText(`${text}\n${url}`)) toast('복사했어요. 카카오톡 대화방에 붙여넣기 하세요.'); });
+    wrap.append(kakao, copy);
+    return wrap;
   }
 
   // ---------- room list ----------
@@ -449,6 +468,7 @@
         menu.appendChild(button);
       };
       if (message.kind === 'text') add('복사', async () => { closeSheet(); await copyText(message.text); });
+      if (message.kind === 'text') add('카카오톡으로 보내기', () => { closeSheet(); shareText(`${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서 (${message.nickname || ''})`); });
       if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
       if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
       if (!mine && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
@@ -767,7 +787,7 @@
         const url = `${location.origin}/chat#join=${room.inviteCode}`;
         body.appendChild(make('p', '', '링크를 받은 회원은 바로 이 방에 들어올 수 있습니다. 링크가 퍼졌다면 방장이 새 링크로 바꿀 수 있습니다.'));
         body.appendChild(linkBox(url));
-        const share = shareButton(url, `스페이스 톡 '${room.name}' 대화방에 초대합니다.`);
+        const share = shareButton(url, inviteText(room.name));
         if (share) body.appendChild(share);
       }
       const menu = make('div', 'menu-list');
@@ -790,6 +810,7 @@
       });
       if (room.isOwner || room.kind === 'dm' || state.me.admin) add(room.notice ? '공지사항 수정·내리기' : '공지사항 등록', () => noticeSheet(room));
       if (room.notice) add('공지 복사', () => { closeSheet(); copyText(room.notice.text); });
+      if (room.notice) add('공지를 카카오톡으로 보내기', () => { closeSheet(); shareText(`[${room.name} 공지]\n${room.notice.text}`); });
       if (room.kind === 'group' && room.isOwner) {
         add('대화방 이름 바꾸기', () => renameSheet(room));
         add('초대 링크 새로 만들기', async () => {
@@ -868,7 +889,7 @@
     openSheet('친구 초대하기', body => {
       body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 아래 링크를 카카오톡·문자로 보내 초대하세요. 받은 사람은 스페이스 커뮤니티에 로그인하면 바로 들어옵니다.`));
       body.appendChild(linkBox(url));
-      const share = shareButton(url, `스페이스 톡 '${room.name}' 대화방에 초대합니다.`);
+      const share = shareButton(url, inviteText(room.name));
       if (share) body.appendChild(share);
     });
   }
@@ -899,7 +920,7 @@
     openSheet('내 1:1 대화 링크', body => {
       body.appendChild(make('p', '', '이 링크를 받은 회원은 나와 바로 1:1 대화를 시작할 수 있어요. 링크를 아는 회원만 대화를 걸 수 있습니다.'));
       body.appendChild(linkBox(url));
-      const share = shareButton(url, `${state.me.nickname}님과 스페이스 톡에서 대화해요.`);
+      const share = shareButton(url, `[스페이스 톡] ${state.me.nickname}님과 1:1 대화해요.\n아래 링크를 누르고 로그인하면 바로 대화가 시작됩니다. (처음이면 회원가입 후 이용)`);
       if (share) body.appendChild(share);
     });
   }
@@ -1065,11 +1086,24 @@
       $('room-filter').parentElement.hidden = true;
       setConn('');
     };
-    $('gate-login').addEventListener('click', () => {
+    const rememberInvite = () => {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const code = params.get('join') || '';
+      const dm = params.get('dm') || '';
+      if (code || dm) {
+        try { localStorage.setItem('space-pending-invite', JSON.stringify({ join: code, dm, until: Date.now() + 14 * 86400000 })); } catch { /* storage unavailable */ }
+      }
       try { sessionStorage.setItem('space-after-login', `/chat${location.hash}`); } catch { /* storage unavailable */ }
-      location.href = '/#login';
-    });
-    if (!session?.user) { gate('로그인이 필요해요', '스페이스 톡은 스페이스 커뮤니티 회원끼리 대화하는 공간입니다. 로그인하면 단체 대화방과 1:1 대화를 이용할 수 있어요.'); return; }
+    };
+    $('gate-login').addEventListener('click', () => { rememberInvite(); location.href = '/#login'; });
+    $('gate-signup').addEventListener('click', rememberInvite);
+    const invited = /(^|[#&])(join|dm)=/.test(location.hash);
+    if (invited) rememberInvite();
+    if (!session?.user) {
+      if (invited) gate('스페이스 톡에 초대받으셨어요', '스페이스 커뮤니티 회원이면 로그인, 처음이면 회원가입(1분)을 해 주세요. 가입과 이메일 인증을 마치고 다시 로그인하면 초대받은 대화방이 바로 열립니다.');
+      else gate('로그인이 필요해요', '스페이스 톡은 스페이스 커뮤니티 회원끼리 대화하는 공간입니다. 로그인하면 단체 대화방과 1:1 대화를 이용할 수 있어요.');
+      return;
+    }
     if (!session.user.emailVerified && session.mailConfigured) {
       gate('이메일 인증이 필요해요', '가입한 이메일로 받은 인증 링크를 눌러 인증을 마치면 스페이스 톡을 이용할 수 있어요. 메일이 없다면 홈 상단의 "인증 메일 보내기"를 눌러 주세요.');
       $('gate-login').textContent = '홈으로 가기';
@@ -1087,6 +1121,19 @@
     await loadRooms().catch(error => toast(error.message));
     connect();
     initPush();
+    // 가입·인증을 거치느라 초대 링크가 사라졌으면 저장해 둔 초대를 이어서 연다.
+    if (!/(^|[#&])(join|dm|room)=/.test(location.hash)) {
+      try {
+        const pending = JSON.parse(localStorage.getItem('space-pending-invite') || 'null');
+        localStorage.removeItem('space-pending-invite');
+        if (pending && pending.until > Date.now()) {
+          if (pending.join) history.replaceState(null, '', `/chat#join=${encodeURIComponent(pending.join)}`);
+          else if (pending.dm) history.replaceState(null, '', `/chat#dm=${encodeURIComponent(pending.dm)}`);
+        }
+      } catch { /* storage unavailable */ }
+    } else {
+      try { localStorage.removeItem('space-pending-invite'); } catch { /* storage unavailable */ }
+    }
     route();
   }
   start();

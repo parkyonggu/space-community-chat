@@ -165,3 +165,6 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 }
 @media (min-width:761px) { #btn-back { display:none; } .room-bar { padding-left:18px; } }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; } }
+/* 카카오톡으로 보내기 */
+.share-row { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.btn.kakao { background:#fee500; border-color:#fee500; color:#191919; }

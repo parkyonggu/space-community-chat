@@ -255,6 +255,11 @@
       let next = null;
       try { next = sessionStorage.getItem('space-after-login'); sessionStorage.removeItem('space-after-login'); } catch { next = null; }
       if (next && /^\/chat(#[\w=-]*)?$/.test(next)) { location.href = next; return; }
+      // 스페이스 톡 초대 링크로 가입한 사람: 인증을 마치고 로그인하면 그 대화방으로 보낸다.
+      try {
+        const pending = JSON.parse(localStorage.getItem('space-pending-invite') || 'null');
+        if (pending && pending.until > Date.now() && (user.emailVerified || detail?.mailConfigured === false)) { location.href = '/chat'; return; }
+      } catch { /* storage unavailable */ }
     }
     const actions = $('me-actions');
     if (!user) {
