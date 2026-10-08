@@ -3,6 +3,7 @@
 // hit the public APIs directly.
 const { ecos, rebHousing } = require('./weekly-brief');
 const { createRealEstate } = require('./realestate');
+const { recentPolicyNews } = require('./policy-news');
 
 const DAY = 24 * 60 * 60 * 1000;
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
@@ -27,11 +28,12 @@ const DAILY = [
 const INDICATOR_TTL = 30 * 60 * 1000;
 const HOUSING_TTL = 6 * 60 * 60 * 1000;
 const HOUSING_RELEASE_TTL = 60 * 60 * 1000;
+const POLICY_TTL = 30 * 60 * 1000;
 const REALESTATE_TTL = 60 * 60 * 1000;
 const REALESTATE_FILL_TTL = 3 * 60 * 1000;
 const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -86,6 +88,12 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     return { updatedAt: new Date(at).toISOString(), today: ymd(at), items, source: '한국은행 경제통계시스템(ECOS)' };
   }
 
+  async function loadPolicy() {
+    if (!policyKey) return null;
+    const items = await recentPolicyNews(fetchImpl, policyKey, now());
+    return { updatedAt: new Date(now()).toISOString(), items, source: '대한민국 정책브리핑(www.korea.kr)' };
+  }
+
   async function loadHousing() {
     if (!rebKey) return null;
     const result = await rebHousing(fetchImpl, rebKey, now());
@@ -136,13 +144,14 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`portal:${ip}`, 120, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
-    const [indicators, housing, realestate, online] = await Promise.all([
+    const [indicators, housing, realestate, policy, online] = await Promise.all([
       cached('indicators', INDICATOR_TTL, loadIndicators),
       cached('housing', housingTtl(), loadHousing),
       cached('realestate', value => (value?.complete ? REALESTATE_TTL : REALESTATE_FILL_TTL), realEstate.load),
+      cached('policy', POLICY_TTL, loadPolicy),
       onlineCount().catch(() => null),
     ]);
-    send(200, { indicators, housing, realestate, online });
+    send(200, { indicators, housing, realestate, policy, online });
   }
 
   return handlePortalApi;

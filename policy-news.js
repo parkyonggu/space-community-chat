@@ -80,4 +80,29 @@ async function weeklyPolicyNews(fetchImpl, key, now, { limit = 8 } = {}) {
   return { lines, count: picked.length, problems };
 }
 
-module.exports = { weeklyPolicyNews, parseNews, isTypeOne };
+// 첫 화면 '오늘의 정책브리핑': 최근 이틀 동안의 정책뉴스(제1유형) 전체를 최신순으로. 경제 관련 표시를 붙인다.
+async function recentPolicyNews(fetchImpl, key, now, { limit = 10 } = {}) {
+  if (!key) return null;
+  const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
+  const url = `https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2?serviceKey=${serviceKey}&startDate=${ymd(now - DAY)}&endDate=${ymd(now)}`;
+  const response = await fetchImpl(url, { headers: { Accept: 'application/xml' } });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`HTTP ${response.status} ${decode(text).slice(0, 80)}`);
+  const seen = new Set();
+  return parseNews(text)
+    .filter(item => item.Title && item.OriginalUrl && isTypeOne(item.KoglType))
+    .filter(item => { const id = item.NewsItemId || item.OriginalUrl; if (seen.has(id)) return false; seen.add(id); return true; })
+    .map(item => ({
+      id: item.NewsItemId || item.OriginalUrl,
+      title: item.Title,
+      sub: (item.SubTitle1 || '').slice(0, 140),
+      dept: item.MinisterCode || '정부',
+      at: approvedAt(item.ApproveDate) || null,
+      url: /^https?:\/\//.test(item.OriginalUrl) ? item.OriginalUrl : `https://www.korea.kr${item.OriginalUrl}`,
+      economy: ECONOMY_DEPARTMENTS.test(item.MinisterCode || '') || ECONOMY_WORDS.test(`${item.Title} ${item.SubTitle1 || ''}`),
+    }))
+    .sort((a, b) => (b.at || 0) - (a.at || 0))
+    .slice(0, limit);
+}
+
+module.exports = { weeklyPolicyNews, recentPolicyNews, parseNews, isTypeOne };

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { weeklyPolicyNews, parseNews, isTypeOne } = require('./policy-news');
+const { weeklyPolicyNews, recentPolicyNews, parseNews, isTypeOne } = require('./policy-news');
 const { buildWeeklyDraft } = require('./weekly-brief');
 
 const item = fields => `<NewsItem>${Object.entries(fields).map(([key, value]) => `<${key}><![CDATA[${value}]]></${key}>`).join('')}</NewsItem>`;
@@ -39,4 +39,13 @@ test('weekly draft fills "이번 주 정부 정책" from 정책브리핑 when th
   assert.match(draft.body, /대한민국 정책브리핑\(www\.korea\.kr, 공공누리 제1유형\)/);
   const withoutKey = await buildWeeklyDraft({ fetchImpl, ecosKey: 'K', now: Date.parse('2026-10-08T03:00:00Z') });
   assert.match(withoutKey.body, /POLICY_NEWS_KEY/);
+});
+
+test('오늘의 정책브리핑: recent 제1유형 news, newest first, marked when economy related', async () => {
+  const calls = [];
+  const items = await recentPolicyNews(async url => { calls.push(url); return { ok: true, status: 200, text: async () => xml(sample) }; }, 'P', Date.parse('2026-10-08T03:00:00Z'));
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].includes('startDate=20261007') && calls[0].includes('endDate=20261008'));
+  assert.deepEqual(items.map(item => [item.title, item.economy]), [['국민성장펀드 200조원으로 확대', true], ['가을 축제 안내', false], ['소상공인 정책자금 금리 인하', true]]);
+  assert.equal(items[2].url, 'https://www.korea.kr/news/4');
 });

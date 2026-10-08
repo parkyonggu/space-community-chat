@@ -551,6 +551,37 @@
   }
   $('realestate-panel').querySelectorAll('[data-re]').forEach(button => button.addEventListener('click', () => { reTab = button.dataset.re; renderRealEstate(); }));
 
+  // ---------- 오늘의 정책브리핑 ----------
+  let policyData;
+  let pbTab = 'all';
+  function renderPolicy(data) {
+    if (data !== undefined) policyData = data;
+    const list = $('pb-list');
+    if (!list) return;
+    $('policy-panel').querySelectorAll('[data-pb]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.pb === pbTab)));
+    const items = (policyData?.items || []).filter(item => pbTab === 'all' || item.economy);
+    if (!policyData) { list.replaceChildren(make('li', 'feed-empty', '정책브리핑 자료를 연결하고 있습니다. 곧 자동으로 표시됩니다.')); return; }
+    if (!items.length) { list.replaceChildren(make('li', 'feed-empty', pbTab === 'all' ? '오늘 새로 올라온 정책뉴스가 아직 없습니다.' : '오늘은 경제·금융·부동산 분야 정책뉴스가 아직 없습니다.')); return; }
+    const when = at => {
+      if (!at) return '';
+      const date = new Date(at);
+      const today = new Date().toDateString() === date.toDateString();
+      return today ? `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}` : `${date.getMonth() + 1}/${date.getDate()}`;
+    };
+    list.replaceChildren(...items.slice(0, 8).map(item => {
+      const li = make('li');
+      const link = make('a');
+      link.href = item.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.append(make('span', `d${item.economy ? ' eco' : ''}`, item.dept), make('span', 't', item.title), make('span', 'w', when(item.at)));
+      if (item.sub) link.appendChild(make('span', 's', item.sub));
+      li.appendChild(link);
+      return li;
+    }));
+  }
+  $('policy-panel')?.querySelectorAll('[data-pb]').forEach(button => button.addEventListener('click', () => { pbTab = button.dataset.pb; renderPolicy(); }));
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);
@@ -569,6 +600,7 @@
       renderKrTape(data.indicators);
       renderHousing(data.housing);
       renderRealEstate(data.realestate);
+      renderPolicy(data.policy);
       renderOnline(data.online);
     } catch (error) {
       console.error('Portal data failed:', error);

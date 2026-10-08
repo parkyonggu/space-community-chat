@@ -114,7 +114,7 @@ export class CommunityService extends DurableObject {
       adminEmails, ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', highlights: since => this.board.highlights(since),
     });
     this.portal = portal.createPortalApi({
-      ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', rateLimit,
+      ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', rateLimit,
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {
