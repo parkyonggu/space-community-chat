@@ -69,7 +69,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
   }
 
   function roomView(room, userId) {
-    const list = members(room.id);
+    const list = room.kind === 'channel' ? members(room.id).filter(entry => entry.id === userId) : members(room.id);
     const me = list.find(entry => entry.id === userId);
     const member = one('SELECT muted, last_read_seq FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, userId);
     const unread = member ? one('SELECT COUNT(*) AS count FROM chat_messages WHERE room_id = ? AND seq > ? AND (user_id IS NULL OR user_id != ?) AND kind != ?',
@@ -77,7 +77,8 @@ function createChatCore(sql, { now = Date.now } = {}) {
     const other = room.kind === 'dm' ? list.find(entry => entry.id !== userId) : null;
     return {
       id: room.id, kind: room.kind, name: room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name,
-      ownerId: room.owner_id, maxMembers: room.max_members, memberCount: list.length, members: list,
+      ownerId: room.owner_id, maxMembers: room.max_members,
+      memberCount: room.kind === 'channel' ? one('SELECT COUNT(*) AS count FROM chat_members WHERE room_id = ?', room.id).count : list.length, members: list,
       inviteCode: room.kind === 'group' ? room.invite_code : null, isOwner: me?.role === 'owner',
       lastSeq: room.last_seq, lastAt: room.last_at || room.created_at, lastPreview: room.last_preview || '', unread, muted: Boolean(member?.muted),
       notice: room.notice ? { text: room.notice, at: room.notice_at, by: room.notice_by } : null,
@@ -150,6 +151,36 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return { id: row.user_id, nickname: row.nickname, verified: true, guest: true };
     },
 
+    // 스페이스 톡 '📰 오늘의 정책브리핑' 채널: 구독한 사람에게 매일 정책뉴스 요약이 올라온다(읽기 전용).
+    channel(user, channelId, name) {
+      ensureUser(user);
+      let room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      const member = room ? one('SELECT 1 AS ok FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, user.id) : null;
+      return { roomId: channelId, name, subscribed: Boolean(member), subscribers: room ? one('SELECT COUNT(*) AS count FROM chat_members WHERE room_id = ?', room.id).count : 0 };
+    },
+
+    subscribeChannel(user, channelId, name) {
+      ensureUser(user);
+      let room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      if (!room) {
+        run('INSERT INTO chat_rooms (id, kind, name, owner_id, max_members, created_at) VALUES (?, ?, ?, ?, ?, ?)', channelId, 'channel', name, null, 1000000, iso());
+        room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      }
+      if (!one('SELECT 1 AS ok FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, user.id)) {
+        // 새로 구독해도 최근 소식 몇 개는 바로 볼 수 있게 한다.
+        const from = Math.max(0, room.last_seq - 3);
+        run('INSERT INTO chat_members (room_id, user_id, role, joined_at, joined_seq, last_read_seq) VALUES (?, ?, ?, ?, ?, ?)', room.id, user.id, 'member', iso(), from, from);
+      }
+      return roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id);
+    },
+
+    postToChannel(channelId, { nickname, text }) {
+      const room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      if (!room) return null;
+      const message = addMessage(room, { userId: null, nickname, kind: 'text', text: String(text).slice(0, MAX_TEXT) });
+      return { message, memberIds: all('SELECT user_id FROM chat_members WHERE room_id = ?', room.id).map(row => row.user_id) };
+    },
+
     invitePreview(inviteCode) {
       const room = one('SELECT * FROM chat_rooms WHERE invite_code = ? AND kind = ?', String(inviteCode || ''), 'group');
       if (!room) throw new ChatError(404, '초대 링크가 올바르지 않거나 만료되었습니다.');
@@ -196,12 +227,13 @@ function createChatCore(sql, { now = Date.now } = {}) {
       const upper = Number.isInteger(Number(before)) && Number(before) > 0 ? Number(before) : room.last_seq + 1;
       const rows = all('SELECT * FROM chat_messages WHERE room_id = ? AND seq < ? AND seq > ? ORDER BY seq DESC LIMIT ?', room.id, upper, member.joined_seq, max);
       const hasMore = rows.length === max && rows.at(-1).seq > member.joined_seq + 1;
-      return { messages: rows.reverse().map(messageView), hasMore, members: members(room.id) };
+      return { messages: rows.reverse().map(messageView), hasMore, members: room.kind === 'channel' ? [] : members(room.id) };
     },
 
     send(user, roomId, { text, imageId } = {}) {
       ensureUser(user);
       const { room } = membership(roomId, user.id);
+      if (room.kind === 'channel') throw new ChatError(403, '이 방은 소식을 받아 보는 채널이라 글을 쓸 수 없습니다.');
       if (room.kind === 'dm' && members(room.id).length < 2) throw new ChatError(409, '상대가 대화방을 나가서 메시지를 보낼 수 없습니다.');
       let body = typeof text === 'string' ? text.trim() : '';
       if (imageId) {
@@ -237,6 +269,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
     leave(user, roomId) {
       const { room, member } = membership(roomId, user.id);
       run('DELETE FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, user.id);
+      if (room.kind === 'channel') return { message: null, memberIds: [] };
       const rest = members(room.id);
       if (!rest.length) {
         run('DELETE FROM chat_messages WHERE room_id = ?', room.id);

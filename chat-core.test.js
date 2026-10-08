@@ -133,3 +133,27 @@ test('images, push targets, unread summary, retention and account deletion', () 
   assert.equal(chat.messages(users.alice, room.id).messages.find(message => message.kind === 'text').nickname, '탈퇴한 회원');
   assert.deepEqual(chat.pushTargets(room.id, ['u-b']), []);
 });
+
+test('정책브리핑 채널: 구독, 읽기 전용, 채널 글은 구독자에게만', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(':memory:');
+  const sql = { exec: (query, ...params) => { const statement = db.prepare(query); if (/^\s*(SELECT|PRAGMA)/i.test(query)) return statement.all(...params)[Symbol.iterator](); statement.run(...params); return [][Symbol.iterator](); } };
+  const core = require('./chat-core').createChatCore(sql);
+  const alice = { id: 'a', nickname: '앨리스', verified: true };
+  const bob = { id: 'b', nickname: '밥', verified: true };
+  assert.equal(core.channel(alice, 'ch', '📰 오늘의 정책브리핑').subscribed, false);
+  assert.equal(core.postToChannel('ch', { nickname: '정책브리핑', text: '없는 채널' }), null);
+  const room = core.subscribeChannel(alice, 'ch', '📰 오늘의 정책브리핑');
+  assert.equal(room.kind, 'channel');
+  const posted = core.postToChannel('ch', { nickname: '정책브리핑', text: '📰 10월 8일 오늘의 정책브리핑' });
+  assert.deepEqual(posted.memberIds, ['a']);
+  assert.throws(() => core.send(alice, 'ch', { text: '안녕' }), /채널이라 글을 쓸 수 없습니다/);
+  core.subscribeChannel(bob, 'ch', '📰 오늘의 정책브리핑');
+  const seen = core.messages(bob, 'ch');
+  assert.ok(seen.messages.some(message => message.text.includes('오늘의 정책브리핑')), 'new subscriber sees recent posts');
+  assert.deepEqual(seen.members, [], 'member list hidden');
+  assert.equal(core.room(bob, 'ch').memberCount, 2);
+  core.leave(bob, 'ch');
+  assert.equal(core.channel(bob, 'ch', 'x').subscribed, false);
+  assert.equal(core.room(alice, 'ch').memberCount, 1);
+});

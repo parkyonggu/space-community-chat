@@ -5,6 +5,7 @@ import community from '../community-api.js';
 import board from '../board-api.js';
 import newsletter from '../newsletter-api.js';
 import portal from '../portal-api.js';
+import policyNews from '../policy-news.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -313,8 +314,24 @@ export class ChatRoom extends DurableObject {
   }
 }
 
+// 매일 저녁 6시(KST) 스페이스 톡 '📰 오늘의 정책브리핑' 채널에 그날 정책뉴스 요약을 올린다.
+const DAILY_BRIEFING_CRON = '0 9 * * *';
+async function postDailyBriefing(env) {
+  if (!env.POLICY_NEWS_KEY || !env.TALK) return;
+  const now = Date.now();
+  const items = await policyNews.recentPolicyNews(fetch, env.POLICY_NEWS_KEY, now);
+  const text = policyNews.dailyBriefingText(items, now, env.SITE_URL || 'https://withpluces.com');
+  if (!text) return;
+  const day = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/channel-post', { method: 'POST', body: JSON.stringify({ text, day }) });
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    if (event.cron === DAILY_BRIEFING_CRON) {
+      ctx.waitUntil(postDailyBriefing(env).catch(error => console.error('Daily policy briefing failed:', error)));
+      return;
+    }
     const stub = env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1'));
     ctx.waitUntil(stub.fetch('https://internal.invalid/internal/newsletter-weekly', { method: 'POST' })
       .catch(error => console.error('Weekly newsletter draft failed:', error)));

@@ -169,8 +169,8 @@
     const list = $('rooms');
     const keyword = state.filter.toLowerCase();
     const rooms = state.rooms.filter(room => !keyword || room.name.toLowerCase().includes(keyword));
-    $('rooms-empty').hidden = Boolean(state.rooms.length) || !state.me;
-    list.replaceChildren(...rooms.map(room => {
+    $('rooms-empty').hidden = Boolean(state.rooms.length) || !state.me || Boolean(state.channel && !state.channel.subscribed);
+    const items = rooms.map(room => {
       const item = make('li');
       const button = make('button', 'room-item');
       button.type = 'button';
@@ -196,12 +196,34 @@
       button.addEventListener('click', () => { state.fromList = true; location.hash = `room=${room.id}`; });
       item.appendChild(button);
       return item;
-    }));
+    });
+    if (state.channel && !state.channel.subscribed && !keyword) items.unshift(channelCard());
+    list.replaceChildren(...items);
     updateTitle();
   }
+  // '📰 오늘의 정책브리핑' 채널 구독 안내(아직 구독하지 않은 사람에게 목록 맨 위에 보인다).
+  function channelCard() {
+    const item = make('li', 'channel-card');
+    item.append(make('strong', '', state.channel.name), make('p', '', `매일 저녁 6시, 정부 부처의 그날 정책뉴스를 골라 대화방으로 보내 드려요. 새 소식 알림도 받을 수 있어요.${state.channel.subscribers ? ` (${state.channel.subscribers}명 받아 보는 중)` : ''}`));
+    const join = make('button', 'btn gold', '받아 보기');
+    join.type = 'button';
+    join.addEventListener('click', async () => {
+      join.disabled = true;
+      try {
+        const { room } = await api('/api/chat/channel/subscribe', { method: 'POST', body: {} });
+        state.channel.subscribed = true;
+        await loadRooms();
+        toast('구독했어요. 매일 저녁 6시에 정책브리핑이 이 방으로 옵니다.');
+        location.hash = `room=${room.id}`;
+      } catch (error) { toast(error.message); join.disabled = false; }
+    });
+    item.appendChild(join);
+    return item;
+  }
   async function loadRooms() {
-    const { rooms } = await api('/api/chat/rooms');
+    const [{ rooms }, channel] = await Promise.all([api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null)]);
     state.rooms = rooms;
+    state.channel = channel;
     renderRooms();
   }
   $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
@@ -247,7 +269,8 @@
     const room = state.room;
     $('room-title').textContent = room.name;
     const online = (room.online || []).filter(id => id !== state.me.id).length;
-    $('room-sub').textContent = room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
+    $('room-sub').textContent = room.kind === 'channel' ? `소식 채널 · 매일 저녁 6시 · ${room.memberCount}명 구독` : room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
+    $('composer').hidden = room.kind === 'channel';
     $('btn-send').disabled = !$('input').value.trim();
     renderNotice();
   }
@@ -407,7 +430,7 @@
     }
     if (!state.messages.length) {
       const empty = make('div', 'system');
-      empty.appendChild(make('span', '', state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
+      empty.appendChild(make('span', '', state.room?.kind === 'channel' ? '매일 저녁 6시에 그날의 정책브리핑이 이곳에 올라옵니다.' : state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
       nodes.push(empty);
     }
     list.replaceChildren(...nodes);
@@ -749,7 +772,8 @@
   function roomMenu() {
     const room = state.room;
     if (!room) return;
-    openSheet(room.kind === 'group' ? room.name : `${room.name}님과의 대화`, body => {
+    openSheet(room.kind === 'dm' ? `${room.name}님과의 대화` : room.name, body => {
+      if (room.kind === 'channel') body.appendChild(make('p', '', '정부 부처가 대한민국 정책브리핑에 올린 그날의 정책뉴스를 매일 저녁 6시에 모아 보내 드리는 읽기 전용 채널입니다. 제목 아래 링크를 누르면 원문을 볼 수 있어요.'));
       const online = new Set(room.online || []);
       if (room.kind === 'group') {
         body.appendChild(make('div', 'section-title', `참여자 ${room.memberCount}명 / 최대 ${room.maxMembers}명`));
@@ -808,7 +832,7 @@
           closeSheet();
         } catch (error) { toast(error.message); }
       });
-      if (room.isOwner || room.kind === 'dm' || state.me.admin) add(room.notice ? '공지사항 수정·내리기' : '공지사항 등록', () => noticeSheet(room));
+      if (room.kind !== 'channel' && (room.isOwner || room.kind === 'dm' || state.me.admin)) add(room.notice ? '공지사항 수정·내리기' : '공지사항 등록', () => noticeSheet(room));
       if (room.notice) add('공지 복사', () => { closeSheet(); copyText(room.notice.text); });
       if (room.notice) add('공지를 카카오톡으로 보내기', () => { closeSheet(); shareText(`[${room.name} 공지]\n${room.notice.text}`); });
       if (room.kind === 'group' && room.isOwner) {
@@ -818,8 +842,8 @@
           try { const result = await api(`/api/chat/rooms/${room.id}/update`, { method: 'POST', body: { resetInvite: true } }); state.room = result.room; toast('새 초대 링크를 만들었어요.'); roomMenu(); } catch (error) { toast(error.message); }
         });
       }
-      add('대화방 나가기', async () => {
-        if (!confirm(room.kind === 'group' ? '대화방을 나가면 대화 내용이 내 목록에서 사라집니다. 나갈까요?' : '1:1 대화방을 나갈까요? 상대는 더 이상 메시지를 보낼 수 없습니다.')) return;
+      add(room.kind === 'channel' ? '구독 그만하기' : '대화방 나가기', async () => {
+        if (!confirm(room.kind === 'channel' ? '정책브리핑 받아 보기를 그만할까요? 나중에 목록에서 다시 받아 볼 수 있어요.' : room.kind === 'group' ? '대화방을 나가면 대화 내용이 내 목록에서 사라집니다. 나갈까요?' : '1:1 대화방을 나갈까요? 상대는 더 이상 메시지를 보낼 수 없습니다.')) return;
         try {
           await api(`/api/chat/rooms/${room.id}/leave`, { method: 'POST', body: {} });
           closeSheet();

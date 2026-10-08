@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { weeklyPolicyNews, recentPolicyNews, parseNews, isTypeOne } = require('./policy-news');
+const { weeklyPolicyNews, recentPolicyNews, dailyBriefingText, parseNews, isTypeOne } = require('./policy-news');
 const { buildWeeklyDraft } = require('./weekly-brief');
 
 const item = fields => `<NewsItem>${Object.entries(fields).map(([key, value]) => `<${key}><![CDATA[${value}]]></${key}>`).join('')}</NewsItem>`;
@@ -64,4 +64,23 @@ test('"사실은 이렇습니다" items are kept apart from policy news', async 
   assert.equal(fact.economy, false);
   const weekly = await weeklyPolicyNews(fetchImpl, 'P', Date.parse('2026-10-08T03:00:00Z'));
   assert.ok(!weekly.lines.join('').includes('기초연금 삭감'), 'not in the newsletter policy list');
+});
+
+test('daily 스페이스 톡 briefing lists today\'s policy news, economy first, with links and source', () => {
+  const now = Date.parse('2026-10-08T09:00:00Z');
+  const items = [
+    { title: '누리호 5차 발사 성공', dept: '우주항공청', url: 'https://www.korea.kr/a', kind: 'news', economy: false, at: now - 3600e3 },
+    { title: '국민성장펀드 200조원으로 확대', dept: '금융위원회', url: 'https://www.korea.kr/b', kind: 'news', economy: true, at: now - 7200e3 },
+    { title: '기초연금 보도 관련', dept: '보건복지부', url: 'https://www.korea.kr/c', kind: 'fact', economy: false, at: now - 3600e3 },
+    { title: '어제 소식', dept: '법무부', url: 'https://www.korea.kr/d', kind: 'news', economy: false, at: now - 30 * 3600e3 },
+  ];
+  const text = dailyBriefingText(items, now);
+  const lines = text.split('\n');
+  assert.equal(lines[0], '📰 10월 8일 오늘의 정책브리핑');
+  assert.ok(text.indexOf('국민성장펀드') < text.indexOf('누리호'), 'economy first');
+  assert.ok(text.includes('https://www.korea.kr/b'));
+  assert.ok(!text.includes('어제 소식') && !text.includes('기초연금'), 'only today\'s policy news, not fact checks');
+  assert.match(text, /사실은 이렇습니다'\) 1건/);
+  assert.match(text, /공공누리 제1유형/);
+  assert.equal(dailyBriefingText([], now), null);
 });

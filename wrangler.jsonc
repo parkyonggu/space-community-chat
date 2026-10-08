@@ -19,7 +19,7 @@
       { "name": "TALK", "class_name": "ChatService" }
     ]
   },
-  "triggers": { "crons": ["0 9 * * SUN"] },
+  "triggers": { "crons": ["0 9 * * SUN", "0 9 * * *"] },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["CommunityService", "ChatRoom"] },
     { "tag": "v2", "new_sqlite_classes": ["ChatService"] }

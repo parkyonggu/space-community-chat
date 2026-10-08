@@ -179,3 +179,9 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .guest-or { text-align:center; font-size:12.5px; color:var(--muted); margin:16px 0 0; }
 .guest-badge { display:block; margin:0 0 10px; padding:10px 12px; border-radius:12px; background:#fff8e1; color:#6b5200; font-size:13px; line-height:1.5; }
 .guest-mode #btn-new, .guest-mode #empty-new, .guest-mode #empty-link { display:none !important; }
+
+/* 📰 오늘의 정책브리핑 채널 구독 카드 */
+.channel-card { margin:10px 12px; padding:14px 14px 12px; border-radius:14px; background:#fff8e1; border:1px solid #f3dca6; list-style:none; }
+.channel-card strong { display:block; font-size:15.5px; color:var(--ink); }
+.channel-card p { margin:4px 0 10px; font-size:13px; line-height:1.55; color:#6b5200; }
+.channel-card .btn { min-height:40px; padding:8px 18px; }

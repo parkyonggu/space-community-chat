@@ -114,4 +114,21 @@ async function recentPolicyNews(fetchImpl, key, now, { limit = 40 } = {}) {
     .slice(0, limit);
 }
 
-module.exports = { weeklyPolicyNews, recentPolicyNews, parseNews, isTypeOne };
+// 스페이스 톡 '📰 오늘의 정책브리핑' 채널에 매일 올리는 글.
+function dailyBriefingText(items, now = Date.now(), siteUrl = 'https://withpluces.com') {
+  const kst = new Date(now + 9 * 60 * 60 * 1000);
+  const day = `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
+  const today = items.filter(item => item.kind !== 'fact' && (!item.at || now - item.at < 24 * 60 * 60 * 1000));
+  const picked = [...today.filter(item => item.economy), ...today.filter(item => !item.economy)].slice(0, 6);
+  if (!picked.length) return null;
+  const facts = items.filter(item => item.kind === 'fact' && (!item.at || now - item.at < 24 * 60 * 60 * 1000)).length;
+  return [
+    `📰 ${day} 오늘의 정책브리핑`,
+    '',
+    ...picked.flatMap((item, index) => [`${index + 1}. [${item.dept}] ${item.title}`, item.url, '']),
+    facts ? `보도 설명 자료('사실은 이렇습니다') ${facts}건은 홈페이지 정책브리핑에서 볼 수 있어요.` : '',
+    `더 보기: ${siteUrl}/#policy-panel`,
+    '출처: 대한민국 정책브리핑(www.korea.kr), 공공누리 제1유형',
+  ].filter((line, index, all) => line !== '' || all[index - 1] !== '').join('\n').trim();
+}
+module.exports = { weeklyPolicyNews, recentPolicyNews, dailyBriefingText, parseNews, isTypeOne };

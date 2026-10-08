@@ -5,6 +5,8 @@ import { loadVapid, sendPush } from './web-push.js';
 
 const { createChatCore, ChatError, RETENTION_DAYS, MAX_ROOM_MEMBERS } = chatCore;
 const DAY = 24 * 60 * 60 * 1000;
+const POLICY_CHANNEL = 'channel-policy-briefing';
+const POLICY_CHANNEL_NAME = '📰 오늘의 정책브리핑';
 const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 const json = (body, status = 200, extra = {}) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra } });
 
@@ -82,6 +84,14 @@ export class ChatService extends DurableObject {
     const url = new URL(request.url);
     const path = url.pathname;
     try {
+      if (path === '/internal/channel-post' && request.method === 'POST') {
+        const { text, day } = await request.json();
+        if (day && this.core.meta(`channel-posted:${day}`)) return json({ ok: true, skipped: 'already posted' });
+        const result = this.core.postToChannel(POLICY_CHANNEL, { nickname: '정책브리핑', text });
+        if (day) this.core.meta(`channel-posted:${day}`, '1');
+        if (result) this.deliver(result, { id: null });
+        return json({ ok: true, subscribers: result?.memberIds.length || 0 });
+      }
       if (path === '/internal/user-deleted') {
         const { userId } = await request.json();
         for (const entry of this.core.deleteUser(userId)) this.announce(entry.roomId, entry.memberIds, entry.message);
@@ -201,6 +211,11 @@ export class ChatService extends DurableObject {
           return json({ ok: true });
         }
       }
+      if (first === 'channel' && method === 'GET') return json(this.core.channel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME));
+      if (first === 'channel' && id === 'subscribe' && method === 'POST') {
+        const room = this.core.subscribeChannel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME);
+        return json({ room });
+      }
       if (first === 'invite' && id && method === 'GET') return json(this.core.invitePreview(id));
       if (first === 'join' && method === 'POST') {
         this.limit(`join:${user.id}`, 30, 60 * 60 * 1000);
@@ -224,6 +239,16 @@ export class ChatService extends DurableObject {
         const input = await body();
         if (id === 'remove') { this.core.removePush(input.endpoint); return json({ ok: true }); }
         return json(this.core.savePush(user, input.endpoint));
+      }
+      if (first === 'admin' && id === 'channel' && method === 'POST') {
+        guestOnly('권한이 없습니다.');
+        if (!user.admin) throw new ChatError(403, '운영자만 채널에 글을 올릴 수 있습니다.');
+        const text = String((await body()).text || '').trim();
+        if (!text) throw new ChatError(400, '보낼 내용을 입력해 주세요.');
+        this.core.subscribeChannel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME);
+        const result = this.core.postToChannel(POLICY_CHANNEL, { nickname: '정책브리핑', text });
+        this.deliver(result, { id: null });
+        return json({ ok: true, subscribers: result.memberIds.length });
       }
       if (first === 'admin' && id === 'reports') {
         guestOnly('권한이 없습니다.');
