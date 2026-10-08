@@ -1,7 +1,7 @@
 {
   "name": "스페이스 커뮤니티",
   "short_name": "스페이스 커뮤니티",
-  "description": "사람과 생각이 만나 서로를 존중하는 열린 공론장",
+  "description": "시민 소통·시민의 소리·정책 제안 공론장. 우리 동네 신청 혜택, 정책브리핑, 경제 지표를 한곳에서.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,10 +10,28 @@
   "lang": "ko",
   "icons": [
     {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -23,10 +41,27 @@
       "url": "/chat",
       "icons": [
         {
-          "src": "/icons/icon-512.png",
-          "sizes": "512x512"
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "우리 동네 신청 혜택",
+      "short_name": "동네 혜택",
+      "url": "/#benefit-panel",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
         }
       ]
     }
+  ],
+  "id": "/",
+  "categories": [
+    "social",
+    "news",
+    "government"
   ]
 }

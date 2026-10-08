@@ -40,7 +40,11 @@
   };
   function titleOf(post) {
     if (post.title) return post.title;
-    return clip(post.text);
+    // 글 페이지 제목과 같게: 첫 줄을 감싼 따옴표·별표·[대괄호]를 떼어 낸다.
+    const first = String(post.text || '').split('\n').map(line => line.trim()).find(Boolean) || '';
+    const cleaned = (/^\[[^\]]+\]$/.test(first) ? first.slice(1, -1) : !/^["'“‘*]/.test(first) ? first : first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, ''))
+      .replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+    return clip(cleaned || post.text);
   }
   function posts(board) {
     return window.spaceBoards ? window.spaceBoards.posts(board) : [];
@@ -124,7 +128,7 @@
       else button.type = 'button';
       button.appendChild(make('span', `badge ${post.board}`, BOARD_LABEL[post.board]));
       const title = make('span', 'feed-title', post.board === 'policy' && DEPTS[post.category] ? `[${DEPTS[post.category]}] ${titleOf(post)}` :
-        post.board === 'voice' && post.category ? `[${post.category}] ${titleOf(post)}` : titleOf(post));
+        titleOf(post)); // 시민의 소리 분류는 글 페이지에서 보여 주고, 목록에서는 제목이 먼저 보이게 한다.
       button.appendChild(title);
       if (Date.now() - Date.parse(post.createdAt) < 6 * HOUR) button.appendChild(make('span', 'feed-new', 'N'));
       const meta = make('span', 'feed-meta');

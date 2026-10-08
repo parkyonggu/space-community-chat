@@ -385,3 +385,10 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 - 첫 화면 「우리 동네 신청 혜택」(`#benefit-panel`): 양산시·김해시·의령군과 경상남도 혜택, 읍·면·동에서 접수하는 중앙부처 농림축산어업 혜택을 마감 순으로 보여 줍니다. 12시간마다 새로 받습니다.
 - `/?동네=의령#benefit-panel` 주소로 지역을 골라 열 수 있고, '카톡으로 알리기'가 이 주소를 공유합니다.
 - 고시·공고로만 알리는 사업(예: 다음 해 산림사업 신청)은 관리자 계정으로 로그인하면 상자 아래 '관리자' 칸에서 직접 추가·삭제할 수 있습니다(`POST /api/portal/benefits/manual`).
+
+## Google Play 앱 (TWA)
+
+- 패키지 이름: `com.withpluces.community` (바꾸려면 `ANDROID_PACKAGE` 변수).
+- 앱 연결 확인 파일: `/.well-known/assetlinks.json`을 Worker가 만들어 줍니다. Play Console 앱 서명 키와 업로드 키의 SHA-256 지문을 쉼표로 이어 `npx wrangler secret put ANDROID_CERT_SHA256`으로 넣습니다. 비어 있으면 `[]`를 돌려줍니다.
+- 앱 파일(.aab)은 PWABuilder(https://www.pwabuilder.com)로 만듭니다. 서명 키(signing.keystore)는 잃어버리면 업데이트할 수 없으니 따로 보관합니다.
+- 아이콘: `public/icons/icon-192.png`, `icon-512.png`(any), `maskable-192.png`, `maskable-512.png`(maskable).

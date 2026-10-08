@@ -7,6 +7,7 @@ import newsletter from '../newsletter-api.js';
 import portal from '../portal-api.js';
 import policyNews from '../policy-news.js';
 import postPage from '../post-page.js';
+import androidApp from '../android-app.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -382,6 +383,10 @@ export default {
         const html = result.status === 200 ? postPage.renderPostPage(result, siteUrl) : postPage.renderMissingPage(result.status, siteUrl);
         return new Response(request.method === 'HEAD' ? null : html, { status: result.status === 200 ? 200 : result.status === 403 ? 403 : 404,
           headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
+      }
+      // Google Play 앱(TWA)과 사이트를 잇는 확인 파일
+      if (url.pathname === '/.well-known/assetlinks.json') {
+        return new Response(JSON.stringify(androidApp.assetLinks(env)), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' } });
       }
       if (url.pathname === '/sitemap.xml') {
         const { posts } = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch('https://internal.invalid/internal/public-posts')).json();
