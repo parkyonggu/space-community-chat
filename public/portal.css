@@ -237,6 +237,7 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .post-list { margin-top:16px; }
 .post-item { padding:16px 0; border-top:1px solid var(--line); transition:background .6s; border-radius:8px; }
 .post-item strong { color:var(--ink); }
+.post-item strong.post-title { text-decoration:underline; text-decoration-color:#f5b941; text-decoration-thickness:3px; text-underline-offset:6px; text-decoration-skip-ink:none; line-height:1.7; }
 .post-item p { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text); margin:6px 0; }
 .post-item.highlight { background:var(--gold-soft); box-shadow:0 0 0 8px var(--gold-soft); }
 .like-btn { min-height:32px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); padding:3px 12px; font-size:13px; font-weight:700; }

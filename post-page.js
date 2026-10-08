@@ -82,6 +82,7 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
   <link rel="stylesheet" href="/page.css">
   ${noindex ? '' : '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485" crossorigin="anonymous"></script>'}
   <style>
+    .page-head h1.post-title { text-decoration:underline; text-decoration-color:#f5b941; text-decoration-thickness:3px; text-underline-offset:8px; text-decoration-skip-ink:none; line-height:1.5; }
     .post-meta { color:#c9d0e3; font-size:14px; margin:8px 0 0; }
     .post-meta .tag { display:inline-block; background:rgba(245,185,65,.18); color:#f5b941; border-radius:6px; padding:1px 8px; font-weight:800; margin-right:6px; }
     .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
@@ -135,7 +136,7 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
   <header class="page-head">
     <div class="page-wrap">
       <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › <a href="/#${board.anchor}">${escapeHtml(board.name)}</a></p>
-      <h1>${escapeHtml(headline)}</h1>
+      <h1 class="post-title">${escapeHtml(headline)}</h1>
       <p class="post-meta">${category ? `<span class="tag">${escapeHtml(category)}</span>` : ''}${escapeHtml(post.authorName || '회원')} · <time datetime="${escapeHtml(post.createdAt)}">${kstDate(post.createdAt)}</time>${post.editedAt ? ' · 수정됨' : ''}</p>
     </div>
   </header>

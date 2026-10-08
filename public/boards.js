@@ -100,7 +100,7 @@
     if (post.hidden) item.style.opacity = '0.6';
     const head = make('div');
     if (post.category && post.board !== 'policy') head.appendChild(make('strong', '', `[${post.category}] `));
-    if (post.title) head.appendChild(make('strong', '', post.title));
+    if (post.title) head.appendChild(make('strong', 'post-title', post.title));
     if (head.childNodes.length) item.appendChild(head);
     const body = make('p', '', post.text);
     body.style.whiteSpace = 'pre-wrap';
