@@ -476,3 +476,7 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 /* 메뉴 '정책브리핑'으로 이동할 때 위쪽 고정 메뉴에 가리지 않게 */
 #policy-panel { scroll-margin-top:90px; }
 #policy-panel.flash-target { box-shadow:0 0 0 3px var(--gold), var(--shadow); transition:box-shadow .3s; }
+
+/* 스페이스 레터 구독을 마친 브라우저 */
+.letter-subscribed { margin:10px 0 14px; padding:12px 14px; border-radius:12px; background:#e9f7ef; color:#1f6b45; font-weight:700; font-size:14px; line-height:1.6; }
+.sub-box.done h2::before { content:'✓ '; color:#2e9e6e; }

@@ -123,6 +123,7 @@ unsubscribeForm?.addEventListener('submit', async event => {
     });
     unsubscribeForm.reset();
     setStatus(unsubscribeStatus, result.message);
+    try { localStorage.removeItem('space-letter-subscribed'); } catch { /* storage unavailable */ }
   } catch (error) {
     setStatus(unsubscribeStatus, error.message, true);
   } finally {

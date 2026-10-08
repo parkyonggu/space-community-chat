@@ -69,6 +69,15 @@
           button.hidden = true;
           title.textContent = mode === 'confirm' ? '구독이 완료되었습니다' : '수신거부가 완료되었습니다';
           description.hidden = true;
+          // 이 브라우저에 구독 상태를 기억해, 첫 화면의 '구독 신청' 안내를 더 이상 보여 주지 않는다.
+          try {
+            if (mode === 'confirm') localStorage.setItem('space-letter-subscribed', new Date().toISOString());
+            else localStorage.removeItem('space-letter-subscribed');
+          } catch { /* storage unavailable */ }
+          if (mode === 'confirm') {
+            status.textContent = `${result.message} 잠시 후 첫 화면으로 이동합니다.`;
+            setTimeout(() => { location.href = '/'; }, 3500);
+          }
         } catch (error) {
           status.dataset.error = 'true';
           status.textContent = error.message || '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';

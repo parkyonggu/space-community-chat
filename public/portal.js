@@ -551,6 +551,27 @@
   }
   $('realestate-panel').querySelectorAll('[data-re]').forEach(button => button.addEventListener('click', () => { reTab = button.dataset.re; renderRealEstate(); }));
 
+  // ---------- 스페이스 레터: 구독을 마친 브라우저에서는 '구독 신청' 안내를 감춘다 ----------
+  (function letterSubscribed() {
+    let done = null;
+    try { done = localStorage.getItem('space-letter-subscribed'); } catch { done = null; }
+    if (!done) return;
+    const box = document.querySelector('.sub-box');
+    if (box) {
+      box.classList.add('done');
+      $('sub-title').textContent = '스페이스 레터 구독 중';
+      box.querySelector('p').textContent = '매주 월요일 아침 7시에 경제·정책 브리핑을 메일로 보내 드립니다. 지난 레터도 언제든 다시 읽을 수 있어요.';
+      const go = $('sub-go');
+      go.textContent = '지난 레터 보기';
+      go.href = '/letter';
+    }
+    document.querySelectorAll('[data-letter-cta]').forEach(link => { link.textContent = '지난 레터 보기'; link.href = '/letter'; });
+    const note = $('letter-subscribed');
+    if (note) note.hidden = false;
+    const title = $('newsletter-title');
+    if (title) title.textContent = '스페이스 레터 (구독 중)';
+  })();
+
   // ---------- 오늘의 정책브리핑 ----------
   let policyData;
   let pbTab = 'news';
