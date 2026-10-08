@@ -36,4 +36,6 @@ test('quoted or starred first lines become clean titles', () => {
   assert.equal(headlineOf({ text: "'습관은 실천할 때 완성된다'\n본문" }), '습관은 실천할 때 완성된다');
   assert.equal(headlineOf({ text: '" 엔비디아 주식의 상승이유"\n' }), '엔비디아 주식의 상승이유');
   assert.equal(headlineOf({ text: '하늘수목공원 조성사업' }), '하늘수목공원 조성사업');
+  assert.equal(headlineOf({ text: '[서민경제 안정과 국가 체질개선]\n\n본문' }), '서민경제 안정과 국가 체질개선');
+  assert.equal(headlineOf({ text: '[경일포럼] 폐교 활용' }), '[경일포럼] 폐교 활용');
 });

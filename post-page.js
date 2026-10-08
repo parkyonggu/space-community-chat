@@ -23,8 +23,9 @@ function headlineOf(post) {
   if (post.title) return post.title.trim().slice(0, 80);
   const first = String(post.text || '').split('\n').map(line => line.replace(/^[\s•\-*#>]+/, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').trim()).find(Boolean) || '제목 없는 글';
   // 첫 줄을 따옴표·별표로 감싼 제목("…", '…', *…*)은 감싼 기호를 떼고 쓴다.
+  const bracketed = /^\[[^\]]+\]$/.test(first);
   const wrapped = /^["'“‘*]/.test(first);
-  const cleaned = (wrapped ? first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, '') : first).replace(/\*\*/g, '').trim() || first;
+  const cleaned = (bracketed ? first.slice(1, -1) : wrapped ? first.replace(/^["'“”‘’*\s]+|["'“”‘’*\s]+$/g, '') : first).replace(/\*\*/g, '').trim() || first;
   return cleaned.length > 60 ? `${cleaned.slice(0, 58)}…` : cleaned;
 }
 function summaryOf(post, max = 150) {
