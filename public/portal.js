@@ -660,6 +660,197 @@
   }));
   $('policy-panel')?.querySelectorAll('[data-pb]').forEach(button => button.addEventListener('click', () => { pbTab = button.dataset.pb; renderPolicy(); }));
 
+  // ---------- 오늘의 이슈 (매일경제 헤드라인 자동 선별) + 회원 평론 ----------
+  const is = { data: null, date: '', open: '', reviews: [], loaded: false, seq: 0 };
+  const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+  const dayLabel = value => {
+    const date = new Date(Date.UTC(+value.slice(0, 4), +value.slice(4, 6) - 1, +value.slice(6, 8)));
+    return `${+value.slice(4, 6)}월 ${+value.slice(6, 8)}일 (${WEEK[date.getUTCDay()]})`;
+  };
+  const clockOf = iso => {
+    if (!iso) return '';
+    const date = new Date(iso);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  };
+  async function issueApi(url, body) {
+    const response = await fetch(url, body ? {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' },
+      body: JSON.stringify(body),
+    } : { credentials: 'same-origin', cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `오류 (${response.status})`);
+    return data;
+  }
+  const reviewsOf = id => is.reviews.filter(post => post.issue?.id === id);
+  function currentIssue() {
+    return (is.data?.items || []).find(item => item.field === is.open && !item.empty && !item.hidden) || null;
+  }
+  function renderIssues() {
+    const grid = $('is-grid');
+    if (!grid) return;
+    const data = is.data;
+    const admin = Boolean(window.spaceAuth?.user?.admin);
+    $('is-admin').hidden = !admin;
+    const select = $('is-date');
+    const dates = data?.dates || [];
+    const wanted = [['', `오늘${data?.today ? ` · ${dayLabel(data.today)}` : ''}`], ...dates.filter(date => date !== data?.today).map(date => [date, dayLabel(date)])];
+    if (select.options.length !== wanted.length) select.replaceChildren(...wanted.map(([value, label]) => { const option = make('option', '', label); option.value = value; return option; }));
+    select.value = is.date;
+    if (!data) { grid.replaceChildren(make('li', 'feed-empty', '오늘의 이슈를 불러오고 있습니다.')); return; }
+    const note = data.fallback ? `오늘 기사를 아직 받지 못해 ${dayLabel(data.date)} 이슈를 보여 드립니다.` : '';
+    $('is-updated').textContent = note || (data.updatedAt ? `${dayLabel(data.date)} · ${data.locked ? '고정됨' : `${clockOf(data.updatedAt)} 갱신 · 낮 12시에 고정`}` : '매일경제 헤드라인에서 분야별 1건 자동 선별');
+    const items = data.items.filter(item => admin || !item.hidden);
+    grid.replaceChildren(...items.map(item => {
+      const li = make('li', `is-card f-${item.field}${item.hidden ? ' is-hidden' : ''}`);
+      li.appendChild(make('span', 'is-field', item.label));
+      if (item.empty || item.hidden) {
+        li.appendChild(make('p', 'is-empty', item.hidden ? '관리자가 숨긴 분야입니다.' : '이 분야의 헤드라인을 고르는 중입니다.'));
+        return li;
+      }
+      const link = make('a', 'is-title', item.title);
+      link.href = item.link;
+      link.target = '_blank';
+      link.rel = 'noopener nofollow';
+      const meta = make('div', 'is-meta');
+      meta.appendChild(make('span', '', [item.source || '매일경제', clockOf(item.at), item.manual ? '운영자 선정' : item.headline ? '헤드라인' : ''].filter(Boolean).join(' · ')));
+      const count = reviewsOf(item.id).length;
+      const button = make('button', `is-review-btn${is.open === item.field ? ' active' : ''}`, `💬 평론${count ? ` ${count}` : ''}`);
+      button.type = 'button';
+      button.setAttribute('aria-expanded', String(is.open === item.field));
+      button.addEventListener('click', () => { is.open = is.open === item.field ? '' : item.field; renderIssues(); if (is.open) $('is-review').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      meta.appendChild(button);
+      li.append(link, meta);
+      return li;
+    }));
+    renderReview();
+  }
+  function renderReview() {
+    const box = $('is-review');
+    const issue = currentIssue();
+    box.hidden = !issue;
+    if (!issue) return;
+    $('is-review-field').textContent = issue.label;
+    $('is-review-field').className = `is-field f-${issue.field}`;
+    $('is-review-title').textContent = issue.title;
+    $('is-review-title').href = issue.link;
+    const user = window.spaceAuth?.user;
+    $('is-form').hidden = !user;
+    $('is-login').hidden = Boolean(user);
+    const list = reviewsOf(issue.id).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    if (!list.length) { $('is-reviews').replaceChildren(make('li', 'feed-empty', is.loaded ? '아직 평론이 없습니다. 첫 평론을 남겨 주세요.' : '평론을 불러오고 있습니다.')); return; }
+    $('is-reviews').replaceChildren(...list.map(post => {
+      const li = make('li', 'is-rv');
+      if (post.title) li.appendChild(make('strong', 'is-rv-title', post.title));
+      const body = make('p', 'is-rv-text', post.text.length > 600 ? `${post.text.slice(0, 600)}…` : post.text);
+      li.appendChild(body);
+      const meta = make('div', 'is-rv-meta');
+      meta.appendChild(make('span', '', `${post.authorName || '회원'} · ${timeAgo(post.createdAt)}${post.editedAt ? ' · 수정됨' : ''}`));
+      const like = make('button', `link-btn${post.liked ? ' on' : ''}`, `♥ 공감 ${post.likes || 0}`);
+      like.type = 'button';
+      like.addEventListener('click', () => requireLogin(async () => {
+        try { Object.assign(post, await issueApi('/api/board/like', { postId: post.id })); renderReview(); } catch (error) { $('is-form-status').textContent = error.message; }
+      }));
+      meta.appendChild(like);
+      if (post.no) { const more = make('a', 'link-btn', '전체 보기'); more.href = `/post/${post.no}`; meta.appendChild(more); }
+      if (!post.mine) {
+        const report = make('button', 'link-btn', post.reported ? '신고함' : '신고');
+        report.type = 'button';
+        report.disabled = Boolean(post.reported);
+        report.addEventListener('click', () => requireLogin(async () => {
+          const reason = window.prompt('신고 사유를 적어 주세요. (예: 비방, 허위사실, 광고)');
+          if (!reason) return;
+          try { const result = await issueApi('/api/board/report', { postId: post.id, reason: reason.slice(0, 200) }); post.reported = true; $('is-form-status').textContent = result.message; renderReview(); }
+          catch (error) { $('is-form-status').textContent = error.message; }
+        }));
+        meta.appendChild(report);
+      }
+      if (post.hidden) meta.appendChild(make('span', 'is-rv-hidden', '숨김(신고 누적)'));
+      li.appendChild(meta);
+      return li;
+    }));
+  }
+  async function loadIssues() {
+    const seq = ++is.seq;
+    try {
+      const data = await issueApi(`/api/portal/issues${is.date ? `?date=${is.date}` : ''}`);
+      if (seq !== is.seq) return;
+      is.data = data;
+    } catch (error) {
+      if (seq !== is.seq) return;
+      is.data = { items: [], dates: [], problems: [error.message] };
+      $('is-grid').replaceChildren(make('li', 'feed-empty', '오늘의 이슈를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'));
+      return;
+    }
+    if (!is.data.items.some(item => item.field === is.open && !item.empty && !item.hidden)) is.open = '';
+    renderIssues();
+  }
+  async function loadIssueReviews() {
+    try {
+      is.reviews = (await issueApi('/api/board?board=issue')).posts || [];
+    } catch { is.reviews = []; }
+    is.loaded = true;
+    renderIssues();
+  }
+  if ($('issue-panel')) {
+    $('is-date').addEventListener('change', event => { is.date = event.target.value; is.open = ''; loadIssues(); });
+    $('is-review-close').addEventListener('click', () => { is.open = ''; renderIssues(); });
+    $('is-login-btn').addEventListener('click', () => window.spaceOpenAuth?.('login'));
+    $('is-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const issue = currentIssue();
+      const status = $('is-form-status');
+      if (!issue) return;
+      const text = $('is-form-text').value.trim();
+      if (!text) { status.textContent = '내용을 적어 주세요.'; return; }
+      const button = event.submitter || event.target.querySelector('button[type=submit]');
+      button.disabled = true;
+      status.textContent = '올리는 중…';
+      try {
+        const result = await issueApi('/api/board/posts', {
+          board: 'issue', category: issue.label, title: $('is-form-title').value.trim(), text,
+          issue: { id: issue.id, date: is.data.date, title: issue.title, link: issue.link, source: issue.source || '' },
+        });
+        is.reviews.unshift(result.post);
+        $('is-form-title').value = '';
+        $('is-form-text').value = '';
+        status.textContent = '평론이 올라갔습니다. 고맙습니다.';
+        renderIssues();
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+    const adminForm = $('is-admin-form');
+    const adminAction = async action => {
+      const form = new FormData(adminForm);
+      const status = $('is-admin-status');
+      status.textContent = '저장 중…';
+      try {
+        await issueApi('/api/portal/issues/admin', { action, field: form.get('field'), title: form.get('title'), link: form.get('link'), source: form.get('source') });
+        status.textContent = { set: '바꿨습니다.', auto: '자동 선별로 되돌렸습니다.', hide: '이 분야를 숨겼습니다.' }[action];
+        if (action === 'set') { adminForm.title.value = ''; adminForm.link.value = ''; }
+        is.date = '';
+        loadIssues();
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    };
+    adminForm.addEventListener('submit', event => { event.preventDefault(); adminAction('set'); });
+    adminForm.querySelectorAll('button[data-action]:not([type=submit])').forEach(button => button.addEventListener('click', () => adminAction(button.dataset.action)));
+    document.querySelectorAll('a[href="#issue-panel"]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      $('issue-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('issue-panel').classList.add('flash-target');
+      setTimeout(() => $('issue-panel').classList.remove('flash-target'), 1600);
+    }));
+    window.addEventListener('space-auth', () => { renderIssues(); loadIssueReviews(); });
+    loadIssues();
+    loadIssueReviews();
+    setInterval(() => { if (document.visibilityState === 'visible' && !is.date) loadIssues(); }, 30 * 60 * 1000);
+  }
+
   // ---------- 우리 동네 신청 혜택 ----------
   const bf = { region: 'uiryeong', aud: '', town: true, q: '', shown: 10, data: null, seq: 0 };
   try {

@@ -59,6 +59,7 @@
       <a href="#community-section" data-target="community-section">소통·나눔</a>
       <a href="#voice-section" data-target="voice-section">시민의 소리</a>
       <a href="#policy-panel" class="nav-policy">📰 정책브리핑</a>
+      <a href="#issue-panel" class="nav-issue">🗞️ 오늘의 이슈</a>
       <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
       <a href="#policy-section" data-target="policy-section">정책 제안</a>
       <a href="#research-section" data-target="research-section">칼럼·학술</a>
@@ -165,6 +166,46 @@
           </div>
           <ul class="pb-list" id="pb-list" aria-live="polite"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
           <p class="source">출처: 대한민국 정책브리핑(www.korea.kr) 정책뉴스 · 공공누리 제1유형 · 제목을 누르면 정책브리핑 원문으로 이동합니다.</p>
+        </section>
+
+        <section class="panel panel-pad issue-panel" id="issue-panel" aria-labelledby="is-title">
+          <div class="panel-head"><h2 id="is-title">오늘의 이슈</h2><span class="hint" id="is-updated">매일경제 헤드라인에서 분야별 1건 자동 선별</span></div>
+          <div class="is-tools">
+            <label class="is-date">날짜 <select id="is-date" aria-label="이슈 날짜"><option value="">오늘</option></select></label>
+            <span class="is-note">기사 제목을 누르면 원문으로, <b>평론</b>을 누르면 회원 평론을 보고 쓸 수 있습니다.</span>
+          </div>
+          <ol class="is-grid" id="is-grid" aria-live="polite"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
+          <div class="is-review" id="is-review" hidden>
+            <div class="is-review-head">
+              <div><span class="is-field" id="is-review-field"></span><a id="is-review-title" target="_blank" rel="noopener"></a></div>
+              <button type="button" class="link-btn" id="is-review-close">닫기 ✕</button>
+            </div>
+            <form class="is-form" id="is-form">
+              <input id="is-form-title" maxlength="120" placeholder="평론 제목 (선택)">
+              <textarea id="is-form-text" rows="5" maxlength="10000" required placeholder="이 이슈에 대한 생각을 적어 주세요. 사실과 의견을 구분하고, 특정인을 비방하거나 확인되지 않은 내용을 단정하지 말아 주세요."></textarea>
+              <div class="is-form-row"><span class="is-form-status" id="is-form-status" aria-live="polite"></span><button type="submit" class="btn btn-primary">평론 올리기</button></div>
+            </form>
+            <p class="is-login" id="is-login" hidden>평론은 로그인한 회원만 쓸 수 있습니다. <button type="button" class="link-btn" id="is-login-btn">로그인 · 회원가입</button></p>
+            <ul class="is-reviews" id="is-reviews"></ul>
+          </div>
+          <details class="bf-admin is-admin" id="is-admin" hidden>
+            <summary>관리자: 오늘의 이슈 바꾸기</summary>
+            <form id="is-admin-form">
+              <div class="bf-row">
+                <select name="field" aria-label="분야"><option value="politics">정치</option><option value="economy">경제</option><option value="defense">국방</option><option value="world">국제</option><option value="society">사회</option><option value="culture">문화</option></select>
+                <input name="source" maxlength="30" placeholder="언론사 (비우면 주소로 표시)">
+              </div>
+              <input name="title" maxlength="200" placeholder="기사 제목">
+              <input name="link" maxlength="500" placeholder="기사 주소 (https://…)">
+              <div class="bf-row is-admin-actions">
+                <button type="submit" class="btn btn-primary" data-action="set">이 기사로 바꾸기</button>
+                <button type="button" class="btn btn-outline" data-action="auto">자동 선별로 되돌리기</button>
+                <button type="button" class="btn btn-outline" data-action="hide">이 분야 숨기기</button>
+              </div>
+              <p class="bf-status" id="is-admin-status" aria-live="polite"></p>
+            </form>
+          </details>
+          <p class="source">출처: 매일경제 헤드라인·분야별 RSS · 신문사 편집 순서대로 분야마다 가장 위의 기사를 고릅니다(국방은 정치·국제 기사 중 국방·안보 기사). 기사 본문은 옮기지 않고 제목과 원문 링크만 소개합니다. 낮 12시에 그날 이슈가 고정됩니다. 평론은 회원 개인의 의견입니다.</p>
         </section>
 
         <section class="panel panel-pad benefit-panel" id="benefit-panel" aria-labelledby="bf-title">

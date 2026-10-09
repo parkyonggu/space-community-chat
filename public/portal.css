@@ -564,3 +564,46 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-table td.money { font-weight:800; }
 .pn-links { margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; }
 .pn-empty { font-size:14px; color:var(--muted); }
+
+/* ---------- 오늘의 이슈 ---------- */
+#issue-panel { scroll-margin-top:90px; }
+#issue-panel.flash-target { box-shadow:0 0 0 3px var(--gold), var(--shadow); transition:box-shadow .3s; }
+.is-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin:2px 0 12px; font-size:13px; color:var(--muted); }
+.is-date select { min-height:36px; margin-left:4px; border:1px solid var(--line); border-radius:8px; padding:4px 8px; font-size:14px; color:var(--ink); background:#fff; }
+.is-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap:10px; }
+.is-card { display:flex; flex-direction:column; gap:8px; border:1px solid var(--line); border-top:4px solid var(--fc, var(--primary)); border-radius:12px; padding:12px 14px; background:#fff; min-width:0; }
+.is-card.is-hidden { opacity:.55; border-style:dashed; }
+.is-field { align-self:flex-start; display:inline-block; font-size:12px; font-weight:800; color:var(--fc, var(--primary)); background:var(--fb, var(--primary-soft)); border-radius:6px; padding:2px 8px; }
+.f-politics { --fc:#3346d3; --fb:#e8eafc; }
+.f-economy { --fc:#8a5a00; --fb:#fff4dc; }
+.f-defense { --fc:#2e6b3a; --fb:#e3f2e6; }
+.f-world { --fc:#0b6c8a; --fb:#e0f3f8; }
+.f-society { --fc:#a33a3a; --fb:#fbe7e7; }
+.f-culture { --fc:#7a3fa8; --fb:#f2e8fa; }
+.is-title { flex:1; color:var(--ink); font-size:15.5px; font-weight:800; line-height:1.45; text-decoration:none; word-break:keep-all; overflow-wrap:anywhere; }
+.is-title:hover, .is-title:focus-visible { color:var(--primary); text-decoration:underline; }
+.is-empty { margin:0; color:var(--muted); font-size:14px; }
+.is-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--muted); }
+.is-review-btn { min-height:36px; flex:none; border:1px solid var(--line); background:#fff; border-radius:999px; padding:4px 12px; font-size:13px; font-weight:800; color:var(--navy); cursor:pointer; }
+.is-review-btn.active, .is-review-btn:hover { border-color:var(--gold); background:var(--gold-soft); }
+.is-review { margin-top:14px; border:1px solid var(--gold-line); background:#fffdf6; border-radius:12px; padding:14px; }
+.is-review-head .link-btn { flex:none; }
+.is-review-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.is-review-head > div { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.is-review-head a { color:var(--ink); font-weight:800; font-size:16px; line-height:1.45; overflow-wrap:anywhere; }
+.is-form { display:grid; gap:8px; }
+.is-form[hidden] { display:none; }
+.is-form input, .is-form textarea { width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 11px; font:inherit; font-size:15px; color:var(--ink); background:#fff; }
+.is-form textarea { resize:vertical; min-height:110px; line-height:1.6; }
+.is-form-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.is-form-status { font-size:13px; color:var(--muted); }
+.is-login { margin:4px 0 8px; font-size:14px; color:var(--text); }
+.is-reviews { list-style:none; margin:12px 0 0; padding:0; }
+.is-rv { border-top:1px solid var(--line-soft); padding:12px 0; }
+.is-rv-title { display:block; color:var(--ink); font-size:15px; margin-bottom:4px; }
+.is-rv-text { margin:0 0 6px; white-space:pre-wrap; font-size:14.5px; line-height:1.7; color:var(--text); overflow-wrap:anywhere; }
+.is-rv-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:12.5px; color:var(--muted); }
+.is-rv-meta .link-btn { font-size:12.5px; margin-left:0; }
+.is-rv-meta .link-btn.on { color:var(--up); font-weight:800; }
+.is-rv-hidden { color:var(--up); font-weight:800; }
+.bf-row.is-admin-actions { display:flex; flex-wrap:wrap; }

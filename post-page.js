@@ -5,6 +5,7 @@ const BOARD_INFO = {
   community: { name: '소통·나눔', anchor: 'community-section' },
   voice: { name: '시민의 소리', anchor: 'voice-section' },
   policy: { name: '정책 제안', anchor: 'policy-section' },
+  issue: { name: '오늘의 이슈 평론', anchor: 'issue-panel' },
 };
 const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원부', finance: '금융위원회', sme: '중소벤처기업부', education: '교육부',
   culture: '문화체육관광부', welfare: '보건복지부', labor: '고용노동부', gender: '여성가족부', environment: '환경부', foreign: '외교부',
@@ -85,6 +86,8 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .page-head h1.post-title { text-decoration:underline; text-decoration-color:#f5b941; text-decoration-thickness:3px; text-underline-offset:8px; text-decoration-skip-ink:none; line-height:1.5; }
     .post-meta { color:#c9d0e3; font-size:14px; margin:8px 0 0; }
     .post-meta .tag { display:inline-block; background:rgba(245,185,65,.18); color:#f5b941; border-radius:6px; padding:1px 8px; font-weight:800; margin-right:6px; }
+    .issue-ref { margin:0 0 18px; padding:12px 14px; border-left:4px solid #f5b941; background:rgba(245,185,65,.10); border-radius:8px; font-size:14px; color:var(--muted, #5b6478); line-height:1.6; }
+    .issue-ref a { color:var(--ink); font-weight:700; font-size:16px; }
     .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
     .post-body p { margin:0 0 1.1em; }
     .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
@@ -142,13 +145,14 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
     </div>
   </header>
   <main class="page-wrap page-body">
-    <article class="page-card">
+    <article class="page-card">${post.issue && /^https:\/\//.test(post.issue.link || '') ? `
+      <p class="issue-ref">평론한 이슈 · ${escapeHtml(post.issue.date ? `${post.issue.date.slice(4, 6)}월 ${Number(post.issue.date.slice(6, 8))}일` : '')} ${escapeHtml(post.category || '')}<br><a href="${escapeHtml(post.issue.link)}" target="_blank" rel="noopener nofollow">${escapeHtml(post.issue.title)}</a> <small>(${escapeHtml(post.issue.source || '원문')})</small></p>` : ''}
       <div class="post-body${post.category === '시' ? ' poem' : ''}">
 ${bodyHtml(post.text)}
       </div>
       <div class="post-foot">
         <span class="likes">♥ 공감 ${post.likes || 0}</span>
-        <a class="btn btn-primary" href="/#${board.anchor}">${escapeHtml(board.name)}에서 공감·댓글 남기기</a>
+        <a class="btn btn-primary" href="/#${board.anchor}">${escapeHtml(post.board === 'issue' ? '오늘의 이슈' : board.name)}에서 ${post.board === 'issue' ? '평론 더 보기·쓰기' : '공감·댓글 남기기'}</a>
         <a class="btn btn-outline" href="/">커뮤니티 홈</a>
       </div>
       <p class="note">이 글은 회원이 작성한 글로, 작성자 개인의 견해이며 운영자의 입장과 다를 수 있습니다. 문제가 있는 글은 게시판의 신고 기능이나 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 알려 주세요.</p>

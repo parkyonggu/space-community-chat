@@ -8,7 +8,9 @@ const BOARDS = {
   // 소통·나눔: 분류는 고르지 않아도 되고(일반 이야기), 시는 '시'로 따로 모은다.
   community: { publicRead: true, categories: ['시'], optionalCategory: true, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
-  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000 },
+  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000, likes: true },
+  // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
+  issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
   research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결'], title: true, max: 50000 },
 };
 const REPORT_HIDE_THRESHOLD = 3;
@@ -101,7 +103,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const likes = store.likes.filter(entry => entry.postId === post.id);
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
-      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text,
+      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}),
       authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
@@ -117,6 +119,18 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   }
 
   const text = (value, max) => typeof value === 'string' ? value.trim() : '';
+  // 평론 대상 이슈: 화면이 보낸 값을 그대로 믿지 않고 모양만 확인해 짧게 저장한다.
+  function issueRef(input) {
+    const ref = input && typeof input === 'object' ? input : {};
+    const id = text(ref.id);
+    const date = text(ref.date);
+    const title = text(ref.title).replace(/\s+/g, ' ');
+    const link = text(ref.link);
+    if (!/^[a-z]{1,3}-[0-9a-z]{1,20}$/.test(id) || !/^\d{8}$/.test(date) || !title || title.length > 200 || !/^https:\/\/[^\s<>"']{4,500}$/.test(link)) {
+      throw new BoardError(400, '평론할 이슈를 다시 골라 주세요.');
+    }
+    return { id, date, title, link, source: text(ref.source).slice(0, 30) };
+  }
 
   // 글마다 고유 번호(withpluces.com/post/번호). 번호가 없는 예전 글은 올린 순서대로 매긴다.
   function numberPosts(store) {
@@ -134,7 +148,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     return store;
   }
   const publicView = (post, store) => ({
-    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text,
+    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}),
     authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null,
     likes: store.likes.filter(entry => entry.postId === post.id).length,
   });
@@ -189,7 +203,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
         limit(`board-post:${user.id}`, 10, 10 * 60000);
         const post = { id: randomUUID(), board, category, title, text: body, authorId: user.id, authorName: user.nickname,
-          createdAt: new Date(now()).toISOString() };
+          createdAt: new Date(now()).toISOString(), ...(rules.issue ? { issue: issueRef(input.issue) } : {}) };
         await updateStore(store => {
           numberPosts(store);
           post.no = store.posts.reduce((max, entry) => Math.max(max, entry.no || 0), 0) + 1;
@@ -208,7 +222,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           if (target.hiddenAt) throw new BoardError(409, '신고로 숨김 처리된 글은 운영자 검토가 끝날 때까지 수정할 수 없습니다.');
           const rules = BOARDS[target.board];
           let category = target.category;
-          if (rules.categories && target.board !== 'policy' && input.category !== undefined) {
+          if (rules.categories && target.board !== 'policy' && !rules.issue && input.category !== undefined) {
             if (!rules.categories.includes(input.category) && !(rules.optionalCategory && !input.category)) throw new BoardError(400, '분류를 선택해 주세요.');
             category = input.category;
           }
@@ -232,7 +246,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         limit(`board-like:${user.id}`, 60, 60000);
         const result = await updateStore(store => {
           const post = findPost(store, input.postId);
-          if (post.board !== 'policy' || post.hiddenAt) throw new BoardError(400, '추천할 수 없는 글입니다.');
+          if (!BOARDS[post.board]?.likes || post.hiddenAt) throw new BoardError(400, '추천할 수 없는 글입니다.');
           const index = store.likes.findIndex(entry => entry.postId === post.id && entry.userId === user.id);
           if (index >= 0) store.likes.splice(index, 1);
           else store.likes.push({ id: `${post.id}:${user.id}`, postId: post.id, userId: user.id });
