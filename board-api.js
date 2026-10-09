@@ -180,8 +180,10 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const rules = BOARDS[board];
         const category = rules.categories ? (rules.categories.includes(input.category) ? input.category : null) : '';
         if (category === null) throw new BoardError(400, '분류를 선택해 주세요.');
-        const title = rules.title ? text(input.title) : '';
-        if (rules.title && (!title || title.length > 120)) throw new BoardError(400, '제목을 1~120자로 입력해 주세요.');
+        // 제목: 칼럼·학술은 꼭 써야 하고, 다른 게시판은 쓰고 싶을 때만(선택).
+        const title = text(input.title);
+        if (rules.title && !title) throw new BoardError(400, '제목을 1~120자로 입력해 주세요.');
+        if (title.length > 120) throw new BoardError(400, '제목은 120자 이내로 입력해 주세요.');
         const body = text(input.text);
         if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
         limit(`board-post:${user.id}`, 10, 10 * 60000);
@@ -209,8 +211,10 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
             if (!rules.categories.includes(input.category)) throw new BoardError(400, '분류를 선택해 주세요.');
             category = input.category;
           }
-          const title = rules.title ? text(input.title) : '';
-          if (rules.title && (!title || title.length > 120)) throw new BoardError(400, '제목을 1~120자로 입력해 주세요.');
+          // 제목을 보내지 않은 예전 화면에서 고치면 원래 제목을 그대로 둔다.
+          const title = input.title === undefined ? (target.title || '') : text(input.title);
+          if (rules.title && !title) throw new BoardError(400, '제목을 1~120자로 입력해 주세요.');
+          if (title.length > 120) throw new BoardError(400, '제목은 120자 이내로 입력해 주세요.');
           const body = text(input.text);
           if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
           if (body === target.text && title === (target.title || '') && category === target.category) throw new BoardError(400, '바뀐 내용이 없습니다.');

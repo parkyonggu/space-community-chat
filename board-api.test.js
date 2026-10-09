@@ -163,3 +163,27 @@ test('posts get numbers for /post/번호; members-only and hidden posts are not 
   assert.equal((await api.publicPost(4)).status, 410);
   assert.equal((await api.publicPost(99)).status, 404);
 });
+
+test('every board accepts an optional title; research requires one', async t => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'space-board-title-'));
+  const handler = createBoardApi(directory, { authenticate, requireVerifiedEmail: true });
+  const server = createServer((request, response) => handler(request, response, new URL(request.url, 'http://x').pathname));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); await fs.rm(directory, { recursive: true }); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (route, body, user) => fetch(origin + route, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', 'x-csrf-token': 'ok', 'x-test-user': user } });
+  const titled = await (await post('/api/board/posts', { board: 'community', title: '  동네 소식  ', text: '본문' }, 'bob')).json();
+  assert.equal(titled.post.title, '동네 소식');
+  const untitled = await (await post('/api/board/posts', { board: 'voice', category: '이 정책, 이상해요', text: '제목 없이' }, 'bob')).json();
+  assert.equal(untitled.post.title, '');
+  const policy = await (await post('/api/board/posts', { board: 'policy', category: 'education', title: '교육 제안', text: '의견' }, 'bob')).json();
+  assert.equal(policy.post.title, '교육 제안');
+  assert.equal((await post('/api/board/posts', { board: 'community', title: '가'.repeat(121), text: '본문' }, 'bob')).status, 400);
+  assert.equal((await post('/api/board/posts', { board: 'research', category: '칼럼', title: ' ', text: '본문' }, 'bob')).status, 400);
+  // 제목을 보내지 않고 고치면(예전 화면) 원래 제목을 지킨다.
+  const edited = await (await post('/api/board/edit', { postId: titled.post.id, text: '고친 본문' }, 'bob')).json();
+  assert.equal(edited.post.title, '동네 소식');
+  const retitled = await (await post('/api/board/edit', { postId: titled.post.id, title: '', text: '고친 본문 2' }, 'bob')).json();
+  assert.equal(retitled.post.title, '');
+});

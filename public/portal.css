@@ -524,3 +524,9 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 #benefit-panel.flash-target { box-shadow:0 0 0 3px var(--gold), var(--shadow); transition:box-shadow .3s; }
 .link-btn.letter-mark { display:block; margin:8px 0 0; text-align:left; line-height:1.5; }
 .link-btn.letter-mark[hidden] { display:none; }
+
+/* 글쓰기 제목 칸 */
+.post-title-input { display:block; width:100%; box-sizing:border-box; min-height:44px; margin:0 0 8px; padding:8px 12px; border:1px solid var(--line); border-radius:10px; font-size:16px; font-weight:700; color:var(--ink); background:#fff; }
+.post-title-input::placeholder { font-weight:500; color:var(--muted); }
+.post-title-input:focus { outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(245,185,65,.35); }
+.policy-category .post-title-input { min-height:38px; font-size:14.5px; }

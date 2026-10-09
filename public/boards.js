@@ -58,6 +58,11 @@
     category.depts.forEach(dept => {
       const card = make('article', 'policy-category');
       card.appendChild(make('h4', '', dept.name));
+      const titleInput = make('input', 'post-title-input');
+      titleInput.maxLength = 120;
+      titleInput.placeholder = '제목 (선택)';
+      titleInput.setAttribute('aria-label', `${dept.name} 제안 제목`);
+      card.appendChild(titleInput);
       const textarea = make('textarea');
       textarea.dataset.placeholder = `${dept.name} 관련 의견을 작성하세요`;
       textarea.maxLength = 3000;
@@ -214,15 +219,14 @@
       category.value = post.category;
       form.appendChild(category);
     }
-    let title = null;
-    if (post.board === 'research') {
-      title = make('input');
-      title.type = 'text';
-      title.maxLength = 120;
-      title.value = post.title || '';
-      title.setAttribute('aria-label', '글 제목');
-      form.appendChild(title);
-    }
+    // 모든 게시판에서 제목을 고칠 수 있다(칼럼·학술만 필수).
+    const title = make('input', 'post-title-input');
+    title.type = 'text';
+    title.maxLength = 120;
+    title.value = post.title || '';
+    title.placeholder = post.board === 'research' ? '제목 (필수)' : '제목 (선택)';
+    title.setAttribute('aria-label', '글 제목');
+    form.appendChild(title);
     const text = make('textarea');
     text.value = post.text;
     text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 3000 : 5000;
@@ -247,14 +251,14 @@
     cancel.addEventListener('click', () => item.replaceChildren(...original));
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      if (!text.value.trim() || (title && !title.value.trim())) {
-        status.textContent = title ? '제목과 내용을 입력해 주세요.' : '내용을 입력해 주세요.';
+      if (!text.value.trim() || (post.board === 'research' && !title.value.trim())) {
+        status.textContent = post.board === 'research' ? '제목과 내용을 입력해 주세요.' : '내용을 입력해 주세요.';
         status.dataset.error = 'true';
         return;
       }
       save.disabled = true;
       try {
-        const result = await api('/api/board/edit', { postId: post.id, text: text.value, ...(title ? { title: title.value } : {}), ...(category ? { category: category.value } : {}) });
+        const result = await api('/api/board/edit', { postId: post.id, text: text.value, title: title.value, ...(category ? { category: category.value } : {}) });
         state.posts[post.board] = state.posts[post.board].map(entry => entry.id === post.id ? result.post : entry);
         render(post.board);
         announce(post.board);
@@ -395,13 +399,15 @@
 
   $('communitySubmit').addEventListener('click', () => {
     const input = $('communityInput');
+    const title = $('communityTitle');
     if (!input.value.trim()) { setStatus('community', '내용을 입력해 주세요.', true); return; }
-    submit('community', { text: input.value }, () => { input.value = ''; });
+    submit('community', { title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
   });
   $('voiceSubmit').addEventListener('click', () => {
     const input = $('voiceInput');
+    const title = $('voiceTitle');
     if (!input.value.trim()) { setStatus('voice', '내용을 입력해 주세요.', true); return; }
-    submit('voice', { category: $('voiceCategory').value, text: input.value }, () => { input.value = ''; });
+    submit('voice', { category: $('voiceCategory').value, title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
   });
   $('researchSubmit').addEventListener('click', () => {
     const title = $('researchTitle');
@@ -413,8 +419,9 @@
     const button = event.target.closest('button.submitPolicy');
     if (!button) return;
     const textarea = button.previousElementSibling;
+    const titleInput = button.parentElement.querySelector('.post-title-input');
     if (!textarea.value.trim()) { setStatus('policy', '의견을 입력해 주세요.', true); return; }
-    submit('policy', { category: button.dataset.dept, text: textarea.value }, () => { textarea.value = ''; });
+    submit('policy', { category: button.dataset.dept, title: titleInput?.value || '', text: textarea.value }, () => { textarea.value = ''; if (titleInput) titleInput.value = ''; });
   });
   $('researchFilter').addEventListener('change', () => render('research'));
   document.querySelectorAll('.sort-btn').forEach(button => button.addEventListener('click', () => {
