@@ -53,3 +53,9 @@ test('pension endpoint without key or with a key error stays calm', async () => 
   assert.equal(result.body.regions.length, 0);
   assert.match(result.body.problems[0], /SERVICE_KEY_IS_NOT_REGISTERED_ERROR/);
 });
+
+test('JSON-shaped gateway errors are reported, not treated as empty data', async () => {
+  const api = createPortalApi({ pensionKey: 'k', fetchImpl: async () => ({ ok: false, status: 403, text: async () => JSON.stringify({ OpenAPI_ServiceResponse: { cmmMsgHeader: { errMsg: 'SERVICE_KEY_IS_NOT_REGISTERED_ERROR', returnAuthMsg: '등록되지 않은 서비스키', returnReasonCode: '30' } } }) }) });
+  const result = await call(api, '/api/portal/pension');
+  assert.match(result.body.problems[0], /등록되지 않은 서비스키/);
+});

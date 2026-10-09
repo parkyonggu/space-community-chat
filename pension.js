@@ -31,7 +31,11 @@ async function call(fetchImpl, key, url, params) {
     const auth = /<returnAuthMsg>([^<]*)<\/returnAuthMsg>/.exec(text) || /<resultMsg>([^<]*)<\/resultMsg>/.exec(text);
     throw new Error(auth ? auth[1] : `HTTP ${response.status} ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)}`);
   }
+  // 인증 오류는 JSON으로도 OpenAPI_ServiceResponse 모양으로 온다.
+  const gateway = data.OpenAPI_ServiceResponse?.cmmMsgHeader;
+  if (gateway) throw new Error(gateway.returnAuthMsg || gateway.errMsg || `HTTP ${response.status}`);
   const root = data.response || data;
+  if (!root.header && !response.ok) throw new Error(`HTTP ${response.status}`);
   const code = String(root.header?.resultCode ?? '');
   if (code === '03') return [];
   if (code && !/^0+$/.test(code)) throw new Error(`${root.header?.resultMsg || '응답 오류'} (${code})`);
