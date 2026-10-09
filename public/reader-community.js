@@ -103,14 +103,34 @@ newsletterForm.addEventListener('submit', async event => {
       email: document.getElementById('newsletter-email').value,
       consent: document.getElementById('newsletter-consent').checked,
     });
+    const sentTo = document.getElementById('newsletter-email').value.trim();
     newsletterForm.reset();
-    setStatus(newsletterStatus, result.message);
-    button.textContent = '확인 메일을 보냈어요';
+    // 보낸 뒤에는 빈 칸으로 다시 눌러 경고가 뜨지 않도록 버튼을 잠그고, 다른 주소를 넣고 싶을 때만 다시 연다.
+    setStatus(newsletterStatus, `✓ ${sentTo}(으)로 확인 메일을 보냈습니다. 메일함(안 보이면 스팸함)에서 "구독 확인하기"를 눌러 주세요. (이미 구독 중인 주소라면 메일이 다시 가지 않습니다.)`);
+    button.textContent = '✓ 확인 메일을 보냈어요';
+    button.classList.add('done');
+    let again = document.getElementById('letter-again');
+    if (!again) {
+      again = document.createElement('button');
+      again.type = 'button';
+      again.id = 'letter-again';
+      again.className = 'link-btn';
+      again.textContent = '다른 이메일 하나 더 신청하기';
+      again.addEventListener('click', () => {
+        button.disabled = false;
+        button.textContent = '구독하기';
+        button.classList.remove('done');
+        setStatus(newsletterStatus, '');
+        again.remove();
+        document.getElementById('newsletter-email').focus();
+      });
+      button.after(again);
+    }
+    return;
   } catch (error) {
     setStatus(newsletterStatus, error.message, true);
-  } finally {
-    button.disabled = false;
   }
+  button.disabled = false;
 });
 
 unsubscribeForm?.addEventListener('submit', async event => {
