@@ -715,7 +715,7 @@
       link.target = '_blank';
       link.rel = 'noopener nofollow';
       const meta = make('div', 'is-meta');
-      meta.appendChild(make('span', '', [item.source || '매일경제', clockOf(item.at), item.manual ? '운영자 선정' : item.headline ? '헤드라인' : ''].filter(Boolean).join(' · ')));
+      meta.appendChild(make('span', '', [item.source || '매일경제', clockOf(item.at), item.manual ? '운영자 선정' : item.related ? `관련 보도 ${item.related}건` : ''].filter(Boolean).join(' · ')));
       const count = reviewsOf(item.id).length;
       const button = make('button', `is-review-btn${is.open === item.field ? ' active' : ''}`, `💬 평론${count ? ` ${count}` : ''}`);
       button.type = 'button';

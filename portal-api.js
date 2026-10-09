@@ -257,6 +257,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   // ---------- 오늘의 이슈 (매일경제 헤드라인 자동 선별 + 관리자 수정) ----------
   // 이슈 날짜는 오전 6시(KST)에 바뀐다. 낮 12시까지는 1시간마다 새 헤드라인으로 다시 고르고, 그 뒤로는 그날 이슈를 고정한다.
   const ISSUE_REFRESH = 60 * 60 * 1000;
+  const ISSUE_ALGO = 2; // 고르는 방식을 바꾸면 올린다(아직 고정 전인 오늘 이슈를 새 방식으로 다시 고른다).
   const issueDay = timestamp => ymd(timestamp - 6 * 60 * 60 * 1000);
   const noonOf = day => Date.parse(`${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}T12:00:00+09:00`);
   const emptyIssue = ({ id, label }) => ({ field: id, label, empty: true });
@@ -269,7 +270,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   }
   async function refreshIssues(day, stored) {
     const { feeds, problems } = await newsIssues.loadFeeds((...args) => fetchImpl(...args));
-    const fresh = newsIssues.pickIssues(feeds);
+    const fresh = newsIssues.pickIssues(feeds, now());
     const overrides = stored?.overrides || {};
     const wasLocked = Boolean(stored?.locked);
     const items = newsIssues.FIELDS.map((field, index) => {
@@ -279,14 +280,15 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       return fresh[index];
     });
     lastErrors.delete('issues');
-    const value = { date: day, items, overrides, locked: now() >= noonOf(day), updatedAt: new Date(now()).toISOString(), checkedAt: now(), problems: problems.slice(0, 2) };
+    const value = { date: day, algo: ISSUE_ALGO, items, overrides, locked: now() >= noonOf(day), updatedAt: new Date(now()).toISOString(), checkedAt: now(), problems: problems.slice(0, 2) };
     await saveIssueDay(day, value);
     return value;
   }
   async function todayIssues() {
     const day = issueDay(now());
     const stored = await store.get(`issues:day:${day}`);
-    const due = !stored || now() - (stored.checkedAt || 0) >= ISSUE_REFRESH && (!stored.locked || stored.items.some(item => item.empty));
+    const due = !stored || (stored.algo !== ISSUE_ALGO && !stored.locked)
+      || now() - (stored.checkedAt || 0) >= ISSUE_REFRESH && (!stored.locked || stored.items.some(item => item.empty));
     if (!due) return stored;
     // 아직 한 번도 못 받은 날에는 실패 뒤 5분 동안 다시 묻지 않는다(방문할 때마다 신문사에 요청하지 않도록).
     if (!stored && now() - ((await store.get('issues:lastFail')) || 0) < RETRY_AFTER_FAILURE) return null;
@@ -341,8 +343,8 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       const previous = (await issueDates()).find(entry => entry < today);
       if (previous) { day = await store.get(`issues:day:${previous}`); fallback = Boolean(day); }
     }
-    const items = (day?.items || newsIssues.FIELDS.map(emptyIssue)).map(({ field, label, id, title, link, at, source, headline, auto, manual, empty, hidden }) =>
-      ({ field, label, id, title, link, at, source, headline, auto, manual, empty, hidden }));
+    const items = (day?.items || newsIssues.FIELDS.map(emptyIssue)).map(({ field, label, id, title, link, at, source, headline, related, auto, manual, empty, hidden }) =>
+      ({ field, label, id, title, link, at, source, headline, related, auto, manual, empty, hidden }));
     send(200, {
       today, date: day?.date || date, fallback, locked: Boolean(day?.locked), updatedAt: day?.updatedAt || null,
       items, dates: (await issueDates()).slice(0, 60), problems: [lastErrors.get('issues'), ...(day?.problems || [])].filter(Boolean).slice(0, 2),
