@@ -821,6 +821,90 @@
     loadBenefits();
   }
 
+  // ---------- 오늘의 날씨 ----------
+  const wx = { region: 'uiryeong', data: null };
+  try { const saved = localStorage.getItem('wx-region'); if (saved) wx.region = saved; } catch { /* storage blocked */ }
+  const wxIcon = (sky, pty, night) => {
+    if (pty === 3 || pty === 7) return '🌨️';
+    if (pty === 2 || pty === 6) return '🌨️';
+    if (pty === 4) return '🌦️';
+    if (pty === 1 || pty === 5) return '🌧️';
+    if (sky === 4) return '☁️';
+    if (sky === 3) return night ? '☁️' : '⛅';
+    return night ? '🌙' : '☀️';
+  };
+  const dayName = (date, index) => index === 0 ? '오늘' : index === 1 ? '내일' : index === 2 ? '모레' : `${Number(date.slice(4, 6))}/${Number(date.slice(6, 8))}`;
+  function renderWeather() {
+    const body = $('wx-body');
+    if (!body) return;
+    const data = wx.data;
+    if (!data) return;
+    if (!data.connected || !data.regions?.length) { $('weather-panel').hidden = true; return; }
+    $('weather-panel').hidden = false;
+    if (!data.regions.some(region => region.id === wx.region)) wx.region = data.regions[0].id;
+    $('wx-regions').replaceChildren(...data.regions.map(region => {
+      const chip = make('button', 'chip', region.name);
+      chip.type = 'button';
+      chip.setAttribute('role', 'tab');
+      chip.setAttribute('aria-selected', String(region.id === wx.region));
+      chip.addEventListener('click', () => { wx.region = region.id; try { localStorage.setItem('wx-region', region.id); } catch { /* ignore */ } renderWeather(); });
+      return chip;
+    }));
+    const region = data.regions.find(entry => entry.id === wx.region);
+    const today = region.days?.[0];
+    if (!region.now && !today) {
+      body.replaceChildren(make('p', 'wx-empty', data.problems?.length ? '기상청 날씨 자료를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.' : '날씨 자료를 받아 오는 중입니다.'));
+      return;
+    }
+    const hour = new Date().getHours();
+    const night = hour >= 19 || hour < 6;
+    const nowBox = make('div', 'wx-now');
+    const pty = region.now?.pty || 0;
+    nowBox.appendChild(make('span', 'wx-icon', wxIcon(today?.sky, pty, night)));
+    const temp = make('div', 'wx-temp', region.now?.temp != null ? `${Math.round(region.now.temp)}` : '–');
+    temp.appendChild(make('small', '', '℃'));
+    const desc = make('div', 'wx-desc');
+    const state = pty ? region.now.ptyText : (today?.skyText || '');
+    desc.append(make('b', '', `${region.name} ${state}`.trim()), document.createElement('br'));
+    if (today) desc.append(`최저 ${today.min ?? '–'}℃ · 최고 ${today.max ?? '–'}℃`, document.createElement('br'));
+    const extra = [today?.pop != null ? `강수확률 ${today.pop}%` : '', region.now?.humidity != null ? `습도 ${region.now.humidity}%` : ''].filter(Boolean).join(' · ');
+    if (extra) desc.append(extra);
+    nowBox.append(temp, desc);
+    const nodes = [nowBox];
+    const rainy = (region.days || []).find(day => day.ptyText && (day.pop ?? 0) >= 50);
+    if (rainy) {
+      const index = region.days.indexOf(rainy);
+      const when = rainy.rainFrom ? ` ${Number(rainy.rainFrom.slice(0, 2))}시경부터` : '';
+      nodes.push(make('p', 'wx-alert', `☔ ${dayName(rainy.date, index)}${when} ${rainy.ptyText} 소식 (강수확률 ${rainy.pop}%)`));
+    }
+    const days = make('div', 'wx-days');
+    (region.days || []).slice(0, 3).forEach((day, index) => {
+      const box = make('div', 'wx-day');
+      const t = make('div', 't');
+      t.append(make('span', 'lo', day.min != null ? `${day.min}°` : '–'), ' / ', make('span', 'hi', day.max != null ? `${day.max}°` : '–'));
+      box.append(make('div', 'd', dayName(day.date, index)), make('div', 'i', wxIcon(day.sky, day.pty, false)), t, make('div', 'p', day.pop != null ? `☂ ${day.pop}%` : ''));
+      days.appendChild(box);
+    });
+    if (days.childNodes.length) nodes.push(days);
+    body.replaceChildren(...nodes);
+    if (region.now?.at) {
+      const at = region.now.at;
+      $('wx-updated').textContent = `기상청 · ${Number(at.slice(8, 10))}시 관측`;
+    }
+  }
+  async function loadWeather() {
+    try {
+      const response = await fetch('/api/portal/weather', { credentials: 'same-origin' });
+      if (!response.ok) return;
+      wx.data = await response.json();
+      renderWeather();
+    } catch { /* offline */ }
+  }
+  if ($('weather-panel')) {
+    loadWeather();
+    setInterval(() => { if (document.visibilityState === 'visible') loadWeather(); }, 10 * 60 * 1000);
+  }
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);

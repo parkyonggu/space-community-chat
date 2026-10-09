@@ -42,7 +42,7 @@ const newsletterApi = createNewsletterApi(dataDirectory, {
   adminEmails, ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', policyKey: process.env.POLICY_NEWS_KEY || '', highlights: since => boardApi.highlights(since),
 });
 let chatOnline = 0;
-const portalApi = createPortalApi({ ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', molitKey: process.env.MOLIT_API_KEY || '', policyKey: process.env.POLICY_NEWS_KEY || '', benefitKey: process.env.GOV_BENEFIT_KEY || process.env.POLICY_NEWS_KEY || '', molitKeys: { apt: process.env.MOLIT_APT_KEY || '', nrg: process.env.MOLIT_BLDG_KEY || '', land: process.env.MOLIT_LAND_KEY || '' }, onlineCount: async () => chatOnline });
+const portalApi = createPortalApi({ ecosKey: process.env.ECOS_API_KEY || '', rebKey: process.env.REB_API_KEY || '', molitKey: process.env.MOLIT_API_KEY || '', policyKey: process.env.POLICY_NEWS_KEY || '', benefitKey: process.env.GOV_BENEFIT_KEY || process.env.POLICY_NEWS_KEY || '', weatherKey: process.env.WEATHER_API_KEY || process.env.POLICY_NEWS_KEY || '', molitKeys: { apt: process.env.MOLIT_APT_KEY || '', nrg: process.env.MOLIT_BLDG_KEY || '', land: process.env.MOLIT_LAND_KEY || '' }, onlineCount: async () => chatOnline });
 let lastWeeklyDraft = '';
 setInterval(() => {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);

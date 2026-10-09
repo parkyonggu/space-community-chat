@@ -533,3 +533,23 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 
 /* 소통·나눔 '시' */
 .post-item.poem p { font-family:'Nanum Myeongjo','Noto Serif KR','Batang',serif; font-size:16.5px; line-height:2; letter-spacing:.01em; }
+
+/* ---------- 오늘의 날씨 ---------- */
+.wx-regions { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin:0 0 10px; scrollbar-width:none; }
+.wx-regions::-webkit-scrollbar { display:none; }
+.wx-regions .chip { min-height:32px; padding:4px 12px; font-size:13.5px; flex:0 0 auto; }
+.wx-now { display:flex; align-items:center; gap:12px; }
+.wx-icon { font-size:44px; line-height:1; }
+.wx-temp { font-size:40px; font-weight:800; color:var(--ink); letter-spacing:-.02em; line-height:1; }
+.wx-temp small { font-size:18px; font-weight:700; margin-left:2px; }
+.wx-desc { font-size:14px; color:var(--text); line-height:1.5; }
+.wx-desc b { color:var(--ink); }
+.wx-alert { margin:10px 0 0; padding:7px 10px; border-radius:10px; background:#e8f1ff; color:#1d4ed8; font-size:13.5px; font-weight:700; }
+.wx-days { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:12px; }
+.wx-day { text-align:center; padding:8px 4px; border:1px solid var(--line-soft); border-radius:12px; background:#fafbfe; }
+.wx-day .d { font-size:12.5px; font-weight:800; color:var(--muted); }
+.wx-day .i { font-size:22px; margin:2px 0; }
+.wx-day .t { font-size:13.5px; font-weight:700; color:var(--ink); }
+.wx-day .t .lo { color:#2563eb; } .wx-day .t .hi { color:#dc2626; }
+.wx-day .p { font-size:12px; color:#1d4ed8; min-height:1.2em; }
+.wx-empty { font-size:14px; color:var(--muted); margin:6px 0; }
