@@ -6,6 +6,7 @@ const { createRealEstate } = require('./realestate');
 const { recentPolicyNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
+const { createPension } = require('./pension');
 
 const DAY = 24 * 60 * 60 * 1000;
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
@@ -37,7 +38,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', weatherKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', weatherKey = '', pensionKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -46,6 +47,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const benefits = localBenefits.createLocalBenefits({ key: benefitKey, fetchImpl: (...args) => fetchImpl(...args), now });
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
+  const pension = createPension({ key: pensionKey, fetchImpl: (...args) => fetchImpl(...args) });
 
   async function loadIndicators() {
     const at = now();
@@ -233,6 +235,24 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     send(200, { connected: true, updatedAt: new Date(now()).toISOString(), regions, problems, source: '기상청 단기예보 조회서비스(공공데이터포털)' });
   }
 
+  // ---------- 우리 동네 국민연금 (국민연금공단 수급·가입 현황) ----------
+  async function handlePension(request, send, pathname) {
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const ip = request.socket?.remoteAddress || 'unknown';
+    if (rateLimit && !rateLimit(`pension:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    if (!pensionKey) { send(200, { connected: false, regions: [] }); return; }
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    if (pathname === '/api/portal/pension/raw') {
+      try { send(200, { items: await pension.raw({ op: params.get('op'), age: params.get('age'), sggu: params.get('sggu') }) }); }
+      catch (error) { send(200, { error: error.message }); }
+      return;
+    }
+    const regions = await Promise.all(pension.regions.map(region => cached(`pension-${region.id}`, 24 * 60 * 60 * 1000, () => pension.load(region.id))));
+    const problems = [...new Set(pension.regions.map(region => lastErrors.get(`pension-${region.id}`)).filter(Boolean))].slice(0, 2);
+    send(200, { connected: true, regions: regions.filter(Boolean), names: pension.regions.map(({ id, name }) => ({ id, name })), problems,
+      source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
+  }
+
   async function handlePortalApi(request, response, pathname) {
     const send = (status, body) => {
       const payload = JSON.stringify(body);
@@ -241,6 +261,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     };
     if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual') { await handleBenefits(request, send, pathname); return; }
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
+    if (pathname === '/api/portal/pension' || pathname === '/api/portal/pension/raw') { await handlePension(request, send, pathname); return; }
     if (pathname !== '/api/portal') { send(404, { error: '요청한 기능이 없습니다.' }); return; }
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';

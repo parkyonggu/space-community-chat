@@ -553,3 +553,14 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .wx-day .t .lo { color:#2563eb; } .wx-day .t .hi { color:#dc2626; }
 .wx-day .p { font-size:12px; color:#1d4ed8; min-height:1.2em; }
 .wx-empty { font-size:14px; color:var(--muted); margin:6px 0; }
+
+/* ---------- 우리 동네 국민연금 ---------- */
+.pn-block h3 { font-size:15px; margin:14px 0 6px; color:var(--ink); }
+.pn-block h3 small { font-size:12.5px; font-weight:600; color:var(--muted); margin-left:6px; }
+.pn-table { width:100%; border-collapse:collapse; font-size:14px; }
+.pn-table th { text-align:right; font-weight:700; color:var(--muted); font-size:12.5px; padding:6px 4px; border-bottom:1px solid var(--line); white-space:nowrap; }
+.pn-table th:first-child, .pn-table td:first-child { text-align:left; }
+.pn-table td { text-align:right; padding:7px 4px; border-bottom:1px solid var(--line-soft); color:var(--ink); white-space:nowrap; }
+.pn-table td.money { font-weight:800; }
+.pn-links { margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; }
+.pn-empty { font-size:14px; color:var(--muted); }

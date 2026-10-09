@@ -399,3 +399,10 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 - 인증키: `npx wrangler secret put WEATHER_API_KEY`. 넣지 않으면 `POLICY_NEWS_KEY`를 함께 씁니다.
 - 지역: 양산·김해·의령·진주·창원·부산·서울(`weather.js`의 REGIONS, 시·군청 위경도 → 기상청 격자 자동 변환).
 - 지금 기온 20분, 예보 1시간, 오늘 최저·최고 3시간마다 새로 받습니다(`/api/portal/weather`).
+
+## 우리 동네 국민연금 (PENSION_API_KEY)
+
+- 자료: 국민연금공단 수급현황 V2(15010381)·가입현황 V2(15005710), 공공데이터포털 · 이용허락범위 제한 없음.
+- 인증키: `npx wrangler secret put PENSION_API_KEY`. 넣지 않으면 `POLICY_NEWS_KEY`를 함께 씁니다.
+- 양산시(48330)·김해시(48250)·의령군(48720) 연령대별(수급 60·70·80대, 가입 20~50대) 통계를 하루 한 번 받습니다(`/api/portal/pension`).
+- 점검용: `/api/portal/pension/raw?op=recipt|sbscrb&age=60&sggu=48720` 로 원자료 한 건을 볼 수 있습니다(공개 통계).

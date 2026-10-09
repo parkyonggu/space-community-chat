@@ -905,6 +905,72 @@
     setInterval(() => { if (document.visibilityState === 'visible') loadWeather(); }, 10 * 60 * 1000);
   }
 
+  // ---------- 우리 동네 국민연금 ----------
+  const pn = { region: 'uiryeong', data: null };
+  const manwon = value => (value == null ? '–' : value >= 10000 ? `${(Math.round(value / 1000) / 10).toLocaleString('ko-KR')}만 원` : `${value.toLocaleString('ko-KR')}원`);
+  const people = value => (value == null ? '–' : `${value.toLocaleString('ko-KR')}명`);
+  const period = months => (months == null ? '–' : months >= 12 ? `${Math.floor(months / 12)}년${months % 12 ? ` ${months % 12}개월` : ''}` : `${months}개월`);
+  function pnTable(head, rows) {
+    const table = make('table', 'pn-table');
+    const tr = make('tr');
+    head.forEach(text => tr.appendChild(make('th', '', text)));
+    table.appendChild(tr);
+    rows.forEach(cells => {
+      const row = make('tr');
+      cells.forEach(([text, cls]) => row.appendChild(make('td', cls || '', text)));
+      table.appendChild(row);
+    });
+    return table;
+  }
+  function renderPension() {
+    const data = pn.data;
+    const panel = $('pension-panel');
+    if (!panel || !data) return;
+    if (!data.connected) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const names = data.names || [];
+    $('pn-regions').replaceChildren(...names.map(entry => {
+      const chip = make('button', 'chip', entry.name);
+      chip.type = 'button';
+      chip.setAttribute('role', 'tab');
+      chip.setAttribute('aria-selected', String(entry.id === pn.region));
+      chip.addEventListener('click', () => { pn.region = entry.id; renderPension(); });
+      return chip;
+    }));
+    const region = (data.regions || []).find(entry => entry.id === pn.region);
+    if (!region) {
+      $('pn-body').replaceChildren(make('p', 'pn-empty', data.problems?.length ? '국민연금공단 자료 연결을 기다리고 있습니다. 승인되면 자동으로 채워집니다.' : '자료를 받아 오는 중입니다.'));
+      return;
+    }
+    const blocks = [];
+    if (region.recipients.length) {
+      const block = make('div', 'pn-block');
+      const h = make('h3', '', '연금 받는 분');
+      h.appendChild(make('small', '', '연령대별 · 노령·장애·유족 전체'));
+      block.append(h, pnTable(['연령대', '받는 분', '월 평균 연금', '평균 받은 기간'],
+        region.recipients.map(row => [[`${row.age}대`], [people(row.count)], [manwon(row.monthly), 'money'], [period(row.months)]])));
+      blocks.push(block);
+    }
+    if (region.subscribers.length) {
+      const block = make('div', 'pn-block');
+      const h = make('h3', '', '연금 내는 분 (가입자)');
+      h.appendChild(make('small', '', '연령대별'));
+      block.append(h, pnTable(['연령대', '가입자', '예상 연금(월 평균)', '평균 가입기간'],
+        region.subscribers.map(row => [[`${row.age}대`], [people(row.count)], [manwon(row.expected), 'money'], [period(row.months)]])));
+      blocks.push(block);
+    }
+    $('pn-body').replaceChildren(...(blocks.length ? blocks : [make('p', 'pn-empty', '이 지역 자료가 아직 없습니다.')]));
+  }
+  async function loadPension() {
+    try {
+      const response = await fetch('/api/portal/pension', { credentials: 'same-origin' });
+      if (!response.ok) return;
+      pn.data = await response.json();
+      renderPension();
+    } catch { /* offline */ }
+  }
+  if ($('pension-panel')) loadPension();
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);

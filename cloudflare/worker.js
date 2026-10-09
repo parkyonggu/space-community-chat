@@ -121,6 +121,7 @@ export class CommunityService extends DurableObject {
       // 공공데이터포털 일반 인증키는 계정마다 하나라서, 따로 넣지 않았으면 정책브리핑 키를 함께 쓴다.
       benefitKey: env.GOV_BENEFIT_KEY || env.POLICY_NEWS_KEY || '', authenticate: this.auth.authenticate,
       weatherKey: env.WEATHER_API_KEY || env.POLICY_NEWS_KEY || '',
+      pensionKey: env.PENSION_API_KEY || env.POLICY_NEWS_KEY || '',
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {
