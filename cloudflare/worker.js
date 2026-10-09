@@ -138,9 +138,9 @@ export class CommunityService extends DurableObject {
     const url = new URL(request.url);
     const pathname = url.pathname;
     const headers = Object.fromEntries(request.headers);
-    if (Number(request.headers.get('content-length') || 0) > 128 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
+    if (Number(request.headers.get('content-length') || 0) > 320 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
     const body = request.body ? Buffer.from(await request.arrayBuffer()) : null;
-    if (body && body.length > 128 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
+    if (body && body.length > 320 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
     const source = {
       method: request.method, headers, url: url.pathname + url.search,
       socket: { remoteAddress: request.headers.get('CF-Connecting-IP') || 'unknown' },

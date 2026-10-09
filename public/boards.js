@@ -225,7 +225,7 @@
     }
     const text = make('textarea');
     text.value = post.text;
-    text.maxLength = post.board === 'research' ? 20000 : post.board === 'policy' ? 3000 : 5000;
+    text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 3000 : 5000;
     text.setAttribute('aria-label', '글 내용');
     const status = make('p', 'form-status');
     status.setAttribute('role', 'status');
@@ -384,7 +384,7 @@
     sessionStorage.removeItem('space-draft');
     const target = draft && { community: 'communityInput', voice: 'voiceInput', research: 'researchInput' }[draft.board];
     if (target && typeof draft.text === 'string') {
-      $(target).value = draft.text.slice(0, 20000);
+      $(target).value = draft.text.slice(0, 50000);
       setTimeout(() => {
         window.spaceShowSection?.(sections[draft.board], false);
         $(target).scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -448,4 +448,20 @@
   updateComposers();
   if (window.spaceAuth) applyAuth(window.spaceAuth);
   else ['community', 'voice', 'policy'].forEach(load);
+})();
+
+// 칼럼·학술 '대법원 판결문'을 고르면 제목·개인정보 안내를 바꿔 보여 준다.
+(() => {
+  const type = document.getElementById('researchType');
+  const hint = document.getElementById('researchHint');
+  const title = document.getElementById('researchTitle');
+  if (!type || !hint || !title) return;
+  const base = { hint: hint.textContent, title: title.placeholder };
+  const update = () => {
+    const judgment = type.value === '대법원 판결문';
+    hint.textContent = judgment ? '당사자 이름·주소 등 개인정보는 가려 주세요 (판결문 원문은 저작권 보호 대상이 아니지만 개인정보 보호는 지켜야 합니다)' : base.hint;
+    title.placeholder = judgment ? '예: 대법원 2024. 5. 30. 선고 2023다12345 판결 — 핵심 쟁점 한 줄' : base.title;
+  };
+  type.addEventListener('change', update);
+  update();
 })();

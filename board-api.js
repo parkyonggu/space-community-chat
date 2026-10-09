@@ -8,7 +8,7 @@ const BOARDS = {
   community: { publicRead: true, categories: null, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
   policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000 },
-  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지'], title: true, max: 20000 },
+  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 판결문'], title: true, max: 50000 },
 };
 const REPORT_HIDE_THRESHOLD = 3;
 
@@ -171,7 +171,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
       if (auth.error) throw new BoardError(auth.error.status, auth.error.message);
       const user = auth.user;
       if (!user) throw new BoardError(401, '로그인한 회원만 이용할 수 있습니다.');
-      const input = await readBody(request, pathname === '/api/board/posts' || pathname === '/api/board/edit' ? 96 * 1024 : 4096);
+      const input = await readBody(request, pathname === '/api/board/posts' || pathname === '/api/board/edit' ? 256 * 1024 : 4096);
 
       if (pathname === '/api/board/posts') {
         if (requireVerifiedEmail && !user.emailVerified) throw new BoardError(403, '이메일 인증을 완료한 회원만 글을 쓸 수 있습니다. 상단의 인증 메일 보내기를 이용해 주세요.');
