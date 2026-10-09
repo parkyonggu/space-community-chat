@@ -457,8 +457,16 @@
   const title = document.getElementById('researchTitle');
   if (!type || !hint || !title) return;
   const base = { hint: hint.textContent, title: title.placeholder };
+  // 전원합의체 판결용 요약 틀: 본문이 비어 있을 때만 채우고, 손대지 않은 채 다른 종류로 바꾸면 다시 비운다.
+  const input = document.getElementById('researchInput');
+  const TEMPLATE = ['■ 사건: 대법원 0000. 0. 0. 선고 0000다00000 전원합의체 판결', '■ 쟁점: ', '■ 판결요지: (대법원 종합법률정보의 판결요지)',
+    '■ 변경된 종전 판례: (없으면 \'없음\')', '■ 의견 구성: 다수의견 ○명 / 반대의견 ○명', '■ 운영자 한마디: ', '---', '(판결 전문)'].join('\n');
   const update = () => {
     const judgment = type.value === '대법원 전원합의체 판결';
+    if (input) {
+      if (judgment && !input.value.trim()) input.value = TEMPLATE;
+      else if (!judgment && input.value === TEMPLATE) input.value = '';
+    }
     hint.textContent = judgment ? '대법원이 공개한 전원합의체 판결 원문(비실명 처리본)을 올려 주세요. 출처: 대법원 종합법률정보' : base.hint;
     title.placeholder = judgment ? '예: 대법원 2024. 5. 23. 선고 2020다12345 전원합의체 판결 — 핵심 쟁점 한 줄' : base.title;
   };
