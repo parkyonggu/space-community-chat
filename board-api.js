@@ -8,7 +8,7 @@ const BOARDS = {
   community: { publicRead: true, categories: null, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
   policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000 },
-  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 판결문'], title: true, max: 50000 },
+  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결'], title: true, max: 50000 },
 };
 const REPORT_HIDE_THRESHOLD = 3;
 

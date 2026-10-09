@@ -56,10 +56,10 @@ test('boards persist posts, protect research, require members to write and suppo
   assert.equal(first.authorId, undefined);
   const research = await post('/api/board/posts', { board: 'research', category: '논문', title: '연구 제목', text: '초록' }, 'bob');
   assert.equal(research.status, 201);
-  // 대법원 판결문: 새 분류, 긴 본문(2만 자 초과)도 받는다.
-  const judgment = await post('/api/board/posts', { board: 'research', category: '대법원 판결문', title: '대법원 2024다12345 판결', text: '판결 요지 '.repeat(4000) }, 'bob');
+  // 대법원 전원합의체 판결: 새 분류, 긴 본문(2만 자 초과)도 받는다.
+  const judgment = await post('/api/board/posts', { board: 'research', category: '대법원 전원합의체 판결', title: '대법원 2024다12345 판결', text: '판결 요지 '.repeat(4000) }, 'bob');
   assert.equal(judgment.status, 201);
-  assert.equal((await judgment.json()).post.category, '대법원 판결문');
+  assert.equal((await judgment.json()).post.category, '대법원 전원합의체 판결');
   const policy = await (await post('/api/board/posts', { board: 'policy', category: 'education', text: '교육 의견' }, 'bob')).json();
 
   // persisted across restarts

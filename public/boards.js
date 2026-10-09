@@ -450,7 +450,7 @@
   else ['community', 'voice', 'policy'].forEach(load);
 })();
 
-// 칼럼·학술 '대법원 판결문'을 고르면 제목·개인정보 안내를 바꿔 보여 준다.
+// 칼럼·학술 '대법원 전원합의체 판결'을 고르면 제목·개인정보 안내를 바꿔 보여 준다.
 (() => {
   const type = document.getElementById('researchType');
   const hint = document.getElementById('researchHint');
@@ -458,9 +458,9 @@
   if (!type || !hint || !title) return;
   const base = { hint: hint.textContent, title: title.placeholder };
   const update = () => {
-    const judgment = type.value === '대법원 판결문';
-    hint.textContent = judgment ? '당사자 이름·주소 등 개인정보는 가려 주세요 (판결문 원문은 저작권 보호 대상이 아니지만 개인정보 보호는 지켜야 합니다)' : base.hint;
-    title.placeholder = judgment ? '예: 대법원 2024. 5. 30. 선고 2023다12345 판결 — 핵심 쟁점 한 줄' : base.title;
+    const judgment = type.value === '대법원 전원합의체 판결';
+    hint.textContent = judgment ? '대법원이 공개한 전원합의체 판결 원문(비실명 처리본)을 올려 주세요. 출처: 대법원 종합법률정보' : base.hint;
+    title.placeholder = judgment ? '예: 대법원 2024. 5. 23. 선고 2020다12345 전원합의체 판결 — 핵심 쟁점 한 줄' : base.title;
   };
   type.addEventListener('change', update);
   update();
