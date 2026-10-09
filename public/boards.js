@@ -100,7 +100,7 @@
   researchComposer.before(researchLock);
 
   function renderPost(post) {
-    const item = make('article', 'post-item');
+    const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
     if (post.hidden) item.style.opacity = '0.6';
     const head = make('div');
@@ -207,16 +207,16 @@
     const form = make('form', 'post-editor');
     form.setAttribute('aria-label', '글 수정');
     let category = null;
-    const optionsFrom = id => [...$(id).options].map(option => option.value).filter(value => value !== 'all');
-    if (post.board === 'voice' || post.board === 'research') {
+    if (post.board === 'voice' || post.board === 'research' || post.board === 'community') {
       category = make('select');
       category.setAttribute('aria-label', '분류');
-      optionsFrom(post.board === 'voice' ? 'voiceCategory' : 'researchType').forEach(value => {
-        const option = make('option', '', value);
-        option.value = value;
+      const source = $(post.board === 'voice' ? 'voiceCategory' : post.board === 'research' ? 'researchType' : 'communityType');
+      [...source.options].filter(item => item.value !== 'all').forEach(item => {
+        const option = make('option', '', item.textContent);
+        option.value = item.value;
         category.appendChild(option);
       });
-      category.value = post.category;
+      category.value = post.category || '';
       form.appendChild(category);
     }
     // 모든 게시판에서 제목을 고칠 수 있다(칼럼·학술만 필수).
@@ -294,9 +294,9 @@
       return;
     }
     let items = posts;
-    if (board === 'research') {
-      const filter = $('researchFilter').value;
-      if (filter !== 'all') items = items.filter(post => post.category === filter);
+    if (board === 'research' || board === 'community') {
+      const filter = $(board === 'research' ? 'researchFilter' : 'communityFilter').value;
+      if (filter !== 'all') items = items.filter(post => (post.category || '') === filter);
     }
     const target = $(board === 'community' ? 'communityPosts' : board === 'voice' ? 'voicePosts' : 'researchPosts');
     target.replaceChildren(...items.map(renderPost));
@@ -401,7 +401,7 @@
     const input = $('communityInput');
     const title = $('communityTitle');
     if (!input.value.trim()) { setStatus('community', '내용을 입력해 주세요.', true); return; }
-    submit('community', { title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
+    submit('community', { category: $('communityType').value, title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
   });
   $('voiceSubmit').addEventListener('click', () => {
     const input = $('voiceInput');
@@ -424,6 +424,13 @@
     submit('policy', { category: button.dataset.dept, title: titleInput?.value || '', text: textarea.value }, () => { textarea.value = ''; if (titleInput) titleInput.value = ''; });
   });
   $('researchFilter').addEventListener('change', () => render('research'));
+  $('communityFilter').addEventListener('change', () => render('community'));
+  // 시를 고르면 본문 안내를 시에 맞게 바꾼다.
+  $('communityType').addEventListener('change', () => {
+    const poem = $('communityType').value === '시';
+    $('communityInput').placeholder = poem ? '시를 적어 주세요. 줄바꿈과 빈 줄이 그대로 보입니다.' : '안부, 일상, 취미, 고민을 자유롭게 적어주세요.';
+    $('communityTitle').placeholder = poem ? '시 제목 (선택)' : '제목 (선택)';
+  });
   document.querySelectorAll('.sort-btn').forEach(button => button.addEventListener('click', () => {
     state.sort = button.dataset.sort;
     document.querySelectorAll('.sort-btn').forEach(item => item.classList.remove('active'));

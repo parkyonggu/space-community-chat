@@ -530,3 +530,6 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .post-title-input::placeholder { font-weight:500; color:var(--muted); }
 .post-title-input:focus { outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(245,185,65,.35); }
 .policy-category .post-title-input { min-height:38px; font-size:14.5px; }
+
+/* 소통·나눔 '시' */
+.post-item.poem p { font-family:'Nanum Myeongjo','Noto Serif KR','Batang',serif; font-size:16.5px; line-height:2; letter-spacing:.01em; }

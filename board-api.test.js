@@ -186,4 +186,10 @@ test('every board accepts an optional title; research requires one', async t => 
   assert.equal(edited.post.title, '동네 소식');
   const retitled = await (await post('/api/board/edit', { postId: titled.post.id, title: '', text: '고친 본문 2' }, 'bob')).json();
   assert.equal(retitled.post.title, '');
+  // 소통·나눔의 '시': 고르면 '시', 안 고르면 일반 이야기, 그 밖의 값은 거절. 수정으로 바꿀 수도 있다.
+  const poem = await (await post('/api/board/posts', { board: 'community', category: '시', title: '가을', text: '첫 줄\n둘째 줄' }, 'bob')).json();
+  assert.equal(poem.post.category, '시');
+  assert.equal((await post('/api/board/posts', { board: 'community', category: '아무거나', text: '본문' }, 'bob')).status, 400);
+  const back = await (await post('/api/board/edit', { postId: poem.post.id, category: '', text: '첫 줄\n둘째 줄' }, 'bob')).json();
+  assert.equal(back.post.category, '');
 });

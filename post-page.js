@@ -77,7 +77,7 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
   ${canonical ? `<meta property="og:url" content="${escapeHtml(canonical)}">` : ''}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Nanum+Myeongjo:wght@400;700&display=swap">
   <link rel="stylesheet" href="/portal.css">
   <link rel="stylesheet" href="/page.css">
   ${noindex ? '' : '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3255503954415485" crossorigin="anonymous"></script>'}
@@ -87,6 +87,7 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .post-meta .tag { display:inline-block; background:rgba(245,185,65,.18); color:#f5b941; border-radius:6px; padding:1px 8px; font-weight:800; margin-right:6px; }
     .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
     .post-body p { margin:0 0 1.1em; }
+    .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
     .post-body a { color:var(--primary); }
     .post-foot { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; padding-top:16px; border-top:1px solid var(--line-soft); align-items:center; }
     .post-foot .likes { color:var(--up); font-weight:800; margin-right:auto; }
@@ -142,7 +143,7 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
   </header>
   <main class="page-wrap page-body">
     <article class="page-card">
-      <div class="post-body">
+      <div class="post-body${post.category === '시' ? ' poem' : ''}">
 ${bodyHtml(post.text)}
       </div>
       <div class="post-foot">

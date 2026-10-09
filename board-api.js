@@ -5,7 +5,8 @@ const { randomUUID } = require('node:crypto');
 const POLICY_DEPARTMENTS = ['economy', 'industry', 'finance', 'sme', 'education', 'culture', 'welfare', 'labor', 'gender',
   'environment', 'foreign', 'unification', 'defense', 'science', 'landtransport', 'agriculture', 'ocean', 'safety', 'justice', 'personnel'];
 const BOARDS = {
-  community: { publicRead: true, categories: null, title: false, max: 5000 },
+  // 소통·나눔: 분류는 고르지 않아도 되고(일반 이야기), 시는 '시'로 따로 모은다.
+  community: { publicRead: true, categories: ['시'], optionalCategory: true, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
   policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000 },
   research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결'], title: true, max: 50000 },
@@ -178,7 +179,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const board = Object.hasOwn(BOARDS, input.board || '') ? input.board : null;
         if (!board) throw new BoardError(400, '게시판을 확인해 주세요.');
         const rules = BOARDS[board];
-        const category = rules.categories ? (rules.categories.includes(input.category) ? input.category : null) : '';
+        const category = rules.categories ? (rules.categories.includes(input.category) ? input.category : rules.optionalCategory && !input.category ? '' : null) : '';
         if (category === null) throw new BoardError(400, '분류를 선택해 주세요.');
         // 제목: 칼럼·학술은 꼭 써야 하고, 다른 게시판은 쓰고 싶을 때만(선택).
         const title = text(input.title);
@@ -208,7 +209,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           const rules = BOARDS[target.board];
           let category = target.category;
           if (rules.categories && target.board !== 'policy' && input.category !== undefined) {
-            if (!rules.categories.includes(input.category)) throw new BoardError(400, '분류를 선택해 주세요.');
+            if (!rules.categories.includes(input.category) && !(rules.optionalCategory && !input.category)) throw new BoardError(400, '분류를 선택해 주세요.');
             category = input.category;
           }
           // 제목을 보내지 않은 예전 화면에서 고치면 원래 제목을 그대로 둔다.
