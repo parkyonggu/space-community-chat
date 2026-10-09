@@ -76,7 +76,12 @@ function pickIssues(feeds) {
 }
 
 async function fetchFeed(fetchImpl, code) {
-  const response = await fetchImpl(`${RSS}/${code}/`, { headers: { Accept: 'application/rss+xml, application/xml, text/xml' } });
+  // 사용자 에이전트가 없는 요청은 막는 사이트가 많아, 누가 가져가는지 밝히는 이름을 붙인다.
+  const response = await fetchImpl(`${RSS}/${code}/`, { headers: {
+    'User-Agent': 'Mozilla/5.0 (compatible; WithplucesNewsReader/1.0; +https://withpluces.com/about)',
+    Accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
+    'Accept-Language': 'ko-KR,ko;q=0.9',
+  } });
   if (!response.ok) throw new Error(`매일경제 RSS HTTP ${response.status}`);
   return parseRss(await response.text());
 }

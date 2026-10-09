@@ -278,6 +278,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       if (wasLocked && before && !before.empty) return before;
       return fresh[index];
     });
+    lastErrors.delete('issues');
     const value = { date: day, items, overrides, locked: now() >= noonOf(day), updatedAt: new Date(now()).toISOString(), checkedAt: now(), problems: problems.slice(0, 2) };
     await saveIssueDay(day, value);
     return value;
@@ -287,11 +288,14 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     const stored = await store.get(`issues:day:${day}`);
     const due = !stored || now() - (stored.checkedAt || 0) >= ISSUE_REFRESH && (!stored.locked || stored.items.some(item => item.empty));
     if (!due) return stored;
+    // 아직 한 번도 못 받은 날에는 실패 뒤 5분 동안 다시 묻지 않는다(방문할 때마다 신문사에 요청하지 않도록).
+    if (!stored && now() - ((await store.get('issues:lastFail')) || 0) < RETRY_AFTER_FAILURE) return null;
     if (!issueInflight) {
       issueInflight = refreshIssues(day, stored).catch(async error => {
         console.error('Issues refresh failed:', error.message);
         lastErrors.set('issues', error.message);
         if (stored) { await store.set(`issues:day:${day}`, { ...stored, checkedAt: now() - ISSUE_REFRESH + RETRY_AFTER_FAILURE }); return stored; }
+        await store.set('issues:lastFail', now());
         return null;
       }).finally(() => { issueInflight = null; });
     }

@@ -698,14 +698,16 @@
     if (select.options.length !== wanted.length) select.replaceChildren(...wanted.map(([value, label]) => { const option = make('option', '', label); option.value = value; return option; }));
     select.value = is.date;
     if (!data) { grid.replaceChildren(make('li', 'feed-empty', '오늘의 이슈를 불러오고 있습니다.')); return; }
-    const note = data.fallback ? `오늘 기사를 아직 받지 못해 ${dayLabel(data.date)} 이슈를 보여 드립니다.` : '';
+    const allEmpty = data.items.every(item => item.empty);
+    const note = data.fallback ? `오늘 기사를 아직 받지 못해 ${dayLabel(data.date)} 이슈를 보여 드립니다.`
+      : allEmpty && data.problems?.length ? `기사 목록 연결 확인 중${admin ? ` (${data.problems[0]})` : ''}` : '';
     $('is-updated').textContent = note || (data.updatedAt ? `${dayLabel(data.date)} · ${data.locked ? '고정됨' : `${clockOf(data.updatedAt)} 갱신 · 낮 12시에 고정`}` : '매일경제 헤드라인에서 분야별 1건 자동 선별');
     const items = data.items.filter(item => admin || !item.hidden);
     grid.replaceChildren(...items.map(item => {
       const li = make('li', `is-card f-${item.field}${item.hidden ? ' is-hidden' : ''}`);
       li.appendChild(make('span', 'is-field', item.label));
       if (item.empty || item.hidden) {
-        li.appendChild(make('p', 'is-empty', item.hidden ? '관리자가 숨긴 분야입니다.' : '이 분야의 헤드라인을 고르는 중입니다.'));
+        li.appendChild(make('p', 'is-empty', item.hidden ? '관리자가 숨긴 분야입니다.' : data.problems?.length ? '신문사 기사 목록을 받아오지 못했습니다. 잠시 뒤 다시 시도합니다.' : '이 분야의 헤드라인을 고르는 중입니다.'));
         return li;
       }
       const link = make('a', 'is-title', item.title);
