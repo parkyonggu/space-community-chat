@@ -243,7 +243,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (!pensionKey) { send(200, { connected: false, regions: [] }); return; }
     const params = new URL(request.url, 'http://localhost').searchParams;
     if (pathname === '/api/portal/pension/raw') {
-      try { send(200, { items: await pension.raw({ op: params.get('op'), age: params.get('age'), sggu: params.get('sggu') }) }); }
+      try { send(200, await pension.raw(params)); }
       catch (error) { send(200, { error: error.message }); }
       return;
     }

@@ -41,8 +41,9 @@ test('pension endpoint builds recipient and subscriber tables per region and cac
   const count = calls.length;
   await call(api, '/api/portal/pension');
   assert.equal(calls.length, count, 'served from cache');
-  const raw = await call(api, '/api/portal/pension/raw?op=sbscrb&age=30&sggu=48330');
-  assert.equal(raw.body.items[0].jnngBrkdSgmntPrsnCnt, '2030');
+  const raw = await call(api, '/api/portal/pension/raw?op=sbscrb&jnngpAge=30&ldongAddrMgplDgCd=48&ldongAddrMgplSgguCd=48330&bad=<x>');
+  assert.equal(raw.body.data.response.body.items.item[0].jnngBrkdSgmntPrsnCnt, '2030');
+  assert.ok(!calls.at(-1).includes('bad='));
 });
 
 test('pension endpoint without key or with a key error stays calm', async () => {
