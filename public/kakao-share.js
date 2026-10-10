@@ -122,12 +122,17 @@
       const Kakao = await load();
       if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY);
       let image = { imageUrl, imageWidth: 1200, imageHeight: 630 };
+      let text = { title: String(title).slice(0, 200), description: String(description).slice(0, 200) };
       if (card) {
         try {
           const blob = await drawCard(card);
           const uploaded = await Kakao.Share.uploadImage({ file: [new File([blob], 'space-card.jpg', { type: 'image/jpeg' })] });
           const url = uploaded?.infos?.original?.url;
-          if (url) image = { imageUrl: url, imageWidth: 1080, imageHeight: blob.height || 1440 };
+          if (url) {
+            image = { imageUrl: url, imageWidth: 1080, imageHeight: blob.height || 1440 };
+            // 안내장 그림에 내용이 다 들어 있으니, 그림 아래 글은 잘린 제목·요약 대신 짧은 이름표만 둔다.
+            text = { title: `${card.kindLabel} · 스페이스 커뮤니티` };
+          }
         } catch (error) {
           console.error('Kakao card image failed, using the default picture:', error);
         }
@@ -135,7 +140,7 @@
       const target = { mobileWebUrl: link, webUrl: link };
       Kakao.Share.sendDefault({
         objectType: 'feed',
-        content: { title: String(title).slice(0, 200), description: String(description).slice(0, 200), ...image, link: target },
+        content: { ...text, ...image, link: target },
         buttons: [{ title: button, link: target }],
       });
       return true;
