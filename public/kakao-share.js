@@ -115,6 +115,47 @@
   }
   window.spaceDrawAnnouncementCard = drawCard;
 
+  // 운영자가 올린 안내장 사진(포스터): 카카오톡은 세로 3:4보다 긴 그림을 잘라 버리므로,
+  // 로고 머리줄 아래에 포스터 전체가 들어가도록 3:4 안(가로 그림은 그 비율대로)에 맞춰 다시 그린다.
+  async function drawPoster(posterUrl, kindLabel) {
+    const poster = await loadImage(posterUrl);
+    if (!poster) throw new Error('poster load failed');
+    const W = 1080, HEAD = 150, MAX_H = 1440, MIN_H = 540;
+    const natural = HEAD + Math.round(W * poster.naturalHeight / poster.naturalWidth);
+    const H = Math.min(MAX_H, Math.max(MIN_H, natural));
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const c = canvas.getContext('2d');
+    const font = (size, weight = 400) => `${weight} ${size}px "Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+    c.fillStyle = '#f4f5f9';
+    c.fillRect(0, 0, W, H);
+    c.fillStyle = '#0e1730';
+    c.fillRect(0, 0, W, HEAD);
+    const logo = await loadImage('/icons/icon-192.png');
+    if (logo) {
+      c.fillStyle = '#f5b941';
+      c.beginPath(); c.roundRect ? c.roundRect(40, 27, 96, 96, 24) : c.rect(40, 27, 96, 96); c.fill();
+      c.save(); c.beginPath(); c.roundRect ? c.roundRect(45, 32, 86, 86, 20) : c.rect(45, 32, 86, 86); c.clip();
+      c.drawImage(logo, 45, 32, 86, 86); c.restore();
+    }
+    c.textBaseline = 'middle';
+    c.fillStyle = '#ffffff';
+    c.font = font(46, 800);
+    c.fillText('스페이스 커뮤니티', 160, 75);
+    c.fillStyle = '#f5b941';
+    c.font = font(38, 800);
+    const label = String(kindLabel || '');
+    c.fillText(label, W - 40 - c.measureText(label).width, 75);
+    // 포스터 전체가 보이게(잘리지 않게) 가운데에 맞춘다.
+    const boxH = H - HEAD;
+    const scale = Math.min(W / poster.naturalWidth, boxH / poster.naturalHeight);
+    const w = Math.round(poster.naturalWidth * scale), h = Math.round(poster.naturalHeight * scale);
+    c.drawImage(poster, Math.round((W - w) / 2), HEAD + Math.round((boxH - h) / 2), w, h);
+    return new Promise(resolve => canvas.toBlob(blob => { if (blob) blob.height = H; resolve(blob); }, 'image/jpeg', 0.92));
+  }
+  window.spaceDrawPosterCard = drawPoster;
+
   // { title, description, imageUrl, link, button, card } → 카카오톡 공유 창을 연다.
   // card: { kindLabel, cardTitle, body } 를 주면 안내문 전체를 그린 그림을 카카오 서버에 올려(100일 보관) 카드 그림으로 쓴다.
   window.spaceKakaoShare = async ({ title, description = '', imageUrl, link, button = '자세히 보기', card, poster }) => {
@@ -124,15 +165,17 @@
       let image = { imageUrl, imageWidth: 1200, imageHeight: 630 };
       let text = { title: String(title).slice(0, 200), description: String(description).slice(0, 200) };
       if (poster) {
-        // 운영자가 올린 안내장 사진(포스터)을 그대로 카드 그림으로 쓴다. 그림 아래는 짧은 제목 한 줄만.
-        const size = await new Promise(resolve => {
-          const probe = new Image();
-          probe.onload = () => resolve({ imageWidth: probe.naturalWidth, imageHeight: probe.naturalHeight });
-          probe.onerror = () => resolve({});
-          probe.src = poster;
-        });
-        image = { imageUrl: poster, ...size };
+        // 포스터 전체가 잘리지 않게 3:4 틀에 맞춘 그림을 카카오 서버에 올려 쓴다. 그림 아래는 짧은 제목 한 줄만.
         text = { title: String(title).slice(0, 200) };
+        try {
+          const blob = await drawPoster(poster, card?.kindLabel);
+          const uploaded = await Kakao.Share.uploadImage({ file: [new File([blob], 'space-poster.jpg', { type: 'image/jpeg' })] });
+          const url = uploaded?.infos?.original?.url;
+          image = url ? { imageUrl: url, imageWidth: 1080, imageHeight: blob.height || 1440 } : { imageUrl: poster };
+        } catch (error) {
+          console.error('Kakao poster frame failed, sending the poster as is:', error);
+          image = { imageUrl: poster };
+        }
       } else if (card) {
         try {
           const blob = await drawCard(card);
