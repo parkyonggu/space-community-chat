@@ -87,11 +87,11 @@
     statusOf[board] = status;
   }
 
-  // Members-only notice for research
+  // 칼럼·학술: 누구나 읽고, 글쓰기는 회원만. 비회원에게는 글쓰기 칸 대신 로그인 안내를 보인다.
   const researchComposer = $('research-section').querySelector('.post-composer');
   const researchLock = make('div', 'notice');
   researchLock.hidden = true;
-  researchLock.innerHTML = '<strong>회원 전용 게시판</strong><br>학술·논문·소고·이야기는 가입한 회원만 읽고 쓸 수 있습니다. ';
+  researchLock.innerHTML = '<strong>글쓰기는 회원만</strong><br>칼럼·학술 글은 누구나 읽을 수 있고, 글은 가입한 회원이 쓸 수 있습니다. ';
   const lockLogin = make('button', 'submitPolicy', '로그인');
   const lockSignup = make('button', 'submitPolicy', '회원가입');
   lockLogin.type = lockSignup.type = 'button';
@@ -99,6 +99,7 @@
   lockSignup.addEventListener('click', () => window.spaceOpenAuth?.('signup'));
   researchLock.append(lockLogin, ' ', lockSignup);
   researchComposer.before(researchLock);
+  $('researchFilter').closest('.post-controls').classList.add('filter-row');
 
   // ---------- 사진 첨부 (글쓰기 칸에 붙여넣기·끌어다 놓기·📷 버튼) ----------
   // 사진은 화면에서 긴 변 1600px JPEG로 줄여 올린다. 다시 그려 저장하므로 촬영 위치(GPS) 같은 정보는 지워진다.
@@ -655,7 +656,7 @@
     meta.style.alignItems = 'center';
     meta.appendChild(make('span', '', `${post.authorName} · ${new Date(post.createdAt).toLocaleString('ko-KR')}${post.editedAt ? ` · 수정됨 ${new Date(post.editedAt).toLocaleString('ko-KR')}` : ''}`));
     // 공개 게시판 글은 고유 주소(withpluces.com/post/번호)로 바로 열고 공유할 수 있다.
-    if (post.no && post.board !== 'research' && !post.hidden) {
+    if (post.no && !post.hidden) {
       const permalink = make('a', 'like-btn', `🔗 글 주소 #${post.no}`);
       permalink.href = `/post/${post.no}`;
       permalink.title = '이 글만 따로 보기·공유하기';
@@ -865,12 +866,6 @@
   }
 
   async function load(board) {
-    if (board === 'research' && !state.user) {
-      state.posts.research = [];
-      $('researchPosts').replaceChildren();
-      announce(board);
-      return;
-    }
     try {
       const { posts } = await api(`/api/board?board=${board}`);
       state.posts[board] = posts;
@@ -900,7 +895,8 @@
     }
     const member = Boolean(state.user);
     researchLock.hidden = member;
-    researchComposer.hidden = !member;
+    // 비회원은 글쓰기 칸만 감추고, 글 목록·유형별 보기는 그대로 보인다.
+    researchComposer.classList.toggle('read-only', !member);
   }
 
   async function submit(board, payload, clear) {
@@ -1208,7 +1204,7 @@
   window.addEventListener('space-auth', event => applyAuth(event.detail));
   updateComposers();
   if (window.spaceAuth) applyAuth(window.spaceAuth);
-  else ['community', 'voice', 'policy'].forEach(load);
+  else ['community', 'voice', 'policy', 'research'].forEach(load);
 })();
 
 // 칼럼·학술 '대법원 전원합의체 판결'을 고르면 제목·개인정보 안내를 바꿔 보여 준다.

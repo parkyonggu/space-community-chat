@@ -730,3 +730,5 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .judgment-reviews-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
 .judgment-reviews ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.7; }
 .review-btn { background: #0e1730; color: #fff; border-color: #0e1730; }
+/* 칼럼·학술: 비회원에게는 글쓰기 칸을 감추고 글 목록만 보인다 */
+.post-composer.read-only > :not(.filter-row):not(#researchPosts):not(.empty-legend):not(.form-status) { display: none !important; }

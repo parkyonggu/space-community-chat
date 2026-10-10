@@ -104,16 +104,6 @@
   function renderFeed() {
     const ready = Boolean(window.spaceBoards);
     if (!ready) return;
-    if (!state.search && state.feed === 'research' && !window.spaceAuth?.user) {
-      const empty = make('li', 'feed-empty');
-      empty.append('학술·논문·소고·이야기는 회원만 읽을 수 있습니다. ');
-      const login = make('button', 'more-link', '로그인하고 보기 ›');
-      login.type = 'button';
-      login.addEventListener('click', () => window.spaceOpenAuth?.('login'));
-      empty.appendChild(login);
-      feedList.replaceChildren(empty);
-      return;
-    }
     const items = feedItems();
     if (!items.length) {
       feedList.replaceChildren(make('li', 'feed-empty', state.search ? `‘${state.search}’에 맞는 글이 없습니다.` : '아직 올라온 글이 없습니다. 첫 이야기를 남겨 주세요!'));
@@ -122,7 +112,7 @@
     feedList.replaceChildren(...items.map(post => {
       const item = make('li', 'feed-item');
       // 공개 글은 진짜 링크(/post/번호)로: 검색엔진이 따라가고, 새 탭으로 열 수도 있다. 보통 클릭은 지금처럼 게시판에서 연다.
-      const linkable = post.no && post.board !== 'research';
+      const linkable = Boolean(post.no);
       const button = make(linkable ? 'a' : 'button', 'feed-link');
       if (linkable) button.href = `/post/${post.no}`;
       else button.type = 'button';

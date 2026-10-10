@@ -6,6 +6,7 @@ const BOARD_INFO = {
   voice: { name: '시민의 소리', anchor: 'voice-section' },
   policy: { name: '정책 제안', anchor: 'policy-section' },
   issue: { name: '오늘의 이슈 평론', anchor: 'issue-panel' },
+  research: { name: '칼럼·학술', anchor: 'research-section' },
 };
 const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원부', finance: '금융위원회', sme: '중소벤처기업부', education: '교육부',
   culture: '문화체육관광부', welfare: '보건복지부', labor: '고용노동부', gender: '여성가족부', environment: '환경부', foreign: '외교부',
@@ -154,7 +155,8 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
   </header>
   <main class="page-wrap page-body">
     <article class="page-card">${post.issue && /^https:\/\//.test(post.issue.link || '') ? `
-      <p class="issue-ref">평론한 이슈 · ${escapeHtml(post.issue.date ? `${post.issue.date.slice(4, 6)}월 ${Number(post.issue.date.slice(6, 8))}일` : '')} ${escapeHtml(post.category || '')}<br><a href="${escapeHtml(post.issue.link)}" target="_blank" rel="noopener nofollow">${escapeHtml(post.issue.title)}</a> <small>(${escapeHtml(post.issue.source || '원문')})</small></p>` : ''}
+      <p class="issue-ref">평론한 이슈 · ${escapeHtml(post.issue.date ? `${post.issue.date.slice(4, 6)}월 ${Number(post.issue.date.slice(6, 8))}일` : '')} ${escapeHtml(post.category || '')}<br><a href="${escapeHtml(post.issue.link)}" target="_blank" rel="noopener nofollow">${escapeHtml(post.issue.title)}</a> <small>(${escapeHtml(post.issue.source || '원문')})</small></p>` : ''}${post.about && post.about.no ? `
+      <p class="issue-ref">평론한 판결<br><a href="/post/${Number(post.about.no)}">${escapeHtml(post.about.title || '판결 글')}</a></p>` : ''}
       <div class="post-body${post.category === '시' ? ' poem' : ''}">
 ${bodyHtml(post.text)}
       </div>${(post.images || []).filter(id => /^[0-9a-f]{32}$/.test(id)).length ? `

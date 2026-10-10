@@ -102,7 +102,7 @@
     <ul id="ticker-items" hidden>
       <li data-tag="공지" data-href="#newsletter-section">스페이스 레터 — 매주 월요일 아침 7시, 경제·정책 브리핑을 이메일로 보내 드립니다.</li>
       <li data-tag="안내" data-href="#guide-section">글쓰기·댓글·채팅은 이메일 인증을 마친 회원만 할 수 있습니다. 읽기는 누구나 가능합니다.</li>
-      <li data-tag="안내" data-href="#research-section">학술·논문·소고·이야기 게시판은 가입한 회원만 읽고 쓸 수 있습니다.</li>
+      <li data-tag="안내" data-href="#research-section">칼럼·학술 게시판은 누구나 읽을 수 있고, 글쓰기는 가입한 회원만 할 수 있습니다.</li>
       <li data-tag="운영" data-href="#guide-section">회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김 처리됩니다.</li>
       <li data-tag="시민의 소리" data-href="#voice-section">공론화 후 주민감사·조례 청구는 행정안전부 '주민e직접'에서 정식으로 진행해 주세요.</li>
     </ul>
@@ -119,7 +119,7 @@
             <button type="button" class="chip" role="tab" data-feed="community" aria-selected="false">소통·나눔</button>
             <button type="button" class="chip" role="tab" data-feed="voice" aria-selected="false">시민의 소리</button>
             <button type="button" class="chip" role="tab" data-feed="policy" aria-selected="false">정책 제안</button>
-            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">칼럼·학술<span class="lock">회원</span></button>
+            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">칼럼·학술</button>
           </div>
           <ul class="feed-list" id="feed-list" aria-live="polite">
             <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
@@ -361,7 +361,7 @@
       <section id="policy-section" class="board-section surface" aria-labelledby="policy-title"><div class="section-head"><div><div class="eyebrow">03 · POLICY FORUM</div><h2 id="policy-title">정책비평·제안의 장</h2></div><div class="sort-bar"><button class="sort-btn active" data-sort="latest">최신순</button><button class="sort-btn" data-sort="likes">추천순</button></div></div><p class="intro">정부·지자체 정책을 비평하고 더 나은 대안을 제시해 주세요. 부처별로 의견을 남기고, 공감하는 제안에는 추천을 눌러 주세요. 공감이 쌓인 제안은 첫 화면과 스페이스 레터에서 소개합니다.</p>
         <div id="categoryContainer"></div><div class="policy-actions"><span>공감이 많은 의견부터 함께 살펴보세요.</span><a href="#policy-title">정책 제안 기준 보기 ↑</a></div></section>
 
-      <section id="research-section" class="board-section surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">04 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2></div><span class="tag">지식과 상상 · 회원 전용</span></div><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문, 대법원 전원합의체 판결을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다. 가입한 회원만 읽고 쓸 수 있습니다.</p>
+      <section id="research-section" class="board-section surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">04 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2></div><span class="tag">지식과 상상</span></div><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문, 대법원 전원합의체 판결과 그 평론을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다. 누구나 읽을 수 있고, 글은 가입한 회원이 씁니다.</p>
         <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option><option>대법원 전원합의체 판결</option><option>판결 평론</option></select><span class="label" id="researchHint">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" class="post-title-input" maxlength="120" placeholder="제목 (필수)" aria-label="글 제목" style="margin-top:8px"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option><option>대법원 전원합의체 판결</option><option>판결 평론</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
 
       <section id="chat-section" class="board-section surface" aria-labelledby="chat-title"><div class="section-head"><div><div class="eyebrow">LIVE ROOM</div><h2 id="chat-title">실시간 채팅</h2></div><span class="tag">지금 이야기하기</span></div><p class="intro">접속한 사람들과 바로 이야기를 나누는 공개 광장입니다. 대화는 누구나 볼 수 있고, 메시지는 로그인한 회원만 보낼 수 있습니다. 광장 대화는 올린 날부터 45일 동안 보관되어 나중에 들어온 사람도 볼 수 있고, 그 뒤 자동으로 삭제됩니다. 내가 보낸 메시지는 언제든 삭제할 수 있습니다.</p><p class="notice" style="margin:0 0 12px"><strong>카톡처럼 대화방을 만들고 싶다면?</strong> 회원끼리 단체 대화방과 1:1 대화를 나누는 <a href="/chat"><strong>스페이스 톡</strong></a>을 이용해 보세요. 대화가 저장되고 새 메시지 알림도 받을 수 있습니다.</p><div id="chatPresence" class="chat-presence" aria-live="polite"></div><div id="chatBox" class="chat-box" aria-live="polite"></div><div class="chat-input"><textarea id="chatInput" placeholder="메시지를 입력하세요. 여러 줄로 작성할 수 있습니다." aria-label="채팅 메시지" aria-describedby="chatHelp"></textarea><button id="sendBtn">전송</button></div><p id="chatHelp" class="label">Enter 줄바꿈 · Ctrl+Enter 전송</p></section>
@@ -404,7 +404,7 @@
       <section id="guide-section" class="surface" aria-labelledby="guide-title">
         <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title" style="margin:4px 0 14px;font-size:clamp(22px,3vw,30px);color:var(--ink)">회원과 운영 안내</h2>
         <div class="policy-columns">
-          <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>가입 후 이메일 인증 메일을 보내드립니다. 비밀번호를 잊으면 재설정 메일로 바꿀 수 있습니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>학술·논문·소고·이야기는 회원만 읽고 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
+          <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>가입 후 이메일 인증 메일을 보내드립니다. 비밀번호를 잊으면 재설정 메일로 바꿀 수 있습니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>칼럼·학술은 누구나 읽고, 회원만 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
           <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>스페이스 톡 대화는 그 방 참여자만 볼 수 있고, 메시지·사진은 90일 후 자동 삭제됩니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>사이트에는 Google 애드센스 광고가 표시될 수 있으며, 광고 쿠키에 관한 내용은 개인정보처리방침에 안내합니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/about">사이트 소개</a> · <a href="/terms">이용약관</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
           <div><h3>신고와 제재 · 운영 원칙</h3><ul><li>작성한 글은 글 아래 <strong>수정</strong> 버튼으로 고칠 수 있습니다(수정됨 표시). 삭제는 작성자가 직접 할 수 없으며, 부적절한 글은 신고를 통해 운영자가 처리합니다.</li><li>회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김(임시조치) 처리됩니다.</li><li>운영자는 검토 후 글을 삭제하거나 다시 공개합니다. 24~48시간 내 1차 검토를 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지, 중대 위반은 영구 정지 및 관계기관 통보</li><li>본인 글의 삭제가 꼭 필요하면 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 요청해 주세요.</li></ul></div>
         </div>

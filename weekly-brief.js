@@ -229,7 +229,7 @@ function highlightLines(posts, siteUrl) {
   for (const post of posts.policy) lines.push(`- **[정책 제안 · ${DEPARTMENTS[post.category] || post.category}]** ${clip(post.text)} (추천 ${post.likes})`);
   for (const post of posts.voice) lines.push(`- **[시민의 소리 · ${post.category}]** ${clip(post.text)}`);
   for (const post of posts.community) lines.push(`- **[소통·나눔]** ${clip(post.text)}`);
-  if (posts.researchCount) lines.push(`- 회원 전용 **학술·논문·소고·이야기**에 새 글 ${posts.researchCount}편이 올라왔습니다.`);
+  if (posts.researchCount) lines.push(`- **칼럼·학술**에 새 글 ${posts.researchCount}편이 올라왔습니다.`);
   if (!lines.length) lines.push('- 지난 한 주 동안 새로 올라온 글이 없습니다. 이번 주에는 여러분의 목소리를 들려주세요.');
   lines.push('', `[커뮤니티에서 더 보기](${siteUrl}/)`);
   return lines;
