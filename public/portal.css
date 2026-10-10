@@ -662,3 +662,26 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 #civic-step-panel:empty { display:none; }
 .civic-flash { box-shadow:0 0 0 3px var(--gold); border-radius:10px; transition:box-shadow .3s; }
 .civic-flow b { display:block; color:#8a3b12; font-size:14px; margin-bottom:2px; }
+
+/* ---------- 스페이스 커뮤니티가 대신 전달 ---------- */
+.forward-btn { font-weight:800; color:#1d3b8a; border-color:#c5d0f0; background:#f2f5ff; }
+.forward-badge { margin:8px 0; padding:8px 12px; border-radius:10px; background:#f2f5ff; border:1px solid #c5d0f0; color:#1d3b8a; font-size:13.5px; font-weight:700; }
+.forward-badge.done { background:#eef7ee; border-color:#cfe6cf; color:#245a2a; }
+.forward-form { margin:10px 0 4px; padding:12px; border:1px solid #c5d0f0; background:#f7f9ff; border-radius:12px; display:grid; gap:10px; }
+.forward-form select { border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; font-size:14px; max-width:240px; }
+.forward-consent { font-size:13.5px; color:var(--text); display:flex; gap:6px; align-items:flex-start; line-height:1.5; }
+.forward-consent input { margin-top:3px; }
+.forward-form .btn { justify-self:start; }
+.forward-admin { margin:14px 0 4px; border:2px dashed #c5d0f0; border-radius:12px; padding:10px 12px; background:#fbfcff; }
+.forward-admin summary { cursor:pointer; font-weight:800; color:#1d3b8a; }
+.forward-admin-body { display:grid; gap:10px; margin-top:10px; }
+.forward-top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.forward-top select, .forward-record select, .forward-record input, .forward-record textarea { border:1px solid var(--line); border-radius:8px; padding:7px 10px; font:inherit; font-size:14px; background:#fff; }
+.forward-list { list-style:none; margin:0; padding:0; display:grid; gap:6px; }
+.forward-list li { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; flex-wrap:wrap; }
+.forward-list li.done { opacity:.7; }
+.forward-info { flex:1; min-width:200px; display:flex; flex-direction:column; gap:2px; font-size:13px; color:var(--muted); }
+.forward-info strong { color:var(--ink); font-size:14.5px; }
+.forward-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.forward-record { display:grid; gap:8px; }
+.forward-record .btn { justify-self:start; }

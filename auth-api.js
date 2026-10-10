@@ -409,6 +409,11 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
     }
   }
   handleAuthApi.authenticate = authenticate;
+  // 게시판 알림용: 이메일 인증을 마친 회원의 주소만 돌려준다.
+  handleAuthApi.emailOf = async userId => {
+    const user = (await readStore()).users.find(entry => entry.id === userId);
+    return user?.emailVerifiedAt ? user.email : null;
+  };
   return handleAuthApi;
 }
 

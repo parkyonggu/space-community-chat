@@ -97,3 +97,44 @@ test('시민의 소리 authors record official complaint progress; others cannot
   const cleared = await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, clear: true } });
   assert.equal(cleared.body.post.progress, undefined);
 });
+
+test('authors ask the community to forward; admins see the queue and record one or many at once', async () => {
+  let store = { posts: [], likes: [], reports: [] };
+  const storage = { read: async () => JSON.parse(JSON.stringify(store)), write: async value => { store = value; } };
+  const users = { a: { id: 'a', nickname: '주민', emailVerified: true }, b: { id: 'b', nickname: '이웃', emailVerified: true }, z: { id: 'z', nickname: '운영자', admin: true, emailVerified: true } };
+  let who = 'a';
+  const sent = [];
+  const api = createBoardApi('/tmp/unused', { storage, authenticate: async () => ({ user: users[who] }), notify: async (userId, mail) => { sent.push({ userId, ...mail }); } });
+  const make = async text => (await call(api, '/api/board/posts', { method: 'POST', body: { board: 'voice', category: '우리 동네 고쳐 주세요', title: text, text } })).body.post;
+  const first = await make('○○길 가로등 설치 요청');
+  const second = await make('△△초 앞 횡단보도 신호등 요청');
+  assert.equal((await call(api, '/api/board/forward', { method: 'POST', body: { postId: first.id, region: '양산시' } })).status, 400, 'consent required');
+  const asked = await call(api, '/api/board/forward', { method: 'POST', body: { postId: first.id, region: '양산시', consent: true } });
+  assert.equal(asked.body.post.forward.status, '요청됨');
+  await call(api, '/api/board/forward', { method: 'POST', body: { postId: second.id, region: '양산시', consent: true } });
+
+  who = 'b';
+  assert.equal((await call(api, '/api/board/forward', { method: 'POST', body: { postId: first.id, region: '양산시', consent: true } })).status, 403);
+  const liked = await call(api, '/api/board/like', { method: 'POST', body: { postId: first.id } });
+  assert.deepEqual(liked.body, { likes: 1, liked: true }, '이웃 공감 on 시민의 소리');
+  assert.equal((await call(api, '/api/board/forward-queue')).status, 403);
+
+  who = 'z';
+  const queue = await call(api, '/api/board/forward-queue');
+  assert.equal(queue.body.posts.length, 2);
+  assert.ok(queue.body.regions.includes('양산시'));
+  const one = await call(api, '/api/board/forward-mark', { method: 'POST', body: { postIds: [first.id], channel: '국민신문고', status: '접수함', receipt: '1AA-2610-0000001' } });
+  assert.equal(one.status, 200);
+  assert.equal(one.body.posts[0].forward.status, '전달함');
+  assert.equal(one.body.posts[0].progress.by, '스페이스 커뮤니티 운영자');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].userId, 'a');
+  assert.match(sent[0].subject, /처리 경과: 접수함/);
+  const bundle = await call(api, '/api/board/forward-mark', { method: 'POST', body: { postIds: [first.id, second.id], channel: '국민신문고', status: '답변 받음', answer: '내년 예산에 반영 검토' } });
+  assert.equal(bundle.body.posts.length, 2);
+  assert.ok(bundle.body.posts[1].forward.bundle, 'bundle id for newly forwarded posts');
+  assert.equal(sent.length, 3);
+
+  who = 'a';
+  assert.equal((await call(api, '/api/board/forward', { method: 'POST', body: { postId: first.id, cancel: true } })).status, 409, 'cannot cancel after forwarding');
+});

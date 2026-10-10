@@ -366,6 +366,217 @@
     item.querySelector('.label')?.after(form);
   }
 
+  // ---------- 스페이스 커뮤니티가 대신 전달 ----------
+  // 글쓴이가 동의하면 운영자가 (주)위드플러시아 법인 명의로 시·군청(국민신문고)에 접수한다. 한 건씩도, 여러 건 묶어서도 보낼 수 있다.
+  const FORWARD_REGIONS = ['양산시', '김해시', '의령군', '창원시', '진주시', '부산광역시', '경상남도', '기타'];
+  const ORG = '스페이스 커뮤니티(withpluces.com, 운영: (주)위드플러시아)';
+  const postLink = post => (post.no ? `${location.origin}/post/${post.no}` : '');
+  const ymdKo = () => { const date = new Date(); return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`; };
+  function orgSingle(post) {
+    return [
+      `제목: [스페이스 커뮤니티 주민 의견 전달] ${post.title || post.text.split('\n')[0].slice(0, 40)}`,
+      '',
+      `안녕하십니까. 시민 소통 사이트 ${ORG}는 ${post.forward?.region || ''} 주민 회원이 올린 의견을 글쓴이의 동의를 받아 전달합니다.`,
+      '',
+      `■ 분류: ${post.category || '시민의 소리'}`,
+      '■ 내용:',
+      post.text.trim(),
+      '',
+      `■ 같은 불편에 공감한 회원: ${post.likes || 0}명`,
+      post.images?.length ? `■ 현장 사진 ${post.images.length}장 첨부` : '',
+      postLink(post) ? `■ 원문: ${postLink(post)}` : '',
+      '',
+      '처리 계획과 결과를 회신해 주시면 회원들께 알리겠습니다. 감사합니다.',
+      `${ymdKo()} ${ORG}`,
+    ].filter((line, index, all) => line !== '' || all[index - 1] !== '').join('\n').trim();
+  }
+  function orgBundle(posts) {
+    const region = [...new Set(posts.map(post => post.forward?.region).filter(Boolean))].join('·');
+    const lines = [
+      `제목: [스페이스 커뮤니티] ${region} 주민 의견 모음 ${posts.length}건 (${ymdKo()})`,
+      '',
+      `안녕하십니까. 시민 소통 사이트 ${ORG}는 ${region} 주민 회원들이 올린 의견 ${posts.length}건을 글쓴이들의 동의를 받아 함께 전달합니다.`,
+      '',
+    ];
+    posts.forEach((post, index) => {
+      const body = post.text.trim().replace(/\s+/g, ' ');
+      lines.push(`${index + 1}. [${post.category || '시민의 소리'}] ${post.title || body.slice(0, 40)}`);
+      lines.push(`   ${body.length > 300 ? `${body.slice(0, 300)}…` : body}`);
+      lines.push(`   공감 ${post.likes || 0}명${post.images?.length ? ` · 사진 ${post.images.length}장` : ''}${postLink(post) ? ` · 원문 ${postLink(post)}` : ''}`);
+      lines.push('');
+    });
+    lines.push('건별 처리 계획과 결과를 회신해 주시면 회원들께 알리겠습니다. 감사합니다.', `${ymdKo()} ${ORG}`);
+    return lines.join('\n').trim();
+  }
+  async function copyText(text, fallback) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {
+      if (fallback) { fallback.focus(); fallback.select(); try { return document.execCommand('copy'); } catch { return false; } }
+      return false;
+    }
+  }
+  function forwardBadge(post) {
+    const done = post.forward.status === '전달함';
+    return make('div', `forward-badge${done ? ' done' : ''}`, done
+      ? `🏛️ 스페이스 커뮤니티가 ${post.forward.region}에 전달했습니다${post.forward.forwardedAt ? ` (${new Date(post.forward.forwardedAt).toLocaleDateString('ko-KR')})` : ''}`
+      : `🏛️ 스페이스 커뮤니티 전달 대기 중 · ${post.forward.region} · 운영자가 확인 후 접수합니다`);
+  }
+  function forwardForm(post, item) {
+    const existing = item.querySelector('.forward-form');
+    if (existing) { existing.remove(); return; }
+    const form = make('form', 'forward-form');
+    if (post.forward) {
+      form.appendChild(make('p', 'official-lead', `${post.forward.region}에 전달을 요청해 두셨습니다. 운영자가 접수하기 전까지는 취소할 수 있습니다.`));
+      const cancel = make('button', 'btn btn-outline', '전달 요청 취소');
+      cancel.type = 'submit';
+      form.appendChild(cancel);
+    } else {
+      form.appendChild(make('p', 'official-lead', '운영자가 「스페이스 커뮤니티」 이름으로 시·군청(국민신문고)에 이 글을 접수합니다. 회원님 이름·연락처는 전달하지 않고, 글 내용·사진·공감 수만 전달합니다. 답변이 오면 처리 경과에 적고 메일로 알려 드립니다.'));
+      const region = make('select');
+      region.setAttribute('aria-label', '전달할 시·군');
+      FORWARD_REGIONS.forEach(name => { const option = make('option', '', name); option.value = name; region.appendChild(option); });
+      const consent = make('label', 'forward-consent');
+      const box = make('input');
+      box.type = 'checkbox';
+      consent.append(box, document.createTextNode(' 이 글의 내용과 사진을 운영자가 시·군청에 전달하는 데 동의합니다.'));
+      const send = make('button', 'btn btn-primary', '🏛️ 전달 요청하기');
+      send.type = 'submit';
+      form.append(region, consent, send);
+      form.dataset.mode = 'ask';
+      form.region = region;
+      form.consent = box;
+    }
+    const note = make('p', 'official-status');
+    note.setAttribute('role', 'status');
+    form.appendChild(note);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const body = form.dataset.mode === 'ask' ? { postId: post.id, region: form.region.value, consent: form.consent.checked } : { postId: post.id, cancel: true };
+      if (form.dataset.mode === 'ask' && !form.consent.checked) { note.textContent = '동의에 체크해 주세요.'; return; }
+      try {
+        const result = await api('/api/board/forward', body);
+        state.posts.voice = state.posts.voice.map(entry => entry.id === post.id ? result.post : entry);
+        render('voice');
+        setStatus('voice', result.message);
+      } catch (error) { note.textContent = error.message; }
+    });
+    item.querySelector('.label')?.after(form);
+  }
+
+  // 운영자: 시청 전달 대기함
+  function forwardAdmin() {
+    const section = $('voice-section');
+    let box = $('forward-admin');
+    if (!state.user?.admin) { box?.remove(); return; }
+    if (box) return;
+    box = make('details', 'forward-admin');
+    box.id = 'forward-admin';
+    box.appendChild(make('summary', '', '🏛️ 운영자: 시청 전달 대기함'));
+    const body = make('div', 'forward-admin-body');
+    box.appendChild(body);
+    section.querySelector('.civic-flow')?.before(box);
+    const queue = { posts: [], region: '', selected: new Set() };
+    const draw = () => {
+      const posts = queue.posts.filter(post => !queue.region || post.forward.region === queue.region);
+      const filter = make('select');
+      filter.setAttribute('aria-label', '지역');
+      [['', '모든 지역'], ...FORWARD_REGIONS.map(name => [name, name])].forEach(([value, label]) => {
+        const count = queue.posts.filter(post => (!value || post.forward.region === value) && post.forward.status !== '전달함').length;
+        const option = make('option', '', `${label}${count ? ` (대기 ${count})` : ''}`);
+        option.value = value;
+        filter.appendChild(option);
+      });
+      filter.value = queue.region;
+      filter.addEventListener('change', () => { queue.region = filter.value; queue.selected.clear(); draw(); });
+      const top = make('div', 'forward-top');
+      const allWaiting = make('button', 'like-btn', '대기 중인 글 모두 고르기');
+      allWaiting.type = 'button';
+      allWaiting.addEventListener('click', () => { posts.filter(post => post.forward.status !== '전달함').forEach(post => queue.selected.add(post.id)); draw(); });
+      top.append(filter, allWaiting);
+      const list = make('ul', 'forward-list');
+      if (!posts.length) list.appendChild(make('li', 'label', '전달 요청이 없습니다.'));
+      posts.forEach(post => {
+        const li = make('li', post.forward.status === '전달함' ? 'done' : '');
+        const pick = make('input');
+        pick.type = 'checkbox';
+        pick.checked = queue.selected.has(post.id);
+        pick.setAttribute('aria-label', '고르기');
+        pick.addEventListener('change', () => { if (pick.checked) queue.selected.add(post.id); else queue.selected.delete(post.id); draw(); });
+        const info = make('div', 'forward-info');
+        info.append(make('strong', '', post.title || post.text.split('\n')[0].slice(0, 50)),
+          make('span', '', `${post.forward.region} · ${post.category} · 공감 ${post.likes}명${post.images?.length ? ` · 사진 ${post.images.length}` : ''} · ${post.forward.status === '전달함' ? `전달함${post.progress ? ` (${post.progress.status}${post.progress.receipt ? ` ${post.progress.receipt}` : ''})` : ''}` : '대기'}`));
+        const single = make('button', 'like-btn', '한 건 문안 복사');
+        single.type = 'button';
+        single.addEventListener('click', async () => {
+          output.value = orgSingle(post);
+          queue.selected = new Set([post.id]);
+          draw();
+          status.textContent = (await copyText(output.value, output)) ? '한 건 문안을 복사했습니다. 국민신문고에 붙여넣고 사진을 첨부해 접수하세요.' : '아래 문안을 복사해 주세요.';
+        });
+        const open = make('a', 'like-btn', '원문');
+        open.href = postLink(post) || '#';
+        open.target = '_blank';
+        li.append(pick, info, single, open);
+        list.appendChild(li);
+      });
+      const chosen = queue.posts.filter(post => queue.selected.has(post.id));
+      const actions = make('div', 'forward-actions');
+      const bundle = make('button', 'btn btn-primary', `📋 고른 ${chosen.length}건 묶음 문안 복사`);
+      bundle.type = 'button';
+      bundle.disabled = chosen.length < 2;
+      bundle.addEventListener('click', async () => {
+        output.value = orgBundle(chosen);
+        status.textContent = (await copyText(output.value, output)) ? `${chosen.length}건 묶음 문안을 복사했습니다. 사진은 건별로 첨부해 주세요.` : '아래 문안을 복사해 주세요.';
+      });
+      const epeople = make('a', 'btn btn-outline', '국민신문고 열기 ↗');
+      epeople.href = 'https://www.epeople.go.kr';
+      epeople.target = '_blank';
+      epeople.rel = 'noopener';
+      actions.append(bundle, epeople);
+      const output = make('textarea', 'official-text');
+      output.rows = 8;
+      output.placeholder = '「한 건 문안 복사」나 「묶음 문안 복사」를 누르면 접수할 문안이 여기에 나옵니다.';
+      const record = make('form', 'forward-record');
+      const channel = make('select');
+      PROGRESS_CHANNELS.forEach(name => { const option = make('option', '', name); option.value = name; channel.appendChild(option); });
+      const progress = make('select');
+      PROGRESS_STATUS.forEach(name => { const option = make('option', '', name); option.value = name; progress.appendChild(option); });
+      const receipt = make('input');
+      receipt.maxLength = 40;
+      receipt.placeholder = '접수번호';
+      const answer = make('textarea');
+      answer.rows = 2;
+      answer.maxLength = 800;
+      answer.placeholder = '시청 답변 요지 (답변을 받은 뒤 적기, 선택)';
+      const save = make('button', 'btn btn-primary', `고른 ${chosen.length}건에 전달 기록 저장 (글쓴이에게 메일 알림)`);
+      save.type = 'submit';
+      save.disabled = !chosen.length;
+      const row = make('div', 'progress-row');
+      row.append(channel, progress, receipt);
+      record.append(row, answer, save);
+      record.addEventListener('submit', async event => {
+        event.preventDefault();
+        save.disabled = true;
+        try {
+          const result = await api('/api/board/forward-mark', { postIds: chosen.map(post => post.id), channel: channel.value, status: progress.value, receipt: receipt.value, answer: answer.value });
+          status.textContent = result.message;
+          queue.selected.clear();
+          await loadQueue();
+          load('voice');
+        } catch (error) { status.textContent = error.message; save.disabled = false; }
+      });
+      const status = make('p', 'official-status');
+      status.setAttribute('role', 'status');
+      const keep = body.querySelector('.official-text')?.value || '';
+      output.value = keep;
+      body.replaceChildren(make('p', 'official-lead', '글쓴이가 동의한 시민의 소리입니다. 한 건씩 또는 같은 지역 글을 여러 건 골라 묶어서 국민신문고(법인 계정)로 접수한 뒤, 접수번호를 기록하세요.'), top, list, actions, output, record, status);
+    };
+    async function loadQueue() {
+      try { queue.posts = (await api('/api/board/forward-queue')).posts; } catch (error) { queue.posts = []; setStatus('voice', error.message, true); }
+      draw();
+    }
+    box.addEventListener('toggle', () => { if (box.open) loadQueue(); });
+  }
+
   function renderPost(post) {
     const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
@@ -378,6 +589,7 @@
     body.style.whiteSpace = 'pre-wrap';
     item.appendChild(body);
     if (post.images?.length) item.appendChild(postPhotos(post));
+    if (post.board === 'voice' && post.forward) item.appendChild(forwardBadge(post));
     if (post.board === 'voice' && post.progress) item.appendChild(progressBadge(post));
     const meta = make('div', 'label');
     meta.style.display = 'flex';
@@ -399,6 +611,13 @@
       official.title = '국민신문고·안전신문고에 이 내용을 접수하기';
       official.addEventListener('click', () => officialPanel(post, item));
       meta.appendChild(official);
+      if (post.mine && state.user && post.forward?.status !== '전달함') {
+        const forward = make('button', 'like-btn forward-btn', post.forward ? '🏛️ 전달 요청됨' : '🏛️ 커뮤니티가 대신 전달');
+        forward.type = 'button';
+        forward.title = '운영자가 스페이스 커뮤니티 이름으로 시·군청에 접수합니다';
+        forward.addEventListener('click', () => forwardForm(post, item));
+        meta.appendChild(forward);
+      }
       if ((post.mine || state.user?.admin) && state.user) {
         const progress = make('button', 'like-btn', post.progress ? '처리 경과 고치기' : '처리 경과 적기');
         progress.type = 'button';
@@ -412,12 +631,12 @@
       edit.addEventListener('click', () => openEditor(post, item));
       meta.appendChild(edit);
     }
-    if (post.board === 'policy') {
-      const like = make('button', 'like-btn', `추천 ${post.likes}`);
+    if (post.board === 'policy' || post.board === 'voice') {
+      const like = make('button', 'like-btn', post.board === 'voice' ? `🙋 저도 겪어요 ${post.likes}` : `추천 ${post.likes}`);
       like.type = 'button';
       like.setAttribute('aria-pressed', String(post.liked));
       like.disabled = !state.user || post.hidden;
-      like.title = state.user ? '추천하기/취소' : '로그인 후 추천할 수 있습니다.';
+      like.title = state.user ? (post.board === 'voice' ? '같은 불편을 겪고 있다면 눌러 주세요(공감 수는 시청 전달 때 함께 알립니다)' : '추천하기/취소') : '로그인 후 누를 수 있습니다.';
       like.addEventListener('click', async () => {
         like.disabled = true;
         try {
@@ -805,6 +1024,7 @@
     state.user = detail?.user || null;
     state.mailConfigured = Boolean(detail?.mailConfigured);
     updateComposers();
+    forwardAdmin();
     const current = `${state.user?.id || ''}:${state.user?.admin || false}`;
     if (previous !== current) {
       state.ready = true;

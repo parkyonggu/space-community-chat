@@ -111,7 +111,11 @@ export class CommunityService extends DurableObject {
     };
     this.board = board.createBoardApi('/private', {
       storage: new SqlStore(state, 'board', ['posts', 'likes', 'reports']), rateLimit,
-      authenticate: this.auth.authenticate, requireVerifiedEmail, images: boardImages,
+      authenticate: this.auth.authenticate, requireVerifiedEmail, images: boardImages, siteUrl: env.SITE_URL || 'https://withpluces.com',
+      notify: async (userId, { subject, text }) => {
+        const to = mailer ? await this.auth.emailOf(userId) : null;
+        if (to) await mailer.send({ to, subject, text });
+      },
     });
     this.requireVerifiedEmail = requireVerifiedEmail;
     this.newsletter = newsletter.createNewsletterApi('/private', {

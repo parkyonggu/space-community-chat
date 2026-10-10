@@ -60,7 +60,13 @@ const boardImages = {
     }
   },
 };
-const boardApi = createBoardApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured, images: boardImages });
+const boardApi = createBoardApi(dataDirectory, {
+  authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured, images: boardImages, siteUrl,
+  notify: async (userId, { subject, text }) => {
+    const to = mailer.configured ? await authApi.emailOf(userId) : null;
+    if (to) await mailer.send({ to, subject, text });
+  },
+});
 let newsletterTimer;
 const newsletterApi = createNewsletterApi(dataDirectory, {
   authenticate: authApi.authenticate, mailer, siteUrl,
