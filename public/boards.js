@@ -263,11 +263,11 @@
       '',
       post.text.trim(),
       '',
-      post.images?.length ? `※ 현장 사진 ${post.images.length}장을 함께 첨부합니다. (아래 주소에서도 볼 수 있습니다)` : '',
+      post.images?.length ? `※ 현장 사진 ${post.images.length}장을 함께 첨부합니다.${link ? ' (아래 주소에서도 볼 수 있습니다)' : ''}` : '',
       link ? `※ 같은 불편을 겪는 주민들의 의견: 스페이스 커뮤니티 시민의 소리 ${link}` : '',
     ].filter((line, index, all) => line !== '' || (all[index - 1] !== '' && index > 0)).join('\n').trim();
   }
-  function officialPanel(post, item) {
+  function officialPanel(post, item, anchor = item.querySelector('.label')) {
     const existing = item.querySelector('.official-panel');
     if (existing) { existing.remove(); return; }
     const panel = make('div', 'official-panel');
@@ -297,7 +297,7 @@
     status.setAttribute('role', 'status');
     const after = make('p', 'official-after', post.mine ? '접수한 뒤 이 글의 「처리 경과 적기」에 접수번호와 답변을 남기면 이웃들도 진행 상황을 볼 수 있어요.' : '같은 불편을 겪고 계시면 본인 이름으로 함께 접수해 주세요. 여러 사람이 접수할수록 힘이 실립니다.');
     panel.append(preview, choices, status, after);
-    item.querySelector('.label')?.after(panel);
+    if (anchor === item) item.appendChild(panel); else anchor?.after(panel);
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   function progressBadge(post) {
@@ -689,6 +689,48 @@
     const images = pickers[board]?.ids() || [];
     return images.length ? { ...payload, images } : payload;
   };
+
+  // 시민의 소리 위 '① 올리기 ② 공식 민원 ③ 처리 경과' 안내를 누르면 그 단계로 바로 데려간다.
+  const flash = element => { element.classList.add('civic-flash'); setTimeout(() => element.classList.remove('civic-flash'), 1600); };
+  document.querySelectorAll('[data-civic-step]').forEach(button => button.addEventListener('click', () => {
+    const step = button.dataset.civicStep;
+    const holder = $('civic-step-panel');
+    holder.replaceChildren();
+    const mineLatest = (state.posts.voice || []).find(post => post.mine && !post.hidden);
+    if (step === '1') {
+      const title = $('voiceTitle');
+      title.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => (title.value ? $('voiceInput') : title).focus(), 350);
+      flash($('voiceInput').closest('.post-composer'));
+      setStatus('voice', canWrite() ? '분류를 고르고 제목·내용을 적은 뒤 사진을 붙이고(📷 사진 첨부 또는 Ctrl+V) 「시민의 소리 등록」을 눌러 주세요.' : writeHint(), !canWrite());
+      return;
+    }
+    if (step === '2') {
+      // 글쓰기 칸에 적고 있는 내용이 있으면 그 내용으로, 없으면 내가 가장 최근에 올린 글로 민원 내용을 만든다.
+      const text = $('voiceInput').value.trim();
+      if (text) {
+        officialPanel({ title: $('voiceTitle').value.trim(), text, images: pickers.voice.ids(), mine: true }, holder, holder);
+        holder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      if (mineLatest) {
+        const item = $(`post-${mineLatest.id}`);
+        if (item) { item.scrollIntoView({ behavior: 'smooth', block: 'center' }); flash(item); if (!item.querySelector('.official-panel')) officialPanel(mineLatest, item); return; }
+      }
+      holder.appendChild(make('p', 'official-lead', '먼저 ① 글쓰기 칸에 내용을 적거나 시민의 소리에 글을 올려 주세요. 그다음 이 단추를 누르면 국민신문고·안전신문고에 붙여넣을 내용을 만들어 드립니다. 다른 분의 글이라면 그 글 아래 「📮 공식 민원으로 보내기」를 누르세요.'));
+      return;
+    }
+    if (!state.user) { window.spaceOpenAuth?.('login'); setStatus('voice', '처리 경과는 글쓴이가 로그인한 뒤 적을 수 있습니다.', true); return; }
+    if (!mineLatest) {
+      holder.appendChild(make('p', 'official-lead', '내가 올린 시민의 소리 글이 아직 없습니다. 글을 올리고 공식 민원으로 접수한 뒤, 여기서 접수번호와 답변을 적을 수 있어요.'));
+      return;
+    }
+    const item = $(`post-${mineLatest.id}`);
+    if (!item) return;
+    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flash(item);
+    if (!item.querySelector('.progress-form')) progressForm(mineLatest, item);
+  }));
 
   // A draft carried over from 스페이스 톡 ("게시판에 옮겨 쓰기").
   try {
