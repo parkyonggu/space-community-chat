@@ -142,12 +142,15 @@ test('validation, duplicate registration, CSRF and origin protections are enforc
   assert.equal((await browser.request('register', credentials, { Origin: '' })).response.status, 403);
   assert.equal((await browser.request('register', { ...credentials, nickname: '나'.repeat(26) })).response.status, 400);
   assert.equal((await browser.request('register', { ...credentials, privacy: false })).response.status, 400);
-  assert.equal((await browser.request('register', { ...credentials, password: 'short' })).response.status, 400);
+  assert.equal((await browser.request('register', { ...credentials, password: '1234' })).response.status, 400, 'under 5 characters');
   assert.equal((await browser.request('register', credentials)).response.status, 201);
+  const digits = f.client();
+  await digits.request('session');
+  assert.equal((await digits.request('register', { ...credentials, email: 'five@example.com', password: '12345' })).response.status, 201, '5-digit passwords are allowed');
   const other = f.client();
   await other.request('session');
   assert.equal((await other.request('register', credentials)).response.status, 409);
-  assert.equal((await f.readStore()).users.length, 1);
+  assert.equal((await f.readStore()).users.length, 2);
   const otherLogin = await other.request('login', { ...credentials, password: 'WrongPassword123!' });
   const missingLogin = await other.request('login', { ...credentials, email: 'absent@example.com' });
   assert.equal(otherLogin.response.status, missingLogin.response.status);
@@ -233,7 +236,7 @@ test('password reset revokes all sessions and all reset links, old password no l
   assert.equal((await recover.request('verify/confirm', { token: value })).response.status, 400);
   f.restart();
   const password = 'UpdatedPassword123!';
-  assert.equal((await recover.request('password/reset', { token: value, password: 'short' })).response.status, 400);
+  assert.equal((await recover.request('password/reset', { token: value, password: '1234' })).response.status, 400);
   const results = await Promise.all([
     recover.request('password/reset', { token: value, password }),
     recover.request('password/reset', { token: value, password }),

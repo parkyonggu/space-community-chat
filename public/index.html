@@ -424,7 +424,7 @@
     <form id="signup-form" class="signup-form">
       <div class="signup-field"><label for="signup-email">이메일</label><input id="signup-email" type="email" required maxlength="254" autocomplete="email" placeholder="reader@example.com"></div>
       <div class="signup-field"><label for="signup-nickname">닉네임</label><input id="signup-nickname" type="text" required minlength="2" maxlength="25" autocomplete="off" placeholder="사용할 닉네임" aria-describedby="signup-nickname-help"><small id="signup-nickname-help">앞뒤 공백을 제외한 2~25자</small></div>
-      <div class="signup-field"><label for="signup-password">비밀번호</label><input id="signup-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10자 이상 입력" aria-describedby="signup-password-help"><small id="signup-password-help">10~128자 · 다른 사이트와 다른 비밀번호를 사용해 주세요.</small></div>
+      <div class="signup-field"><label for="signup-password">비밀번호</label><input id="signup-password" type="password" required minlength="5" maxlength="128" autocomplete="new-password" placeholder="5자 이상 입력" aria-describedby="signup-password-help"><small id="signup-password-help">5~128자 · 다른 사이트와 다른 비밀번호를 사용해 주세요.</small></div>
       <div class="signup-field"><label for="signup-password-confirm">비밀번호 확인</label><input id="signup-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="비밀번호를 다시 입력해 주세요"></div>
       <fieldset class="signup-consents">
         <legend>가입 동의 항목</legend>
@@ -444,7 +444,7 @@
     <p class="signup-intro">이메일과 비밀번호로 스페이스에 로그인하세요.</p>
     <form id="login-form" class="signup-form">
       <div class="signup-field"><label for="login-email">이메일</label><input id="login-email" type="email" required maxlength="254" autocomplete="username" placeholder="reader@example.com"></div>
-      <div class="signup-field"><label for="login-password">비밀번호</label><input id="login-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <div class="signup-field"><label for="login-password">비밀번호</label><input id="login-password" type="password" required minlength="5" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <label class="auth-remember"><input id="login-remember" type="checkbox"><span>로그인 상태 유지 (30일)</span></label>
       <p class="signup-footnote">공용 기기에서는 선택하지 마세요. 미선택 시 브라우저 세션 쿠키를 사용하며 최대 12시간 후 만료됩니다.</p>
       <p id="login-status" class="signup-status" role="status" aria-live="polite"></p>
@@ -472,7 +472,7 @@
     <div class="signup-heading"><div><span class="signup-kicker">NEW PASSWORD</span><h2 id="reset-title">새 비밀번호 설정</h2></div><button id="reset-close" class="signup-close" type="button" aria-label="새 비밀번호 창 닫기">×</button></div>
     <p class="signup-notice">변경 후 모든 기기의 기존 로그인이 해제됩니다. 새 비밀번호로 다시 로그인해 주세요.</p>
     <form id="reset-form" class="signup-form">
-      <div class="signup-field"><label for="reset-password">새 비밀번호</label><input id="reset-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10~128자 입력"></div>
+      <div class="signup-field"><label for="reset-password">새 비밀번호</label><input id="reset-password" type="password" required minlength="5" maxlength="128" autocomplete="new-password" placeholder="5~128자 입력"></div>
       <div class="signup-field"><label for="reset-password-confirm">새 비밀번호 확인</label><input id="reset-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="새 비밀번호 다시 입력"></div>
       <p id="reset-status" class="signup-status" role="status"></p>
       <button class="signup-submit" type="submit" disabled>비밀번호 변경</button>
@@ -484,7 +484,7 @@
     <div class="signup-heading"><div><span class="signup-kicker">DELETE ACCOUNT</span><h2 id="delete-title">회원 탈퇴</h2></div><button id="delete-close" class="signup-close" type="button" aria-label="회원 탈퇴 창 닫기">×</button></div>
     <p class="signup-notice">탈퇴하면 이메일·닉네임·비밀번호 해시와 모든 로그인 세션이 즉시 삭제되며 되돌릴 수 없습니다. 이미 공개된 댓글은 남으므로, 삭제가 필요하면 운영자에게 요청해 주세요.</p>
     <form id="delete-form" class="signup-form">
-      <div class="signup-field"><label for="delete-password">현재 비밀번호</label><input id="delete-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <div class="signup-field"><label for="delete-password">현재 비밀번호</label><input id="delete-password" type="password" required minlength="5" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <label class="auth-remember"><input id="delete-confirm" type="checkbox" required><span>계정과 개인정보가 즉시 삭제되는 것을 확인했습니다.</span></label>
       <p id="delete-status" class="signup-status" role="status"></p>
       <button class="signup-submit" type="submit" disabled>탈퇴하기</button>

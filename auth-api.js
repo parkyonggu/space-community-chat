@@ -263,7 +263,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         const user = session.userId ? store.users.find(entry => entry.id === session.userId) : null;
         if (!user) throw new AuthError(401, '로그인 후 탈퇴할 수 있습니다.');
         const password = typeof input.password === 'string' ? input.password : '';
-        if (password.length < 10 || password.length > 128) throw new AuthError(400, '현재 비밀번호를 입력해 주세요.');
+        if (password.length < 5 || password.length > 128) throw new AuthError(400, '현재 비밀번호를 입력해 주세요.');
         limit(`credentials:${ip}`, 10, 15 * 60000);
         limit(`account:${hash(user.email)}`, 8, 15 * 60000);
         const key = await passwordKey(password, user.password.salt);
@@ -329,7 +329,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
           return;
         }
         const password = typeof input.password === 'string' ? input.password : '';
-        if (password.length < 10 || password.length > 128) throw new AuthError(400, '비밀번호는 10~128자로 입력해 주세요.');
+        if (password.length < 5 || password.length > 128) throw new AuthError(400, '비밀번호는 5~128자로 입력해 주세요.');
         findMailToken(store, input.token, 'reset');
         const salt = randomBytes(16).toString('hex');
         const key = await passwordKey(password, salt);
@@ -345,9 +345,9 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
       }
       const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
       const password = typeof input.password === 'string' ? input.password : '';
-      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 10 || password.length > 128 ||
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 5 || password.length > 128 ||
           (input.remember !== undefined && typeof input.remember !== 'boolean')) {
-        throw new AuthError(400, '유효한 이메일과 10~128자 비밀번호를 입력해 주세요.');
+        throw new AuthError(400, '유효한 이메일과 5~128자 비밀번호를 입력해 주세요.');
       }
       limit(`credentials:${ip}`, 10, 15 * 60000);
       limit(`account:${hash(email)}`, 8, 15 * 60000);

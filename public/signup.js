@@ -281,7 +281,7 @@ document.querySelectorAll('[data-auth-switch]').forEach(button => {
 function validateSignupFields() {
   const length = signupNickname.value.trim().length;
   signupNickname.setCustomValidity(length < 2 || length > signupNickname.maxLength ? '닉네임은 앞뒤 공백을 제외한 2~25자로 입력해 주세요.' : '');
-  signupPassword.setCustomValidity(signupPassword.value.length < 10 || signupPassword.value.length > 128 ? '비밀번호는 10~128자로 입력해 주세요.' : '');
+  signupPassword.setCustomValidity(signupPassword.value.length < 5 || signupPassword.value.length > 128 ? '비밀번호는 5~128자로 입력해 주세요.' : '');
   signupConfirmation.setCustomValidity(signupConfirmation.value !== signupPassword.value ? '비밀번호가 일치하지 않습니다.' : '');
 }
 
@@ -341,7 +341,7 @@ loginForm.addEventListener('submit', event => submitAuth(event, 'login', loginFo
 }));
 
 resetForm.addEventListener('input', () => {
-  resetPassword.setCustomValidity(resetPassword.value.length < 10 || resetPassword.value.length > 128 ? '비밀번호는 10~128자로 입력해 주세요.' : '');
+  resetPassword.setCustomValidity(resetPassword.value.length < 5 || resetPassword.value.length > 128 ? '비밀번호는 5~128자로 입력해 주세요.' : '');
   resetConfirmation.setCustomValidity(resetConfirmation.value !== resetPassword.value ? '비밀번호가 일치하지 않습니다.' : '');
   resetStatus.textContent = '';
 });
