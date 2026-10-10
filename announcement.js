@@ -94,7 +94,8 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     document.getElementById('share').addEventListener('click', async () => {
       const data = { title: ${JSON.stringify(`${kind.label} ${title}`).replace(/</g, '\\u003c')}, url: location.href };
       if (window.spaceKakaoShare && await window.spaceKakaoShare({ title: data.title, description: ${JSON.stringify(description).replace(/</g, '\\u003c')},
-        imageUrl: ${JSON.stringify(siteUrl + kind.image)}, link: ${JSON.stringify(url)} })) return;
+        imageUrl: ${JSON.stringify(siteUrl + kind.image)}, link: ${JSON.stringify(url)},
+        card: { kindLabel: ${JSON.stringify(kind.label)}, cardTitle: ${JSON.stringify(title).replace(/</g, '\\u003c')}, body: ${JSON.stringify(body).replace(/</g, '\\u003c')} } })) return;
       try { if (navigator.share) { await navigator.share({ ...data, text: data.title }); return; } } catch (error) { if (error && error.name === 'AbortError') return; }
       try { await navigator.clipboard.writeText(data.title + '\\n' + data.url); alert('주소를 복사했어요. 카카오톡 대화방에 붙여넣어 보내 주세요.'); }
       catch { prompt('아래 주소를 복사해 카카오톡에 붙여넣어 주세요.', data.url); }

@@ -175,6 +175,7 @@
       if (window.spaceKakaoShare && await window.spaceKakaoShare({
         title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
         imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: info.link,
+        card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
       })) return;
       await shareText(title, info.link);
     })();

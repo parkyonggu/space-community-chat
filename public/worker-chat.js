@@ -102,6 +102,7 @@ async function shareAnnouncement(message) {
   if (info && message.id && window.spaceKakaoShare && await window.spaceKakaoShare({
     title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
     imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: url,
+    card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
   })) {
     report('카카오톡 공유 창을 열었습니다. 보낼 대화방을 골라 주세요.');
     return;
