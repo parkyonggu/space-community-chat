@@ -87,19 +87,19 @@ async function choosePhoto(file) {
     const thumb = document.createElement('img');
     thumb.src = pendingPhoto.url;
     thumb.alt = '보낼 사진';
-    const send = document.createElement('button');
-    send.type = 'button';
-    send.className = 'chat-photo-send';
-    send.textContent = '사진 보내기';
-    send.addEventListener('click', sendPhoto);
+    const note = document.createElement('span');
+    note.className = 'chat-photo-note';
+    note.textContent = '「전송」을 누르면 사진과 글이 한 번에 올라가요';
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'chat-photo-cancel';
     cancel.textContent = '취소';
     cancel.addEventListener('click', clearPhoto);
-    photoPreview.replaceChildren(thumb, send, cancel);
+    photoPreview.replaceChildren(thumb, note, cancel);
     photoPreview.hidden = false;
-    chatStatus.textContent = '사진을 확인하고 「사진 보내기」를 눌러 주세요. 입력칸에 적은 글도 함께 보내집니다. 광장 사진은 누구나 볼 수 있어요.';
+    chatStatus.textContent = isAdmin && announcementKind.value
+      ? '안내장 사진이 붙었습니다. 입력칸 첫 줄에 제목을 적고 「전송」을 누르면 사진과 글이 하나의 안내장으로 올라가고 스페이스톡에도 전달됩니다.'
+      : '사진이 붙었습니다. 글을 함께 적고 「전송」을 누르면 한 번에 올라갑니다. 광장 사진은 누구나 볼 수 있어요.';
     chatStatus.dataset.error = 'false';
   } catch (error) {
     chatStatus.textContent = error.message;
@@ -546,6 +546,8 @@ function connectChat() {
   });
 }
 function sendChat() {
+  // 사진이 붙어 있으면 사진과 입력한 글을 한 메시지로 보낸다(안내장도 한 번에).
+  if (pendingPhoto) { sendPhoto(); return; }
   let text = chatInput.value.trim();
   if (!text) {
     chatStatus.textContent = '채팅은 1~2,000자로 입력해 주세요.';

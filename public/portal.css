@@ -714,3 +714,4 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .chat-text.chat-photo img { display:block; width:100%; max-height:360px; object-fit:cover; border-radius:10px; }
 .chat-text.chat-photo p { margin:6px 6px 2px; white-space:pre-wrap; }
 .chat-card-poster { display:block; width:100%; max-height:520px; object-fit:contain; background:#f4f5f9; }
+.chat-photo-note { font-size:12.5px; font-weight:700; color:var(--navy); }
