@@ -700,3 +700,16 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .chat-card-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 12px 11px; }
 .chat-announcement-share { min-height:34px; border:0; border-radius:9px; padding:0 12px; background:#fee500; color:#191919; font-weight:800; font-size:13px; cursor:pointer; }
 .chat-card-link { font-size:13px; font-weight:700; color:var(--primary); }
+
+/* 광장채팅 사진 */
+.chat-photo-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0; }
+.chat-photo-btn { min-height:34px; border:1px solid var(--line); background:#fff; border-radius:9px; padding:0 12px; font-weight:800; font-size:13px; color:var(--navy); cursor:pointer; }
+.chat-photo-preview { display:flex; align-items:center; gap:8px; padding:6px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
+.chat-photo-preview[hidden] { display:none; }
+.chat-photo-preview img { width:72px; height:72px; object-fit:cover; border-radius:8px; }
+.chat-photo-send, .chat-photo-cancel { min-height:34px; border-radius:9px; padding:0 12px; font-weight:800; font-size:13px; cursor:pointer; }
+.chat-photo-send { border:0; background:var(--navy); color:#fff; }
+.chat-photo-cancel { border:1px solid var(--line); background:#fff; color:var(--text); }
+.chat-text.chat-photo { padding:4px; max-width:min(320px, 80%); }
+.chat-text.chat-photo img { display:block; width:100%; max-height:360px; object-fit:cover; border-radius:10px; }
+.chat-text.chat-photo p { margin:6px 6px 2px; white-space:pre-wrap; }

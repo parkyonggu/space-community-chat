@@ -216,7 +216,8 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const image = await images.get(id);
         if (!image) throw new BoardError(404, '사진을 찾을 수 없습니다.');
         const { user } = await authenticate(request);
-        let open = Boolean(user && (user.admin || user.id === image.userId));
+        // 광장채팅 사진(postId 'chat')은 누구나 볼 수 있다.
+        let open = image.postId === 'chat' || Boolean(user && (user.admin || user.id === image.userId));
         if (!open && image.postId) {
           const post = (await readStore()).posts.find(entry => entry.id === image.postId);
           open = Boolean(post && !post.hiddenAt && (BOARDS[post.board]?.publicRead || user));
@@ -238,7 +239,9 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const id = randomUUID().replace(/-/g, '');
         // 글에 붙이지 않고 하루가 지난 사진은 지운다.
         await images.purgeUnattached(now() - 24 * 60 * 60 * 1000);
-        await images.put({ id, type, data, userId: auth.user.id, postId: null, createdAt: now() });
+        // ?purpose=chat: 광장채팅에 바로 보내는 사진은 올리는 즉시 공개한다.
+        const forChat = new URL(request.url, 'http://localhost').searchParams.get('purpose') === 'chat';
+        await images.put({ id, type, data, userId: auth.user.id, postId: forChat ? 'chat' : null, createdAt: now() });
         send(response, 201, { id, url: `/api/board/image?id=${id}` });
         return;
       }

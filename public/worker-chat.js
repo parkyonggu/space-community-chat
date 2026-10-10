@@ -24,6 +24,135 @@ for (const [value, label] of [['', '보통 메시지'], ...ANNOUNCE_KINDS.map(ki
 }
 announcementOption.append('운영자 글 종류: ', announcementKind);
 chatInput.parentElement.before(announcementOption);
+// ---------- 광장채팅 사진: 붙여넣기(Ctrl+V)·끌어다 놓기·📷 버튼 → 미리보기 → 보내기 ----------
+const photoBar = document.createElement('div');
+photoBar.className = 'chat-photo-bar';
+const photoPick = document.createElement('button');
+photoPick.type = 'button';
+photoPick.className = 'chat-photo-btn';
+photoPick.textContent = '📷 사진';
+photoPick.title = '사진 보내기 (복사한 사진은 입력칸에 Ctrl+V로 붙여넣어도 됩니다)';
+const photoFile = document.createElement('input');
+photoFile.type = 'file';
+photoFile.accept = 'image/*';
+photoFile.hidden = true;
+const photoPreview = document.createElement('div');
+photoPreview.className = 'chat-photo-preview';
+photoPreview.hidden = true;
+photoBar.append(photoPick, photoFile, photoPreview);
+chatInput.parentElement.before(photoBar);
+let pendingPhoto = null;
+async function shrinkPhoto(file) {
+  let source;
+  try { source = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch {
+    source = await new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = URL.createObjectURL(file);
+    });
+  }
+  if (!source) throw new Error('사진을 읽을 수 없습니다. JPG·PNG 사진을 골라 주세요.');
+  const scale = Math.min(1, 1600 / Math.max(source.width, source.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(source.width * scale));
+  canvas.height = Math.max(1, Math.round(source.height * scale));
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  for (const quality of [0.85, 0.72, 0.6]) {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob && blob.size <= 1400 * 1024) return blob;
+  }
+  throw new Error('사진이 너무 큽니다.');
+}
+function clearPhoto() {
+  if (pendingPhoto?.url) URL.revokeObjectURL(pendingPhoto.url);
+  pendingPhoto = null;
+  photoPreview.hidden = true;
+  photoPreview.replaceChildren();
+}
+async function choosePhoto(file) {
+  if (!file) return;
+  if (!canSend) {
+    chatStatus.textContent = '로그인(이메일 인증)한 회원만 사진을 보낼 수 있습니다.';
+    chatStatus.dataset.error = 'true';
+    return;
+  }
+  clearPhoto();
+  try {
+    const blob = await shrinkPhoto(file);
+    pendingPhoto = { blob, url: URL.createObjectURL(blob) };
+    const thumb = document.createElement('img');
+    thumb.src = pendingPhoto.url;
+    thumb.alt = '보낼 사진';
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'chat-photo-send';
+    send.textContent = '사진 보내기';
+    send.addEventListener('click', sendPhoto);
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'chat-photo-cancel';
+    cancel.textContent = '취소';
+    cancel.addEventListener('click', clearPhoto);
+    photoPreview.replaceChildren(thumb, send, cancel);
+    photoPreview.hidden = false;
+    chatStatus.textContent = '사진을 확인하고 「사진 보내기」를 눌러 주세요. 입력칸에 적은 글도 함께 보내집니다. 광장 사진은 누구나 볼 수 있어요.';
+    chatStatus.dataset.error = 'false';
+  } catch (error) {
+    chatStatus.textContent = error.message;
+    chatStatus.dataset.error = 'true';
+  }
+}
+async function sendPhoto() {
+  if (!pendingPhoto) return;
+  if (chatSocket?.readyState !== WebSocket.OPEN) {
+    chatStatus.textContent = '채팅이 연결되지 않았습니다. 연결 후 다시 보내 주세요.';
+    chatStatus.dataset.error = 'true';
+    return;
+  }
+  photoPreview.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  chatStatus.textContent = '사진을 올리는 중입니다…';
+  try {
+    const response = await fetch('/api/board/image?purpose=chat', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'image/jpeg', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' }, body: pendingPhoto.blob,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `사진 올리기 실패 (${response.status})`);
+    const text = chatInput.value.trim().slice(0, 2000);
+    chatSocket.send(JSON.stringify({ text, image: result.id }));
+    chatInput.value = '';
+    clearPhoto();
+    chatStatus.textContent = '사진을 보냈습니다.';
+    chatStatus.dataset.error = 'false';
+  } catch (error) {
+    chatStatus.textContent = error.message;
+    chatStatus.dataset.error = 'true';
+    photoPreview.querySelectorAll('button').forEach(button => { button.disabled = false; });
+  }
+}
+photoPick.addEventListener('click', () => photoFile.click());
+photoFile.addEventListener('change', () => { choosePhoto(photoFile.files?.[0]); photoFile.value = ''; });
+chatInput.addEventListener('paste', event => {
+  const file = [...(event.clipboardData?.files || [])].find(item => item.type.startsWith('image/'))
+    || [...(event.clipboardData?.items || [])].find(item => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile();
+  if (!file) return;
+  event.preventDefault();
+  choosePhoto(file);
+});
+for (const target of [chatInput, chatBox]) {
+  target.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
+  target.addEventListener('drop', event => {
+    const file = [...(event.dataTransfer?.files || [])].find(item => item.type.startsWith('image/'));
+    if (!file) return;
+    event.preventDefault();
+    choosePhoto(file);
+  });
+}
+
 function announcementOf(text) {
   if (typeof text !== 'string') return null;
   const kind = ANNOUNCE_KINDS.find(entry => text.trim().startsWith(entry.tag));
@@ -232,8 +361,26 @@ function renderChatMessage(result) {
   const info = announcementOf(result.text);
   const bubble = info ? announcementCard(result, info) : document.createElement('div');
   if (!info) {
-    bubble.className = 'chat-text';
-    bubble.textContent = result.text;
+    bubble.className = result.image ? 'chat-text chat-photo' : 'chat-text';
+    if (typeof result.image === 'string' && /^[0-9a-f]{32}$/.test(result.image)) {
+      const link = document.createElement('a');
+      link.href = `/api/board/image?id=${result.image}`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      const image = document.createElement('img');
+      image.src = link.href;
+      image.alt = `${name || '회원'}님이 보낸 사진`;
+      image.loading = 'lazy';
+      link.appendChild(image);
+      bubble.appendChild(link);
+      if (result.text) {
+        const caption = document.createElement('p');
+        caption.textContent = result.text;
+        bubble.appendChild(caption);
+      }
+    } else {
+      bubble.textContent = result.text;
+    }
   }
   const time = document.createElement('time');
   time.className = 'chat-time';
@@ -244,7 +391,7 @@ function renderChatMessage(result) {
   body.appendChild(line);
   item.appendChild(body);
   // 화면 낭독기용: "닉네임: 내용"
-  item.setAttribute('aria-label', `${mine ? '나' : name}, ${timeLabel(at)}: ${result.text}`);
+  item.setAttribute('aria-label', `${mine ? '나' : name}, ${timeLabel(at)}: ${result.image ? '사진 ' : ''}${result.text}`);
   chatBox.appendChild(item);
 }
 const chatPresence = document.getElementById('chatPresence');
@@ -354,7 +501,7 @@ function connectChat() {
       chatStatus.dataset.error = 'true';
       return;
     }
-    if (typeof result.text !== 'string') {
+    if (typeof result.text !== 'string' && !result.image) {
       console.error('Invalid chat message shape');
       chatStatus.textContent = '잘못된 채팅 메시지를 받았습니다.';
       chatStatus.dataset.error = 'true';

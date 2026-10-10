@@ -162,3 +162,11 @@ test('KakaoTalk official card is tried first with logo image and page link', asy
   assert.equal(card.title, '💌 초청장 창립 기념식');
   assert.match(app.status.textContent, /카카오톡 공유 창/);
 });
+
+test('photo messages render an image; text-only stays text', () => {
+  const app = client();
+  app.socket.events.message({ data: JSON.stringify({ type: 'message', id: '1791560000000-abcdef1234', text: '가로등이 꺼졌어요', image: 'a'.repeat(32), name: '이웃', at: Date.now() }) });
+  const image = app.created.find(node => node.src === `/api/board/image?id=${'a'.repeat(32)}`);
+  assert.ok(image, 'image element created');
+  assert.ok(app.created.some(node => node.className === 'chat-text chat-photo'));
+});

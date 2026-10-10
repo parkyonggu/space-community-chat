@@ -138,3 +138,11 @@ test('authors ask the community to forward; admins see the queue and record one 
   who = 'a';
   assert.equal((await call(api, '/api/board/forward', { method: 'POST', body: { postId: first.id, cancel: true } })).status, 409, 'cannot cancel after forwarding');
 });
+
+test('chat photos are public as soon as they are uploaded', async () => {
+  const { api, as } = setup();
+  const up = await call(api, '/api/board/image?purpose=chat', { method: 'POST', body: JPEG, type: 'image/jpeg' });
+  assert.equal(up.status, 201);
+  as(null);
+  assert.equal((await call(api, `/api/board/image?id=${up.body.id}`)).status, 200);
+});

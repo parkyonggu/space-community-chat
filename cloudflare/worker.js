@@ -274,7 +274,7 @@ export class ChatRoom extends DurableObject {
   }
 
   publicMessage(message, uid) {
-    return { type: 'message', id: message.id, name: message.name, text: message.text, at: message.at, own: Boolean(uid) && message.uid === uid };
+    return { type: 'message', id: message.id, name: message.name, text: message.text, ...(message.image ? { image: message.image } : {}), at: message.at, own: Boolean(uid) && message.uid === uid };
   }
 
   broadcast(build, skip) {
@@ -307,14 +307,16 @@ export class ChatRoom extends DurableObject {
       return;
     }
     const text = typeof input?.text === 'string' ? input.text.trim() : '';
-    if (!text || text.length > 2000) { error('채팅은 1~2,000자로 입력해 주세요.'); return; }
+    // 사진: 먼저 /api/board/image?purpose=chat 으로 올린 사진 번호만 받는다(사진만 보내도 된다).
+    const image = typeof input?.image === 'string' && /^[0-9a-f]{32}$/.test(input.image) ? input.image : '';
+    if ((!text && !image) || text.length > 2000) { error('채팅은 1~2,000자로 입력해 주세요.'); return; }
     const now = Date.now();
     if (now - window.start >= 60000) window = { ...window, start: now, count: 0 };
     window.count += 1;
     socket.serializeAttachment(window);
     if (window.count > 30) { error('채팅 전송이 많습니다. 잠시 후 다시 시도해 주세요.'); return; }
     const rand = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
-    const stored = { id: `${now}-${rand}`, uid: window.uid || '', name: window.name, text, at: now };
+    const stored = { id: `${now}-${rand}`, uid: window.uid || '', name: window.name, text, ...(image ? { image } : {}), at: now };
     await this.ctx.storage.put(squareKey(now, rand), stored);
     if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(now + 24 * 60 * 60 * 1000);
     this.broadcast(peer => this.publicMessage(stored, peer.uid));
