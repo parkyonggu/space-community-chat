@@ -10,10 +10,11 @@ assert.ok(socketLine, 'Chat initialization was not found');
 html = html.replace(socketLine, '');
 html = html.replace('<script src="/socket.io/socket.io.js"></script>', '<script defer src="/worker-chat.js"></script>');
 fs.mkdirSync(output, { recursive: true });
-for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml', 'boards.js', 'newsletter.html', 'newsletter-admin.html', 'newsletter-admin.js', 'portal.css', 'portal.js', 'letter.html', 'ads.txt', 'about.html', 'terms.html', 'page.css', 'chat.html', 'chat.css', 'chat.js', 'sw.js', 'talk-manifest.json']) {
+for (const file of ['signup.css', 'signup.js', 'reader-community.js', 'worker-chat.js', 'manifest.json', 'favicon.svg', 'privacy.html', 'robots.txt', 'sitemap.xml', 'boards.js', 'newsletter.html', 'newsletter-admin.html', 'newsletter-admin.js', 'portal.css', 'portal.js', 'letter.html', 'ads.txt', 'about.html', 'terms.html', 'page.css', 'chat.html', 'chat.css', 'chat.js', 'sw.js', 'talk-manifest.json', 'kakao-share.js']) {
   fs.copyFileSync(path.join(source, file), path.join(output, file));
 }
 fs.cpSync(path.join(source, 'icons'), path.join(output, 'icons'), { recursive: true });
+fs.cpSync(path.join(source, 'share'), path.join(output, 'share'), { recursive: true });
 fs.writeFileSync(path.join(output, 'index.html'), html);
 fs.writeFileSync(path.join(output, 'community.html'), html);
 fs.writeFileSync(path.join(output, 'article.html'), '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/"><title>스페이스 커뮤니티</title></head><body><a href="/">최신 커뮤니티 홈</a></body></html>');

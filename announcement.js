@@ -89,9 +89,12 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     </article>
     <p class="note">스페이스톡의 「📣 모임안내」 채널을 받아 보면 새 모임안내·초청장을 알림으로 받을 수 있어요.</p>
   </main>
+  <script src="/kakao-share.js"></script>
   <script>
     document.getElementById('share').addEventListener('click', async () => {
       const data = { title: ${JSON.stringify(`${kind.label} ${title}`).replace(/</g, '\\u003c')}, url: location.href };
+      if (window.spaceKakaoShare && await window.spaceKakaoShare({ title: data.title, description: ${JSON.stringify(description).replace(/</g, '\\u003c')},
+        imageUrl: ${JSON.stringify(siteUrl + kind.image)}, link: ${JSON.stringify(url)} })) return;
       try { if (navigator.share) { await navigator.share({ ...data, text: data.title }); return; } } catch (error) { if (error && error.name === 'AbortError') return; }
       try { await navigator.clipboard.writeText(data.title + '\\n' + data.url); alert('주소를 복사했어요. 카카오톡 대화방에 붙여넣어 보내 주세요.'); }
       catch { prompt('아래 주소를 복사해 카카오톡에 붙여넣어 주세요.', data.url); }

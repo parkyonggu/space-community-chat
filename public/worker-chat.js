@@ -98,6 +98,14 @@ async function shareAnnouncement(message) {
     chatStatus.textContent = text;
     chatStatus.dataset.error = String(error);
   };
+  // 1순위: 카카오톡 공식 공유 카드(스페이스 커뮤니티 로고·이름). 안 되면 휴대폰 공유 창, 그것도 안 되면 주소 복사.
+  if (info && message.id && window.spaceKakaoShare && await window.spaceKakaoShare({
+    title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
+    imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: url,
+  })) {
+    report('카카오톡 공유 창을 열었습니다. 보낼 대화방을 골라 주세요.');
+    return;
+  }
   if (navigator.share) {
     try {
       await navigator.share({ title, text: title, url });

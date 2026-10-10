@@ -38,7 +38,7 @@ function client(admin = true, navigator = {}) {
   };
   vm.runInNewContext(source, context);
   socket.events.message({ data: JSON.stringify({ type: 'hello', admin, canSend: true, signedIn: true, you: 'Test' }) });
-  return { nodes, socket, option: created[1], check: created[2], status: created[0], created, share: context.shareAnnouncement };
+  return { nodes, socket, option: created[1], check: created[2], status: created[0], created, share: context.shareAnnouncement, context };
 }
 
 test('admin picks 모임안내 or 초청장; the marker is added once and the choice resets', () => {
@@ -123,7 +123,7 @@ test('Space Talk shares the announcement page address', async () => {
   assert.ok(start >= 0 && end > start);
   const text = '[모임안내]\n토요일 산책\n오후 2시\n\n자세히 보기·카카오톡 공유: https://withpluces.com/e/1791560000000-abcdef1234';
   let payload;
-  const context = { navigator: { share: async value => { payload = value; } }, copyText: async () => true, toast() {} };
+  const context = { window: {}, navigator: { share: async value => { payload = value; } }, copyText: async () => true, toast() {} };
   vm.runInNewContext(talkSource.slice(start, end), context);
   await context.shareAnnouncement(text);
   assert.equal(payload.url, 'https://withpluces.com/e/1791560000000-abcdef1234');
@@ -150,4 +150,15 @@ test('announcement channel uses the original mark for list and message avatars',
     assert.equal(face.className, small ? 'avatar small' : 'avatar');
   }
   assert.equal(context.avatar('Member', 'user-id', true).tag, 'span');
+});
+
+test('KakaoTalk official card is tried first with logo image and page link', async () => {
+  let card;
+  const app = client(true, { share: async () => { throw new Error('should not reach'); } });
+  app.context.window.spaceKakaoShare = async value => { card = value; return true; };
+  await app.share({ id: '1791560000000-abcdef1234', text: '[초청장]\n창립 기념식\n11월 1일 오후 3시' });
+  assert.equal(card.link, 'https://example.test/e/1791560000000-abcdef1234');
+  assert.equal(card.imageUrl, 'https://example.test/share/invitation.png');
+  assert.equal(card.title, '💌 초청장 창립 기념식');
+  assert.match(app.status.textContent, /카카오톡 공유 창/);
 });

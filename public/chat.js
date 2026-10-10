@@ -169,7 +169,15 @@
     const info = announcementOf(text);
     if (!info) return shareText(text);
     const title = `${info.kind.label} ${info.title}`;
-    return info.link ? shareText(title, info.link) : shareText(`${title}\n\n${info.body}\n\n— 스페이스 커뮤니티`);
+    if (!info.link) return shareText(`${title}\n\n${info.body}\n\n— 스페이스 커뮤니티`);
+    return (async () => {
+      // 1순위: 카카오톡 공식 공유 카드. 안 되면 공유 창이나 주소 복사.
+      if (window.spaceKakaoShare && await window.spaceKakaoShare({
+        title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
+        imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: info.link,
+      })) return;
+      await shareText(title, info.link);
+    })();
   }
   function announcementCard(message, info) {
     const card = make('div', 'bubble announce-card');
