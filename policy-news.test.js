@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { weeklyPolicyNews, recentPolicyNews, dailyBriefingText, parseNews, isTypeOne } = require('./policy-news');
+const { weeklyPolicyNews, recentPolicyNews, dailyBriefingText, pickDailyTheme, parseNews, isTypeOne } = require('./policy-news');
 const { buildWeeklyDraft } = require('./weekly-brief');
 
 const item = fields => `<NewsItem>${Object.entries(fields).map(([key, value]) => `<${key}><![CDATA[${value}]]></${key}>`).join('')}</NewsItem>`;
@@ -66,21 +66,30 @@ test('"사실은 이렇습니다" items are kept apart from policy news', async 
   assert.ok(!weekly.lines.join('').includes('기초연금 삭감'), 'not in the newsletter policy list');
 });
 
-test('daily 스페이스 톡 briefing lists today\'s policy news, economy first, with links and source', () => {
+test('daily 스페이스 톡 briefing picks the theme with the most policy news today', () => {
   const now = Date.parse('2026-10-08T09:00:00Z');
+  const item = (title, dept, extra = {}) => ({ title, dept, url: `https://www.korea.kr/${encodeURIComponent(title)}`, kind: 'news', economy: false, at: now - 3600e3, sub: '', ...extra });
   const items = [
-    { title: '누리호 5차 발사 성공', dept: '우주항공청', url: 'https://www.korea.kr/a', kind: 'news', economy: false, at: now - 3600e3 },
-    { title: '국민성장펀드 200조원으로 확대', dept: '금융위원회', url: 'https://www.korea.kr/b', kind: 'news', economy: true, at: now - 7200e3 },
-    { title: '기초연금 보도 관련', dept: '보건복지부', url: 'https://www.korea.kr/c', kind: 'fact', economy: false, at: now - 3600e3 },
-    { title: '어제 소식', dept: '법무부', url: 'https://www.korea.kr/d', kind: 'news', economy: false, at: now - 30 * 3600e3 },
+    item('누리호 5차 발사 성공', '우주항공청'),
+    item('청년 월세 지원 대상 확대', '국토교통부', { sub: '무주택 청년 주거비 부담 완화' }),
+    item('공공주택 5만 호 추가 공급', '국토교통부', { at: now - 1800e3 }),
+    item('전세사기 피해 지원 연장', '국토교통부'),
+    item('국민성장펀드 200조원으로 확대', '금융위원회', { economy: true }),
+    item('기초연금 보도 관련', '보건복지부', { kind: 'fact' }),
+    item('어제 소식', '국토교통부', { at: now - 30 * 3600e3 }),
   ];
   const text = dailyBriefingText(items, now);
   const lines = text.split('\n');
-  assert.equal(lines[0], '📰 10월 8일 오늘의 정책브리핑');
-  assert.ok(text.indexOf('국민성장펀드') < text.indexOf('누리호'), 'economy first');
-  assert.ok(text.includes('https://www.korea.kr/b'));
-  assert.ok(!text.includes('어제 소식') && !text.includes('기초연금'), 'only today\'s policy news, not fact checks');
+  assert.equal(lines[0], '📰 10월 8일 오늘의 정책 테마 — 🏠 부동산·주거');
+  assert.match(lines[1], /정책뉴스 5건 가운데 '부동산·주거' 소식이 3건/);
+  assert.ok(text.indexOf('공공주택 5만 호') < text.indexOf('청년 월세'), 'newest first within the theme');
+  assert.ok(text.includes('무주택 청년 주거비 부담 완화'), 'subtitle shown');
+  assert.ok(!text.includes('국민성장펀드') && !text.includes('어제 소식') && !text.includes('기초연금 보도'), 'other themes only counted');
+  assert.match(text, /다른 분야: .*경제·금융 1건/);
   assert.match(text, /사실은 이렇습니다'\) 1건/);
   assert.match(text, /공공누리 제1유형/);
+  assert.equal(pickDailyTheme(items, now, { previous: 'housing' }).theme.id, 'housing', 'still housing when clearly the biggest');
+  const tied = [item('A 금융 지원', '금융위원회'), item('B 주택 공급', '국토교통부')];
+  assert.equal(pickDailyTheme(tied, now, { previous: 'housing' }).theme.id, 'economy', 'avoid repeating yesterday on a tie');
   assert.equal(dailyBriefingText([], now), null);
 });
