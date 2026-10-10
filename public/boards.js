@@ -5,7 +5,7 @@
     { title: '과학·인프라', depts: [{ id: 'science', name: '과학기술정보통신부' }, { id: 'landtransport', name: '국토교통부' }, { id: 'agriculture', name: '농림축산식품부' }, { id: 'ocean', name: '해양수산부' }] },
     { title: '일반행정·법무', depts: [{ id: 'safety', name: '행정안전부' }, { id: 'justice', name: '법무부' }, { id: 'personnel', name: '인사혁신처' }] }];
   const $ = id => document.getElementById(id);
-  const state = { user: null, mailConfigured: false, ready: false, sort: 'latest', keyword: '', posts: { community: [], voice: [], policy: [], research: [] } };
+  const state = { about: null, user: null, mailConfigured: false, ready: false, sort: 'latest', keyword: '', posts: { community: [], voice: [], policy: [], research: [] } };
   const sections = { community: 'community-section', voice: 'voice-section', policy: 'policy-section', research: 'research-section' };
   const statusOf = {};
 
@@ -57,6 +57,7 @@
     const grid = make('div', 'policy-grid');
     category.depts.forEach(dept => {
       const card = make('article', 'policy-category');
+      card.dataset.dept = dept.id;
       card.appendChild(make('h4', '', dept.name));
       const titleInput = make('input', 'post-title-input');
       titleInput.maxLength = 120;
@@ -577,6 +578,60 @@
     box.addEventListener('toggle', () => { if (box.open) loadQueue(); });
   }
 
+  // ---------- 판결 평론: 전원합의체 판결 글 아래에서 바로 평론을 쓰고, 쓴 평론을 모아 보여 준다 ----------
+  const jumpTo = id => {
+    const target = $(`post-${id}`);
+    if (!target) return false;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flash(target);
+    return true;
+  };
+  function aboutLine(post) {
+    const line = make('p', 'about-line');
+    line.append('📜 평론 대상 판결: ');
+    const link = make('a', '', post.about.title || '판결 글');
+    link.href = `#post-${post.about.id}`;
+    link.addEventListener('click', event => { if (jumpTo(post.about.id)) event.preventDefault(); });
+    line.appendChild(link);
+    return line;
+  }
+  function judgmentReviews(post) {
+    const box = make('div', 'judgment-reviews');
+    const reviews = (state.posts.research || []).filter(entry => entry.category === '판결 평론' && entry.about?.id === post.id && !entry.hidden)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const head = make('div', 'judgment-reviews-head');
+    head.appendChild(make('strong', '', reviews.length ? `💬 이 판결에 대한 평론 ${reviews.length}편` : '💬 아직 이 판결에 대한 평론이 없습니다'));
+    const write = make('button', 'like-btn review-btn', '✍️ 이 판결 평론 쓰기');
+    write.type = 'button';
+    write.addEventListener('click', () => startReview(post));
+    head.appendChild(write);
+    box.appendChild(head);
+    if (reviews.length) {
+      const list = make('ul');
+      reviews.forEach(review => {
+        const entry = make('li');
+        const link = make('a', '', review.title || '평론');
+        link.href = `#post-${review.id}`;
+        link.addEventListener('click', event => { if (jumpTo(review.id)) event.preventDefault(); });
+        entry.append(link, make('span', 'label', ` · ${review.authorName} · ${new Date(review.createdAt).toLocaleDateString('ko-KR')}`));
+        list.appendChild(entry);
+      });
+      box.appendChild(list);
+    }
+    return box;
+  }
+  function startReview(post) {
+    if (!canWrite()) { setStatus('research', writeHint(), true); if (!state.user) window.spaceOpenAuth?.('login'); return; }
+    const type = $('researchType');
+    type.value = '판결 평론';
+    type.dispatchEvent(new Event('change'));
+    setAbout(post);
+    const composer = type.closest('.post-composer');
+    composer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    flash(composer);
+    setTimeout(() => $('researchTitle').focus({ preventScroll: true }), 400);
+  }
+
   function renderPost(post) {
     const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
@@ -585,9 +640,11 @@
     if (post.category && post.board !== 'policy') head.appendChild(make('strong', '', `[${post.category}] `));
     if (post.title) head.appendChild(make('strong', 'post-title', post.title));
     if (head.childNodes.length) item.appendChild(head);
+    if (post.board === 'research' && post.category === '판결 평론' && post.about) item.appendChild(aboutLine(post));
     const body = make('p', '', post.text);
     body.style.whiteSpace = 'pre-wrap';
     item.appendChild(body);
+    if (post.board === 'research' && post.category === '대법원 전원합의체 판결' && !post.hidden) item.appendChild(judgmentReviews(post));
     if (post.images?.length) item.appendChild(postPhotos(post));
     if (post.board === 'voice' && post.forward) item.appendChild(forwardBadge(post));
     if (post.board === 'voice' && post.progress) item.appendChild(progressBadge(post));
@@ -747,6 +804,7 @@
     actions.append(note, buttons);
     const editPhotos = photoPicker(post.board, text, post.images || []);
     form.append(text, editPhotos.element, actions, status);
+    lengthCounter(text);
     const original = [...item.childNodes];
     item.replaceChildren(form);
     text.focus();
@@ -855,6 +913,8 @@
       const { post, message } = await api('/api/board/posts', { board, ...payload });
       state.posts[board].unshift(post);
       clear();
+      refreshCounters();
+      loadCounts();
       render(board);
       announce(board);
       setStatus(board, message);
@@ -886,6 +946,7 @@
         if (!text) { setStatus(board, '복사한 글이나 사진이 없습니다. 먼저 붙여넣을 내용을 복사해 주세요.', true); return; }
         const start = input.selectionStart ?? input.value.length;
         input.value = input.value.slice(0, start) + text + input.value.slice(input.selectionEnd ?? start);
+        input.dispatchEvent(new Event('input'));
         input.focus();
         setStatus(board, '붙여넣었습니다. 내용을 확인하고 등록해 주세요.');
       } catch {
@@ -908,6 +969,117 @@
     const images = pickers[board]?.ids() || [];
     return images.length ? { ...payload, images } : payload;
   };
+
+  // 판결 평론을 쓸 때 어떤 판결에 대한 평론인지 글쓰기 칸 위에 보여 준다.
+  const aboutBar = make('div', 'about-target');
+  aboutBar.hidden = true;
+  $('researchType').closest('.post-controls').after(aboutBar);
+  function setAbout(post) {
+    state.about = post || null;
+    aboutBar.replaceChildren();
+    aboutBar.hidden = !post;
+    if (!post) return;
+    aboutBar.appendChild(make('span', '', `📜 평론할 판결: ${post.title || '판결 글'}`));
+    const cancel = make('button', 'like-btn', '선택 취소');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => setAbout(null));
+    aboutBar.appendChild(cancel);
+  }
+  $('researchType').addEventListener('change', () => { if ($('researchType').value !== '판결 평론') setAbout(null); });
+
+  // ---------- 글자 수: 1,000자(공백 포함) 이상이면 읽을거리가 충분한 글로 본다 ----------
+  const GOOD_LENGTH = 1000;
+  const counters = [];
+  function lengthCounter(textarea) {
+    if (!textarea || textarea.dataset.counter) return;
+    textarea.dataset.counter = '1';
+    const counter = make('div', 'char-count');
+    const update = () => {
+      const count = textarea.value.trim().length;
+      const good = count >= GOOD_LENGTH;
+      counter.dataset.good = String(good);
+      counter.textContent = good ? `${count.toLocaleString('ko-KR')}자 ✓ 충분한 분량이에요`
+        : `${count.toLocaleString('ko-KR')}자 · 1,000자 이상(A4 반 쪽 정도) 쓰면 더 좋아요`;
+    };
+    textarea.addEventListener('input', update);
+    textarea.after(counter);
+    update();
+    counters.push(update);
+  }
+  function refreshCounters() { counters.forEach(update => update()); }
+  ['communityInput', 'voiceInput', 'researchInput', 'is-form-text'].forEach(id => lengthCounter($(id)));
+  categoryContainer.querySelectorAll('.policy-category textarea').forEach(lengthCounter);
+  window.spaceLengthCounter = lengthCounter;
+
+  // ---------- 아직 글이 없는 항목에 * 표시 ----------
+  const EMPTY_TITLE = '아직 글이 없는 항목이에요. 첫 글을 써 주세요!';
+  function markEmpty(element, empty) {
+    if (!element) return;
+    if (element.tagName === 'OPTION') {
+      element.dataset.label ??= element.textContent;
+      element.textContent = element.dataset.label + (empty ? ' *' : '');
+      return;
+    }
+    let star = element.querySelector(':scope > .empty-mark');
+    if (empty && !star) {
+      star = make('span', 'empty-mark', '*');
+      star.title = EMPTY_TITLE;
+      star.setAttribute('aria-label', '아직 글 없음');
+      element.appendChild(star);
+    } else if (!empty && star) star.remove();
+  }
+  const legends = {};
+  function legend(key, anchor, show) {
+    if (!anchor) return;
+    if (!legends[key]) {
+      legends[key] = make('p', 'empty-legend', '* 표시는 아직 글이 없는 항목입니다.');
+      anchor.after(legends[key]);
+    }
+    legends[key].hidden = !show;
+  }
+  function applyCounts(counts) {
+    const total = board => counts[board]?._total || 0;
+    const of = (board, key) => counts[board]?.[key] || 0;
+    document.querySelectorAll('.feed-tabs [data-feed]').forEach(tab => {
+      if (tab.dataset.feed !== 'all' && counts[tab.dataset.feed]) markEmpty(tab, !total(tab.dataset.feed));
+    });
+    let any = false;
+    [...$('researchFilter').options].forEach(option => {
+      if (option.value === 'all') return;
+      const empty = !of('research', option.value);
+      any ||= empty;
+      markEmpty(option, empty);
+    });
+    legend('research', $('researchFilter').closest('.post-controls'), any);
+    any = false;
+    [...$('communityFilter').options].forEach(option => {
+      if (option.value === 'all') return;
+      const empty = !of('community', option.value);
+      any ||= empty;
+      markEmpty(option, empty);
+    });
+    legend('community', $('communityFilter').closest('.post-controls'), any);
+    any = false;
+    $('voice-section').querySelectorAll('.grid .card h3').forEach(heading => {
+      const empty = !of('voice', heading.firstChild?.textContent?.trim() || '');
+      any ||= empty;
+      markEmpty(heading, empty);
+    });
+    legend('voice', $('voice-section').querySelector('.grid'), any);
+    any = false;
+    categoryContainer.querySelectorAll('.policy-category').forEach(card => {
+      const empty = !of('policy', card.dataset.dept);
+      any ||= empty;
+      markEmpty(card.querySelector('h4'), empty);
+    });
+    const policyLegend = legends.policyTop || (legends.policyTop = make('p', 'empty-legend', '* 표시는 아직 제안이 없는 부처입니다.'));
+    if (!policyLegend.isConnected) categoryContainer.before(policyLegend);
+    policyLegend.hidden = !any;
+  }
+  async function loadCounts() {
+    try { applyCounts((await api('/api/board/counts')).counts || {}); } catch { /* 표시만 못 할 뿐 */ }
+  }
+  loadCounts();
 
   // 시민의 소리 위 '① 올리기 ② 공식 민원 ③ 처리 경과' 안내를 누르면 그 단계로 바로 데려간다.
   const flash = element => { element.classList.add('civic-flash'); setTimeout(() => element.classList.remove('civic-flash'), 1600); };
@@ -984,8 +1156,10 @@
     const title = $('researchTitle');
     const input = $('researchInput');
     if (!title.value.trim() || !input.value.trim()) { setStatus('research', '제목과 내용을 입력해 주세요.', true); return; }
-    const payload = withPhotos('research', { category: $('researchType').value, title: title.value, text: input.value });
-    if (payload) submit('research', payload, () => { title.value = ''; input.value = ''; pickers.research.clear(); });
+    const category = $('researchType').value;
+    const about = category === '판결 평론' && state.about ? { about: state.about.id } : {};
+    const payload = withPhotos('research', { category, title: title.value, text: input.value, ...about });
+    if (payload) submit('research', payload, () => { title.value = ''; input.value = ''; pickers.research.clear(); setAbout(null); });
   });
   categoryContainer.addEventListener('click', event => {
     const button = event.target.closest('button.submitPolicy');
@@ -1053,9 +1227,13 @@
     if (input) {
       if (judgment && !input.value.trim()) input.value = TEMPLATE;
       else if (!judgment && input.value === TEMPLATE) input.value = '';
+      input.dispatchEvent(new Event('input'));
     }
-    hint.textContent = judgment ? '대법원이 공개한 전원합의체 판결 원문(비실명 처리본)을 올려 주세요. 출처: 대법원 종합법률정보' : base.hint;
-    title.placeholder = judgment ? '예: 대법원 2024. 5. 23. 선고 2020다12345 전원합의체 판결 — 핵심 쟁점 한 줄' : base.title;
+    const review = type.value === '판결 평론';
+    hint.textContent = judgment ? '대법원이 공개한 전원합의체 판결 원문(비실명 처리본)을 올려 주세요. 출처: 대법원 종합법률정보'
+      : review ? '판결의 쟁점·논리·사회적 의미에 대한 나의 생각을 적어 주세요. 판결 글 아래 「✍️ 이 판결 평론 쓰기」를 누르면 그 판결과 이어집니다.' : base.hint;
+    title.placeholder = judgment ? '예: 대법원 2024. 5. 23. 선고 2020다12345 전원합의체 판결 — 핵심 쟁점 한 줄'
+      : review ? '예: [평론] 2020다12345 판결 — 다수의견이 놓친 것' : base.title;
   };
   type.addEventListener('change', update);
   update();

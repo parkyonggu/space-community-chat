@@ -11,8 +11,11 @@ const BOARDS = {
   policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000, likes: true },
   // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
   issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
-  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결'], title: true, max: 50000 },
+  research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결', '판결 평론'], title: true, max: 50000 },
 };
+// '판결 평론': 칼럼·학술에 올라온 '대법원 전원합의체 판결' 글 하나를 골라 그 판결에 대한 평론을 쓴다.
+const JUDGMENT = '대법원 전원합의체 판결';
+const JUDGMENT_REVIEW = '판결 평론';
 const REPORT_HIDE_THRESHOLD = 3;
 // 시민의 소리 '처리 경과': 글쓴이(또는 운영자)가 공식 민원 창구에 접수한 뒤 진행 상황을 적는다.
 const PROGRESS_STATUS = ['접수함', '처리 중', '답변 받음', '해결됨', '반려됨'];
@@ -126,7 +129,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const likes = store.likes.filter(entry => entry.postId === post.id);
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
-      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}), ...(post.forward ? { forward: post.forward } : {}),
+      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}), ...(post.about ? { about: post.about } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}), ...(post.forward ? { forward: post.forward } : {}),
       authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
@@ -200,7 +203,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     return store;
   }
   const publicView = (post, store) => ({
-    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}), ...(post.forward ? { forward: { status: post.forward.status, region: post.forward.region, forwardedAt: post.forward.forwardedAt || null } } : {}),
+    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}), ...(post.about ? { about: post.about } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}), ...(post.forward ? { forward: { status: post.forward.status, region: post.forward.region, forwardedAt: post.forward.forwardedAt || null } } : {}),
     authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null,
     likes: store.likes.filter(entry => entry.postId === post.id).length,
   });
@@ -255,6 +258,25 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         send(response, 200, { posts: queue, regions: FORWARD_REGIONS });
         return;
       }
+      // 게시판·분류마다 글이 몇 편 있는지(내용 없이 숫자만). 화면에서 아직 글이 없는 항목에 * 표시를 한다.
+      if (pathname === '/api/board/counts') {
+        if (request.method !== 'GET') {
+          response.setHeader('Allow', 'GET');
+          throw new BoardError(405, '지원하지 않는 요청 방식입니다.');
+        }
+        limit(`board-read:${ip}`, 240, 60000);
+        const store = await readStore();
+        const counts = Object.fromEntries(Object.keys(BOARDS).map(board => [board, { _total: 0 }]));
+        for (const post of store.posts) {
+          if (post.hiddenAt || !counts[post.board]) continue;
+          const bucket = counts[post.board];
+          bucket._total += 1;
+          const key = post.category || '';
+          bucket[key] = (bucket[key] || 0) + 1;
+        }
+        send(response, 200, { counts });
+        return;
+      }
       if (pathname === '/api/board') {
         if (request.method !== 'GET') {
           response.setHeader('Allow', 'GET');
@@ -300,9 +322,16 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const body = text(input.text);
         if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
         limit(`board-post:${user.id}`, 10, 10 * 60000);
+        let about = null;
+        if (input.about !== undefined && input.about !== null && input.about !== '') {
+          if (board !== 'research' || category !== JUDGMENT_REVIEW) throw new BoardError(400, '판결 평론에서만 평론할 판결을 고를 수 있습니다.');
+          const target = (await readStore()).posts.find(entry => entry.id === input.about);
+          if (!target || target.board !== 'research' || target.category !== JUDGMENT || target.hiddenAt) throw new BoardError(400, '평론할 판결 글을 찾을 수 없습니다.');
+          about = { id: target.id, no: target.no || null, title: target.title || '' };
+        }
         const attached = (await imageIds(input.images, user)) || [];
         const post = { id: randomUUID(), board, category, title, text: body, authorId: user.id, authorName: user.nickname,
-          createdAt: new Date(now()).toISOString(), ...(rules.issue ? { issue: issueRef(input.issue) } : {}), ...(attached.length ? { images: attached } : {}) };
+          createdAt: new Date(now()).toISOString(), ...(rules.issue ? { issue: issueRef(input.issue) } : {}), ...(about ? { about } : {}), ...(attached.length ? { images: attached } : {}) };
         await updateStore(store => {
           numberPosts(store);
           post.no = store.posts.reduce((max, entry) => Math.max(max, entry.no || 0), 0) + 1;

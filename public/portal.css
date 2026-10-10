@@ -715,3 +715,18 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .chat-text.chat-photo p { margin:6px 6px 2px; white-space:pre-wrap; }
 .chat-card-poster { display:block; width:100%; max-height:520px; object-fit:contain; background:#f4f5f9; }
 .chat-photo-note { font-size:12.5px; font-weight:700; color:var(--navy); }
+
+/* 글자 수 안내 (1,000자 이상 권장) */
+.char-count { margin: 4px 2px 0; font-size: 12.5px; color: #6b7389; text-align: right; }
+.char-count[data-good="true"] { color: #1f7a4d; font-weight: 700; }
+/* 아직 글이 없는 항목 표시 */
+.empty-mark { margin-left: 3px; color: #c0392b; font-weight: 800; cursor: help; }
+.empty-legend { margin: 6px 0 0; font-size: 12.5px; color: #6b7389; }
+/* 판결 평론 */
+.about-target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff7e3; border: 1px solid #f5d27a; font-size: 14px; font-weight: 700; color: #0e1730; }
+.about-line { margin: 4px 0 6px; font-size: 13.5px; color: #4b5470; }
+.about-line a { font-weight: 700; }
+.judgment-reviews { margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; background: #f4f6fb; border: 1px solid #e3e6ef; }
+.judgment-reviews-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.judgment-reviews ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.7; }
+.review-btn { background: #0e1730; color: #fff; border-color: #0e1730; }

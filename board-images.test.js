@@ -146,3 +146,24 @@ test('chat photos are public as soon as they are uploaded', async () => {
   as(null);
   assert.equal((await call(api, `/api/board/image?id=${up.body.id}`)).status, 200);
 });
+
+test('판결 평론 links to a 전원합의체 판결 post; counts show empty categories', async () => {
+  const { api, as } = setup();
+  as('admin');
+  const judgment = (await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '대법원 전원합의체 판결', title: '대법원 2024다1 전원합의체 판결', text: '판결 요지' } })).body.post;
+  const essay = (await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '칼럼', title: '칼럼', text: '칼럼 본문' } })).body.post;
+  as('a');
+  const review = await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '판결 평론', title: '이 판결을 읽고', text: '평론', about: judgment.id } });
+  assert.equal(review.status, 201);
+  assert.deepEqual(review.body.post.about, { id: judgment.id, no: judgment.no, title: '대법원 2024다1 전원합의체 판결' });
+  assert.equal((await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '판결 평론', title: 't', text: 'x', about: essay.id } })).status, 400, 'only judgments');
+  assert.equal((await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '칼럼', title: 't', text: 'x', about: judgment.id } })).status, 400, 'only 판결 평론');
+  assert.equal((await call(api, '/api/board/posts', { method: 'POST', body: { board: 'research', category: '판결 평론', title: '일반 평론', text: 'x' } })).status, 201, 'target optional');
+
+  as(null);
+  const { body } = await call(api, '/api/board/counts');
+  assert.equal(body.counts.research._total, 4);
+  assert.equal(body.counts.research['판결 평론'], 2);
+  assert.equal(body.counts.research['논문'], undefined);
+  assert.equal(body.counts.voice._total, 0);
+});

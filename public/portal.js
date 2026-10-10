@@ -815,7 +815,7 @@
         });
         is.reviews.unshift(result.post);
         $('is-form-title').value = '';
-        $('is-form-text').value = '';
+        $('is-form-text').value = ''; $('is-form-text').dispatchEvent(new Event('input'));
         status.textContent = '평론이 올라갔습니다. 고맙습니다.';
         renderIssues();
       } catch (error) {
