@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import auth from '../auth-api.js';
 import community from '../community-api.js';
 import board from '../board-api.js';
+import announcement from '../announcement.js';
 import newsletter from '../newsletter-api.js';
 import portal from '../portal-api.js';
 import policyNews from '../policy-news.js';
@@ -220,6 +221,12 @@ export class ChatRoom extends DurableObject {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === '/status') return json({ online: this.ctx.getWebSockets().length });
+    // 공유 주소(/e/글번호) 화면에 쓰는 모임안내·초청장 원문
+    if (url.pathname === '/internal/announcement') {
+      const id = url.searchParams.get('id') || '';
+      const record = announcement.ID.test(id) ? await this.ctx.storage.get(`a:${id}`) : null;
+      return json(record ? { record } : { error: 'not found' }, record ? 200 : 404);
+    }
     if (url.pathname === '/internal/user-deleted' && request.method === 'POST') {
       const { userId } = await request.json().catch(() => ({}));
       if (userId) await this.removeUser(String(userId));
@@ -295,7 +302,7 @@ export class ChatRoom extends DurableObject {
       const stored = key ? await this.ctx.storage.get(key) : null;
       if (!stored) { error('이미 삭제되었거나 없는 메시지입니다.'); return; }
       if (!(window.admin || (window.uid && stored.uid === window.uid))) { error('내가 보낸 메시지만 삭제할 수 있습니다.'); return; }
-      await this.ctx.storage.delete(key);
+      await this.ctx.storage.delete([key, `a:${stored.id}`]);
       this.broadcast(() => ({ type: 'deleted', id: stored.id }));
       return;
     }
@@ -311,6 +318,23 @@ export class ChatRoom extends DurableObject {
     await this.ctx.storage.put(squareKey(now, rand), stored);
     if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(now + 24 * 60 * 60 * 1000);
     this.broadcast(peer => this.publicMessage(stored, peer.uid));
+    // 운영자가 [모임안내]·[초청장]으로 시작한 글: 공유 주소용으로 따로 보관하고 스페이스톡 '📣 모임안내' 채널로 보낸다.
+    if (window.admin && announcement.kindOf(text)) {
+      await this.ctx.storage.put(`a:${stored.id}`, { id: stored.id, text, at: now });
+      try {
+        if (!this.env.TALK) throw new Error('스페이스톡이 연결되어 있지 않습니다.');
+        const link = `${this.env.SITE_URL || 'https://withpluces.com'}/e/${stored.id}`;
+        const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/event-announcement', {
+          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text}\n\n자세히 보기·카카오톡 공유: ${link}` }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        socket.send(JSON.stringify({ type: 'forwarded', id: stored.id, subscribers: result.subscribers || 0 }));
+      } catch (failure) {
+        console.error('Announcement forward failed:', failure);
+        socket.send(JSON.stringify({ type: 'forward-error', error: `스페이스톡 모임안내 채널로 보내지 못했습니다: ${failure.message}` }));
+      }
+    }
   }
 
   // 하루에 한 번 보관 기간이 지난 글을 지운다.
@@ -394,6 +418,15 @@ export default {
         const guest = /(?:^|;\s*)space_talk_guest=([0-9a-f]{64})/.exec(request.headers.get('cookie') || '');
         if (guest) forwarded.headers.set('X-Talk-Guest', guest[1]);
         return await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch(forwarded);
+      }
+      // 모임안내·초청장 공유 주소: 카카오톡 등에 보내면 로고·제목이 담긴 미리보기 카드로 보인다.
+      const eventMatch = /^\/e\/(\d{10,15}-[a-z0-9]{6,16})\/?$/.exec(url.pathname);
+      if (eventMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+        const response = await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch(`https://internal.invalid/internal/announcement?id=${eventMatch[1]}`);
+        const { record } = await response.json().catch(() => ({}));
+        const html = record ? announcement.renderAnnouncementPage(record, env.SITE_URL || url.origin) : null;
+        if (!html) return new Response('<!doctype html><meta charset="utf-8"><title>안내를 찾을 수 없습니다</title><p style="font-family:sans-serif;padding:24px">삭제되었거나 없는 안내입니다. <a href="/">스페이스 커뮤니티 홈</a>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        return new Response(request.method === 'HEAD' ? null : html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
       }
       // 게시글 개별 페이지와 검색엔진 지도(글이 올라오면 자동으로 늘어난다)
       const postMatch = /^\/post\/(\d{1,9})\/?$/.exec(url.pathname);

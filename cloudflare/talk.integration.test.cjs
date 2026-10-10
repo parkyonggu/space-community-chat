@@ -141,6 +141,22 @@ test('광장 채팅: 보관된 대화가 나중에 들어온 사람에게 보이
   for (const socket of [carolSocket, guest, daveSocket, again]) socket.close();
 });
 
+test('모임안내 채널: 회원이 구독하면 읽기 전용 채널이 대화 목록에 추가된다', async () => {
+  const memberClient = await member('모임구독');
+  const before = await memberClient.call('/api/chat/event-channel');
+  assert.equal(before.status, 200, JSON.stringify(before.result));
+  assert.equal(before.result.name, '📣 모임안내');
+  assert.equal(before.result.subscribed, false);
+
+  const subscribed = await memberClient.call('/api/chat/event-channel/subscribe', {});
+  assert.equal(subscribed.status, 200, JSON.stringify(subscribed.result));
+  assert.equal(subscribed.result.room.kind, 'channel');
+  assert.equal(subscribed.result.room.name, '📣 모임안내');
+  const listed = await memberClient.call('/api/chat/rooms');
+  assert.ok(listed.result.rooms.some(room => room.id === before.result.roomId));
+  assert.equal((await memberClient.call(`/api/chat/rooms/${before.result.roomId}/messages`, undefined, { method: 'POST' })).status, 403);
+});
+
 test('스페이스 톡 손님 입장: 초대 링크만으로 회원가입 없이 대화방에 들어와 대화한다', async () => {
   const owner = await member('방장');
   const created = await owner.call('/api/chat/rooms', { name: '동문회', maxMembers: 30 });

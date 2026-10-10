@@ -12,7 +12,7 @@
   const initial = name => (String(name || '?').trim()[0] || '?').toUpperCase();
 
   const state = {
-    me: null, csrf: '', rooms: [], current: null, room: null, messages: [], hasMore: false, socket: null, retry: 1000,
+    me: null, csrf: '', rooms: [], channels: [], current: null, room: null, messages: [], hasMore: false, socket: null, retry: 1000,
     pending: new Map(), typingTimer: null, lastTypingSent: 0, vapidKey: '', retentionDays: 90, maxMembers: 100, filter: '', admin: false,
   };
 
@@ -101,6 +101,13 @@
     return fragment;
   }
   function avatar(name, key, small = false) {
+    if (key === 'channel-event-announcements') {
+      const image = make('img', `avatar${small ? ' small' : ''}`);
+      image.src = '/icons/icon-192.png';
+      image.alt = '';
+      image.setAttribute('aria-hidden', 'true');
+      return image;
+    }
     const element = make('span', `avatar${small ? ' small' : ''}`, initial(name));
     element.style.background = colorOf(key || name);
     element.setAttribute('aria-hidden', 'true');
@@ -146,6 +153,53 @@
     }
     if (await copyText(url ? `${text}\n${url}` : text)) toast('복사했어요. 카카오톡 대화방에 길게 눌러 붙여넣기 하세요.');
   }
+  // 모임안내·초청장: 글 끝의 공유 주소(/e/글번호)를 보내면 카카오톡이 스페이스 커뮤니티 로고가 담긴 카드로 보여 준다.
+  const ANNOUNCE_KINDS = [{ tag: '[모임안내]', label: '📣 모임안내' }, { tag: '[초청장]', label: '💌 초청장' }];
+  const SHARE_LINE = /\n*자세히 보기·카카오톡 공유: (https?:\/\/\S+\/e\/[0-9a-z-]+)\s*$/;
+  function announcementOf(text) {
+    const value = String(text || '');
+    const kind = ANNOUNCE_KINDS.find(entry => value.trim().startsWith(entry.tag));
+    if (!kind) return null;
+    const link = SHARE_LINE.exec(value)?.[1] || '';
+    const lines = value.replace(SHARE_LINE, '').trim().slice(kind.tag.length).split('\n').map(line => line.trim());
+    while (lines.length && !lines[0]) lines.shift();
+    return { kind, title: lines.shift() || kind.label, body: lines.join('\n').trim(), link };
+  }
+  function shareAnnouncement(text) {
+    const info = announcementOf(text);
+    if (!info) return shareText(text);
+    const title = `${info.kind.label} ${info.title}`;
+    return info.link ? shareText(title, info.link) : shareText(`${title}\n\n${info.body}\n\n— 스페이스 커뮤니티`);
+  }
+  function announcementCard(message, info) {
+    const card = make('div', 'bubble announce-card');
+    const head = make('div', 'announce-head');
+    const logo = make('img');
+    logo.src = '/icons/icon-192.png';
+    logo.alt = '';
+    head.append(logo, make('strong', '', '스페이스 커뮤니티'), make('span', '', info.kind.label));
+    card.append(head, make('strong', 'announce-title', info.title));
+    if (info.body) {
+      const body = make('p', 'announce-body');
+      body.appendChild(linkify(info.body));
+      card.appendChild(body);
+    }
+    const actions = make('div', 'announce-actions');
+    const share = make('button', 'btn kakao', '카카오톡으로 공유');
+    share.type = 'button';
+    share.title = '공유 창에서 카카오톡 선택 · 지원하지 않으면 안내장 주소 복사';
+    share.addEventListener('click', event => { event.stopPropagation(); shareAnnouncement(message.text); });
+    actions.appendChild(share);
+    if (info.link) {
+      const open = make('a', 'btn', '안내장 보기');
+      open.href = info.link;
+      open.target = '_blank';
+      open.rel = 'noopener';
+      actions.appendChild(open);
+    }
+    card.appendChild(actions);
+    return card;
+  }
   function inviteText(roomName) {
     return [
       `[스페이스 톡 초대] '${roomName}' 대화방에 초대합니다.`,
@@ -169,7 +223,7 @@
     const list = $('rooms');
     const keyword = state.filter.toLowerCase();
     const rooms = state.rooms.filter(room => !keyword || room.name.toLowerCase().includes(keyword));
-    $('rooms-empty').hidden = Boolean(state.rooms.length) || !state.me || Boolean(state.channel && !state.channel.subscribed);
+    $('rooms-empty').hidden = Boolean(state.rooms.length) || !state.me || state.channels.some(channel => !channel.subscribed);
     const items = rooms.map(room => {
       const item = make('li');
       const button = make('button', 'room-item');
@@ -197,23 +251,27 @@
       item.appendChild(button);
       return item;
     });
-    if (state.channel && !state.channel.subscribed && !keyword) items.unshift(channelCard());
+    if (!keyword) items.unshift(...state.channels.filter(channel => !channel.subscribed).map(channelCard));
     list.replaceChildren(...items);
     updateTitle();
   }
-  // '📰 오늘의 정책브리핑' 채널 구독 안내(아직 구독하지 않은 사람에게 목록 맨 위에 보인다).
-  function channelCard() {
+  function channelCard(channel) {
+    const eventChannel = channel.roomId === 'channel-event-announcements';
     const item = make('li', 'channel-card');
-    item.append(make('strong', '', state.channel.name), make('p', '', `매일 저녁 6시, 정부 부처의 그날 정책뉴스를 골라 대화방으로 보내 드려요. 새 소식 알림도 받을 수 있어요.${state.channel.subscribers ? ` (${state.channel.subscribers}명 받아 보는 중)` : ''}`));
+    const description = eventChannel ?
+      '스페이스 커뮤니티가 보내는 모임안내·초청장을 받아 봐요. 카카오톡으로 바로 공유할 수 있고, 새 소식 알림도 받을 수 있어요.' :
+      '매일 저녁 6시, 정부 부처의 그날 정책뉴스를 골라 대화방으로 보내 드려요. 새 소식 알림도 받을 수 있어요.';
+    item.append(make('strong', '', channel.name), make('p', '', `${description}${channel.subscribers ? ` (${channel.subscribers}명 받아 보는 중)` : ''}`));
     const join = make('button', 'btn gold', '받아 보기');
     join.type = 'button';
     join.addEventListener('click', async () => {
       join.disabled = true;
       try {
-        const { room } = await api('/api/chat/channel/subscribe', { method: 'POST', body: {} });
-        state.channel.subscribed = true;
+        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : '/api/chat/channel/subscribe';
+        const { room } = await api(endpoint, { method: 'POST', body: {} });
+        channel.subscribed = true;
         await loadRooms();
-        toast('구독했어요. 매일 저녁 6시에 정책브리핑이 이 방으로 옵니다.');
+        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : '구독했어요. 매일 저녁 6시에 정책브리핑이 이 방으로 옵니다.');
         location.hash = `room=${room.id}`;
       } catch (error) { toast(error.message); join.disabled = false; }
     });
@@ -221,9 +279,11 @@
     return item;
   }
   async function loadRooms() {
-    const [{ rooms }, channel] = await Promise.all([api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null)]);
+    const [{ rooms }, channel, eventChannel] = await Promise.all([
+      api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null), api('/api/chat/event-channel').catch(() => null),
+    ]);
     state.rooms = rooms;
-    state.channel = channel;
+    state.channels = [channel, eventChannel].filter(Boolean);
     renderRooms();
   }
   $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
@@ -269,7 +329,7 @@
     const room = state.room;
     $('room-title').textContent = room.name;
     const online = (room.online || []).filter(id => id !== state.me.id).length;
-    $('room-sub').textContent = room.kind === 'channel' ? `소식 채널 · 매일 저녁 6시 · ${room.memberCount}명 구독` : room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
+    $('room-sub').textContent = room.kind === 'channel' ? `소식 채널 · ${room.memberCount}명 구독` : room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
     $('composer').hidden = room.kind === 'channel';
     $('btn-send').disabled = !$('input').value.trim();
     renderNotice();
@@ -355,7 +415,8 @@
       new Date(message.createdAt) - new Date(previous.createdAt) < 60000 && timeLabel(previous.createdAt) === timeLabel(message.createdAt);
     const row = make('div', `msg${mine ? ' mine' : ''}${cont ? ' cont' : ''}${message.pending ? ' pending' : ''}`);
     row.dataset.id = message.id;
-    if (!mine) row.appendChild(avatar(message.nickname, message.userId, true));
+    if (!mine) row.appendChild(avatar(message.nickname,
+      state.room?.id === 'channel-event-announcements' && !message.userId ? state.room.id : message.userId, true));
     const body = make('div', 'msg-body');
     if (!mine) body.appendChild(make('div', 'msg-name', message.nickname || '알 수 없음'));
     const line = make('div', 'msg-line');
@@ -371,6 +432,8 @@
       image.addEventListener('load', () => keepBottom());
       image.addEventListener('click', () => viewImage(image.src));
       bubble.appendChild(image);
+    } else if (message.kind === 'text' && !message.userId && announcementOf(message.text)) {
+      bubble = announcementCard(message, announcementOf(message.text));
     } else {
       bubble = make('div', 'bubble');
       bubble.appendChild(linkify(message.text));
@@ -430,7 +493,9 @@
     }
     if (!state.messages.length) {
       const empty = make('div', 'system');
-      empty.appendChild(make('span', '', state.room?.kind === 'channel' ? '매일 저녁 6시에 그날의 정책브리핑이 이곳에 올라옵니다.' : state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
+      const channelHint = state.room?.id === 'channel-event-announcements' ?
+        '운영자가 광장채팅에 올린 모임안내·초청장이 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' : '매일 저녁 6시에 그날의 정책브리핑이 이곳에 올라옵니다.';
+      empty.appendChild(make('span', '', state.room?.kind === 'channel' ? channelHint : state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
       nodes.push(empty);
     }
     list.replaceChildren(...nodes);
@@ -489,7 +554,11 @@
         menu.appendChild(button);
       };
       if (message.kind === 'text') add('복사', async () => { closeSheet(); await copyText(message.text); });
-      if (message.kind === 'text') add('카카오톡으로 보내기', () => { closeSheet(); shareText(`${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서 (${message.nickname || ''})`); });
+      if (message.kind === 'text') add('카카오톡으로 보내기', () => {
+        closeSheet();
+        if (announcementOf(message.text)) shareAnnouncement(message.text);
+        else shareText(`${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서 (${message.nickname || ''})`);
+      });
       if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
       if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
       if (!mine && !state.me.guest && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });

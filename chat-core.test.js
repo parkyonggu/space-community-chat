@@ -156,4 +156,13 @@ test('정책브리핑 채널: 구독, 읽기 전용, 채널 글은 구독자에�
   core.leave(bob, 'ch');
   assert.equal(core.channel(bob, 'ch', 'x').subscribed, false);
   assert.equal(core.room(alice, 'ch').memberCount, 1);
+
+  const forwarded = core.postToChannel('event-channel', {
+    nickname: '스페이스톡', roomName: '📣 모임안내', text: '[모임안내] 토요일 오후 2시에 만나요.',
+  });
+  assert.deepEqual(forwarded.memberIds, [], 'forwarding is retained even before the first subscriber');
+  const eventRoom = core.subscribeChannel(bob, 'event-channel', '📣 모임안내');
+  assert.equal(eventRoom.name, '📣 모임안내');
+  assert.ok(core.messages(bob, 'event-channel').messages.some(message => message.text === '[모임안내] 토요일 오후 2시에 만나요.'));
+  assert.equal(core.messages(bob, 'event-channel').messages[0].nickname, '스페이스톡');
 });

@@ -5,6 +5,33 @@ const chatStatus = document.createElement('p');
 chatStatus.className = 'form-status';
 chatStatus.setAttribute('role', 'status');
 chatBox.before(chatStatus);
+// 운영자만: 보낼 글을 '📣 모임안내'나 '💌 초청장'으로 고르면 스페이스톡 모임안내 채널에도 「스페이스 커뮤니티」 이름으로 전달된다.
+const ANNOUNCE_KINDS = [
+  { tag: '[모임안내]', label: '📣 모임안내' },
+  { tag: '[초청장]', label: '💌 초청장' },
+];
+const announcementOption = document.createElement('label');
+announcementOption.className = 'chat-announcement-option';
+announcementOption.hidden = true;
+const announcementKind = document.createElement('select');
+announcementKind.disabled = true;
+announcementKind.setAttribute('aria-label', '글 종류');
+for (const [value, label] of [['', '보통 메시지'], ...ANNOUNCE_KINDS.map(kind => [kind.tag, `${kind.label} (스페이스톡 구독자에게도 전송)`])]) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  announcementKind.appendChild(option);
+}
+announcementOption.append('운영자 글 종류: ', announcementKind);
+chatInput.parentElement.before(announcementOption);
+function announcementOf(text) {
+  if (typeof text !== 'string') return null;
+  const kind = ANNOUNCE_KINDS.find(entry => text.trim().startsWith(entry.tag));
+  if (!kind) return null;
+  const lines = text.trim().slice(kind.tag.length).split('\n').map(line => line.trim());
+  while (lines.length && !lines[0]) lines.shift();
+  return { kind, title: lines.shift() || kind.label, body: lines.join('\n').trim() };
+}
 let chatSocket;
 let reconnectTimer;
 let reconnectDelay = 1000;
@@ -62,6 +89,95 @@ function deleteButton(id) {
   });
   return button;
 }
+// 카카오톡 공유: 안내문 대신 공유 주소(/e/글번호)를 보낸다. 카카오톡이 로고·제목이 담긴 미리보기 카드로 보여 준다.
+async function shareAnnouncement(message) {
+  const info = announcementOf(message.text);
+  const title = info ? `${info.kind.label} ${info.title}` : '스페이스 커뮤니티 안내';
+  const url = message.id ? `${location.origin}/e/${message.id}` : `${location.origin}/`;
+  const report = (text, error = false) => {
+    chatStatus.textContent = text;
+    chatStatus.dataset.error = String(error);
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text: title, url });
+      report('공유 창에서 고른 곳으로 안내장을 보냈습니다.');
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      console.error('Announcement share failed:', error);
+    }
+  }
+  const content = `${title}\n${url}`;
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(content);
+    copied = true;
+  } catch (error) {
+    console.error('Announcement clipboard failed:', error);
+    const area = document.createElement('textarea');
+    area.value = content;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    try {
+      area.select();
+      area.setSelectionRange(0, content.length);
+      copied = document.execCommand('copy');
+    } catch (failure) {
+      console.error('Announcement copy fallback failed:', failure);
+    } finally {
+      area.remove();
+    }
+  }
+  if (!copied) { report(`복사하지 못했습니다. 이 주소를 카카오톡에 붙여넣어 주세요: ${url}`, true); return; }
+  report('안내장 주소를 복사했습니다. 카카오톡 대화방에 붙여넣으면 스페이스 커뮤니티 로고가 담긴 카드로 보입니다.');
+}
+function announcementCard(message, info) {
+  const card = document.createElement('div');
+  card.className = 'chat-card';
+  const head = document.createElement('div');
+  head.className = 'chat-card-head';
+  const logo = document.createElement('img');
+  logo.src = '/icons/icon-192.png';
+  logo.alt = '';
+  const brand = document.createElement('strong');
+  brand.textContent = '스페이스 커뮤니티';
+  const kind = document.createElement('span');
+  kind.textContent = info.kind.label;
+  head.append(logo, brand, kind);
+  const title = document.createElement('strong');
+  title.className = 'chat-card-title';
+  title.textContent = info.title;
+  card.append(head, title);
+  if (info.body) {
+    const body = document.createElement('p');
+    body.className = 'chat-card-body';
+    body.textContent = info.body;
+    card.appendChild(body);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'chat-card-actions';
+  const share = document.createElement('button');
+  share.type = 'button';
+  share.className = 'chat-announcement-share';
+  share.textContent = '카카오톡으로 공유';
+  share.title = '공유 창에서 카카오톡 선택 · 지원하지 않으면 안내장 주소 복사';
+  share.addEventListener('click', () => shareAnnouncement(message));
+  actions.appendChild(share);
+  if (message.id) {
+    const open = document.createElement('a');
+    open.className = 'chat-card-link';
+    open.href = `/e/${message.id}`;
+    open.target = '_blank';
+    open.rel = 'noopener';
+    open.textContent = '안내장 보기';
+    actions.appendChild(open);
+  }
+  card.appendChild(actions);
+  return card;
+}
 function renderChatMessage(result) {
   const name = typeof result.name === 'string' ? result.name : '';
   const at = Number.isFinite(result.at) ? result.at : Date.now();
@@ -104,9 +220,12 @@ function renderChatMessage(result) {
   }
   const line = document.createElement('div');
   line.className = 'chat-line';
-  const bubble = document.createElement('div');
-  bubble.className = 'chat-text';
-  bubble.textContent = result.text;
+  const info = announcementOf(result.text);
+  const bubble = info ? announcementCard(result, info) : document.createElement('div');
+  if (!info) {
+    bubble.className = 'chat-text';
+    bubble.textContent = result.text;
+  }
   const time = document.createElement('time');
   time.className = 'chat-time';
   time.dateTime = new Date(at).toISOString();
@@ -166,7 +285,10 @@ function addChatMessage(result) {
 function updateChatInput(signedIn) {
   chatSend.disabled = !canSend;
   chatInput.disabled = !canSend;
-  chatInput.placeholder = canSend ? '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.' :
+  announcementOption.hidden = !isAdmin;
+  announcementKind.disabled = !isAdmin || !canSend;
+  if (!isAdmin) announcementKind.value = '';
+  chatInput.placeholder = canSend ? (isAdmin ? '메시지 입력 · 모임안내·초청장은 위에서 종류를 고르고 첫 줄에 제목을 적으세요' : '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.') :
     signedIn ? '이메일 인증을 완료하면 채팅을 보낼 수 있습니다.' : '로그인한 회원만 채팅을 보낼 수 있습니다. 대화는 누구나 볼 수 있습니다.';
 }
 
@@ -195,6 +317,16 @@ function connectChat() {
       return;
     }
     if (result.type === 'presence') { renderPresence(result); return; }
+    if (result.type === 'forwarded') {
+      chatStatus.textContent = `스페이스톡 「📣 모임안내」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}. 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.`;
+      chatStatus.dataset.error = 'false';
+      return;
+    }
+    if (result.type === 'forward-error') {
+      chatStatus.textContent = result.error || '스페이스톡 채널로 전달하지 못했습니다.';
+      chatStatus.dataset.error = 'true';
+      return;
+    }
     if (result.type === 'history') {
       squareMessages = Array.isArray(result.messages) ? result.messages.filter(item => typeof item?.text === 'string') : [];
       renderAllChat();
@@ -229,6 +361,7 @@ function connectChat() {
   chatSocket.addEventListener('close', () => {
     canSend = false;
     chatSend.disabled = true;
+    announcementKind.disabled = true;
     chatStatus.textContent = '채팅 연결이 끊어졌습니다. 자동으로 다시 연결합니다.';
     chatStatus.dataset.error = 'true';
     if (!stopped) {
@@ -238,8 +371,15 @@ function connectChat() {
   });
 }
 function sendChat() {
-  const text = chatInput.value.trim();
-  if (!text || text.length > 2000) {
+  let text = chatInput.value.trim();
+  if (!text) {
+    chatStatus.textContent = '채팅은 1~2,000자로 입력해 주세요.';
+    chatStatus.dataset.error = 'true';
+    return;
+  }
+  const chosen = isAdmin ? announcementKind.value : '';
+  if (chosen && !announcementOf(text)) text = `${chosen}\n${text}`;
+  if (text.length > 2000) {
     chatStatus.textContent = '채팅은 1~2,000자로 입력해 주세요.';
     chatStatus.dataset.error = 'true';
     return;
@@ -251,6 +391,7 @@ function sendChat() {
   }
   chatSocket.send(JSON.stringify({ text }));
   chatInput.value = '';
+  announcementKind.value = '';
 }
 chatSend.addEventListener('click', sendChat);
 chatInput.addEventListener('keydown', event => {

@@ -185,3 +185,14 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .channel-card strong { display:block; font-size:15.5px; color:var(--ink); }
 .channel-card p { margin:4px 0 10px; font-size:13px; line-height:1.55; color:#6b5200; }
 .channel-card .btn { min-height:40px; padding:8px 18px; }
+
+/* 모임안내·초청장 카드 (보낸 사람: 스페이스 커뮤니티) */
+.bubble.announce-card { padding:0; overflow:hidden; background:#fff; border:1px solid #e3e6ef; max-width:min(420px, 82vw); }
+.announce-head { display:flex; align-items:center; gap:8px; padding:10px 12px; background:#0e1730; color:#fff; }
+.announce-head img { width:28px; height:28px; border-radius:8px; border:1.5px solid #f5b941; }
+.announce-head strong { font-size:14px; }
+.announce-head span { margin-left:auto; font-size:12px; font-weight:800; color:#f5b941; }
+.announce-title { display:block; padding:12px 14px 4px; font-size:16px; color:#0e1730; line-height:1.45; }
+.announce-body { margin:0; padding:2px 14px 6px; white-space:pre-wrap; line-height:1.65; font-size:14.5px; color:#2b3550; }
+.announce-actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
+.announce-actions .btn { min-height:36px; padding:0 12px; font-size:13.5px; text-decoration:none; }

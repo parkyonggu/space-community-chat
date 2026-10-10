@@ -1,12 +1,17 @@
 // 스페이스 톡 Durable Object: 대화방 저장(chat-core) + 실시간 전송(WebSocket, 절전 지원) + 웹 알림
 import { DurableObject } from 'cloudflare:workers';
 import chatCore from '../chat-core.js';
+import announcement from '../announcement.js';
 import { loadVapid, sendPush } from './web-push.js';
 
 const { createChatCore, ChatError, RETENTION_DAYS, MAX_ROOM_MEMBERS } = chatCore;
 const DAY = 24 * 60 * 60 * 1000;
 const POLICY_CHANNEL = 'channel-policy-briefing';
 const POLICY_CHANNEL_NAME = '📰 오늘의 정책브리핑';
+const EVENT_CHANNEL = 'channel-event-announcements';
+const EVENT_CHANNEL_NAME = '📣 모임안내';
+// 모임안내 채널 글의 보낸 사람 이름(화면에는 로고와 함께 보인다)
+const EVENT_SENDER = '스페이스 커뮤니티';
 const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 const json = (body, status = 200, extra = {}) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra } });
 
@@ -14,6 +19,8 @@ export class ChatService extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.core = createChatCore(ctx.storage.sql);
+    ctx.storage.sql.exec('UPDATE chat_messages SET nickname = ? WHERE room_id = ? AND user_id IS NULL AND nickname IN (?, ?)',
+      EVENT_SENDER, EVENT_CHANNEL, '광장채팅 운영자', '스페이스톡');
     this.limits = new Map();
     this.lastPush = new Map();
     ctx.blockConcurrencyWhile(async () => {
@@ -91,6 +98,17 @@ export class ChatService extends DurableObject {
         if (day) this.core.meta(`channel-posted:${day}`, '1');
         if (result) this.deliver(result, { id: null });
         return json({ ok: true, subscribers: result?.memberIds.length || 0 });
+      }
+      if (path === '/internal/event-announcement' && request.method === 'POST') {
+        const { sourceId, text } = await request.json();
+        if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
+        if (typeof text !== 'string' || !announcement.kindOf(text) || text.length > 2000) throw new ChatError(400, '모임안내·초청장 형식의 메시지가 아닙니다.');
+        const key = `event-announcement:${sourceId}`;
+        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        const result = this.core.postToChannel(EVENT_CHANNEL, { nickname: EVENT_SENDER, roomName: EVENT_CHANNEL_NAME, text });
+        this.core.meta(key, '1');
+        this.deliver(result, { id: null });
+        return json({ ok: true, subscribers: result.memberIds.length });
       }
       if (path === '/internal/user-deleted') {
         const { userId } = await request.json();
@@ -214,6 +232,11 @@ export class ChatService extends DurableObject {
       if (first === 'channel' && method === 'GET') return json(this.core.channel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME));
       if (first === 'channel' && id === 'subscribe' && method === 'POST') {
         const room = this.core.subscribeChannel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME);
+        return json({ room });
+      }
+      if (first === 'event-channel' && method === 'GET') return json(this.core.channel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME));
+      if (first === 'event-channel' && id === 'subscribe' && method === 'POST') {
+        const room = this.core.subscribeChannel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME);
         return json({ room });
       }
       if (first === 'invite' && id && method === 'GET') return json(this.core.invitePreview(id));

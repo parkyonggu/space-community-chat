@@ -174,9 +174,14 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id);
     },
 
-    postToChannel(channelId, { nickname, text }) {
-      const room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
-      if (!room) return null;
+    postToChannel(channelId, { nickname, text, roomName }) {
+      let room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      if (!room) {
+        if (!roomName) return null;
+        run('INSERT INTO chat_rooms (id, kind, name, owner_id, max_members, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+          channelId, 'channel', roomName, null, 1000000, iso());
+        room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
+      }
       const message = addMessage(room, { userId: null, nickname, kind: 'text', text: String(text).slice(0, MAX_TEXT) });
       return { message, memberIds: all('SELECT user_id FROM chat_members WHERE room_id = ?', room.id).map(row => row.user_id) };
     },
