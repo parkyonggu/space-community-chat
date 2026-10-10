@@ -88,6 +88,9 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .post-meta .tag { display:inline-block; background:rgba(245,185,65,.18); color:#f5b941; border-radius:6px; padding:1px 8px; font-weight:800; margin-right:6px; }
     .issue-ref { margin:0 0 18px; padding:12px 14px; border-left:4px solid #f5b941; background:rgba(245,185,65,.10); border-radius:8px; font-size:14px; color:var(--muted, #5b6478); line-height:1.6; }
     .issue-ref a { color:var(--ink); font-weight:700; font-size:16px; }
+    .post-photos { display:grid; gap:8px; margin:18px 0 6px; }
+    .post-photos a { display:block; border-radius:10px; overflow:hidden; background:#111; }
+    .post-photos img { width:100%; max-height:560px; object-fit:contain; display:block; }
     .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
     .post-body p { margin:0 0 1.1em; }
     .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
@@ -149,7 +152,8 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
       <p class="issue-ref">평론한 이슈 · ${escapeHtml(post.issue.date ? `${post.issue.date.slice(4, 6)}월 ${Number(post.issue.date.slice(6, 8))}일` : '')} ${escapeHtml(post.category || '')}<br><a href="${escapeHtml(post.issue.link)}" target="_blank" rel="noopener nofollow">${escapeHtml(post.issue.title)}</a> <small>(${escapeHtml(post.issue.source || '원문')})</small></p>` : ''}
       <div class="post-body${post.category === '시' ? ' poem' : ''}">
 ${bodyHtml(post.text)}
-      </div>
+      </div>${(post.images || []).filter(id => /^[0-9a-f]{32}$/.test(id)).length ? `
+      <div class="post-photos">${post.images.filter(id => /^[0-9a-f]{32}$/.test(id)).map((id, index) => `<a href="/api/board/image?id=${id}" target="_blank" rel="noopener"><img src="/api/board/image?id=${id}" alt="첨부 사진 ${index + 1}" loading="lazy"></a>`).join('')}</div>` : ''}
       <div class="post-foot">
         <span class="likes">♥ 공감 ${post.likes || 0}</span>
         <a class="btn btn-primary" href="/#${board.anchor}">${escapeHtml(post.board === 'issue' ? '오늘의 이슈' : board.name)}에서 ${post.board === 'issue' ? '평론 더 보기·쓰기' : '공감·댓글 남기기'}</a>

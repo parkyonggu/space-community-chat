@@ -99,6 +99,152 @@
   researchLock.append(lockLogin, ' ', lockSignup);
   researchComposer.before(researchLock);
 
+  // ---------- 사진 첨부 (글쓰기 칸에 붙여넣기·끌어다 놓기·📷 버튼) ----------
+  // 사진은 화면에서 긴 변 1600px JPEG로 줄여 올린다. 다시 그려 저장하므로 촬영 위치(GPS) 같은 정보는 지워진다.
+  const MAX_PHOTOS = 4;
+  async function shrinkPhoto(file) {
+    let source;
+    try {
+      source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+      source = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('unreadable'));
+        image.src = URL.createObjectURL(file);
+      }).catch(() => null);
+    }
+    if (!source) throw new Error(/heic|heif/i.test(file.type || file.name) ? '이 사진 형식(HEIC)은 이 브라우저에서 열 수 없어요. 사진을 JPG로 저장하거나 화면을 캡처해 올려 주세요.' : '사진을 읽을 수 없습니다. JPG·PNG 사진을 골라 주세요.');
+    const width = source.width;
+    const height = source.height;
+    const scale = Math.min(1, 1600 / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    source.close?.();
+    for (const quality of [0.85, 0.72, 0.6]) {
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= 1400 * 1024) return blob;
+    }
+    throw new Error('사진이 너무 큽니다. 더 작은 사진을 골라 주세요.');
+  }
+  async function uploadPhoto(blob) {
+    const response = await fetch('/api/board/image', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'image/jpeg', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' }, body: blob,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `사진 올리기 실패 (${response.status})`);
+    return result.id;
+  }
+  const photoUrl = id => `/api/board/image?id=${id}`;
+  // 글쓰기 칸 하나에 붙는 사진 고르기 도구. existing: 수정할 때 이미 붙어 있는 사진 id들.
+  function photoPicker(board, textarea, existing = []) {
+    const photos = existing.map(id => ({ id, url: photoUrl(id) }));
+    const box = make('div', 'photo-picker');
+    const row = make('div', 'photo-row');
+    const add = make('button', 'like-btn photo-add', '📷 사진 첨부');
+    add.type = 'button';
+    add.title = '사진 고르기 (붙여넣기·끌어다 놓기도 됩니다)';
+    const file = make('input');
+    file.type = 'file';
+    file.accept = 'image/*';
+    file.multiple = true;
+    file.hidden = true;
+    const note = make('span', 'photo-note', `최대 ${MAX_PHOTOS}장 · 사진 위치정보는 자동으로 지워져요. 얼굴·차량번호는 가려 주세요.`);
+    const strip = make('div', 'photo-strip');
+    row.append(add, file, note);
+    box.append(row, strip);
+    const draw = () => {
+      strip.replaceChildren(...photos.map(photo => {
+        const cell = make('figure', `photo-thumb${photo.busy ? ' busy' : ''}`);
+        const image = make('img');
+        image.src = photo.url;
+        image.alt = '첨부할 사진';
+        const remove = make('button', 'photo-remove', '✕');
+        remove.type = 'button';
+        remove.title = '이 사진 빼기';
+        remove.setAttribute('aria-label', '이 사진 빼기');
+        remove.addEventListener('click', () => { photos.splice(photos.indexOf(photo), 1); draw(); });
+        cell.append(image, remove);
+        if (photo.busy) cell.appendChild(make('figcaption', '', '올리는 중…'));
+        return cell;
+      }));
+      strip.hidden = !photos.length;
+      add.disabled = photos.length >= MAX_PHOTOS;
+    };
+    async function addFiles(files) {
+      const list = [...files].filter(item => item.type.startsWith('image/') || /\.(heic|heif)$/i.test(item.name || ''));
+      if (!list.length) return false;
+      if (!canWrite()) {
+        setStatus(board, writeHint(), true);
+        if (!state.user) window.spaceOpenAuth?.('login');
+        return true;
+      }
+      for (const item of list) {
+        if (photos.length >= MAX_PHOTOS) { setStatus(board, `사진은 글 하나에 ${MAX_PHOTOS}장까지 붙일 수 있습니다.`, true); break; }
+        const photo = { id: null, url: URL.createObjectURL(item), busy: true };
+        photos.push(photo);
+        draw();
+        try {
+          const blob = await shrinkPhoto(item);
+          URL.revokeObjectURL(photo.url);
+          photo.url = URL.createObjectURL(blob);
+          photo.id = await uploadPhoto(blob);
+          photo.busy = false;
+          setStatus(board, '사진을 붙였습니다. 내용을 확인하고 등록해 주세요.');
+        } catch (error) {
+          photos.splice(photos.indexOf(photo), 1);
+          setStatus(board, error.message, true);
+        }
+        draw();
+      }
+      return true;
+    }
+    add.addEventListener('click', () => file.click());
+    file.addEventListener('change', () => { addFiles(file.files); file.value = ''; });
+    // 복사한 사진을 글쓰기 칸에 Ctrl+V(휴대폰은 길게 눌러 붙여넣기)로 넣을 수 있다.
+    textarea.addEventListener('paste', event => {
+      const files = [...(event.clipboardData?.items || [])].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
+      if (!files.length) return;
+      event.preventDefault();
+      addFiles(files);
+    });
+    textarea.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
+    textarea.addEventListener('drop', event => {
+      if (!event.dataTransfer?.files?.length) return;
+      event.preventDefault();
+      addFiles(event.dataTransfer.files);
+    });
+    draw();
+    return {
+      element: box,
+      ids: () => photos.filter(photo => photo.id).map(photo => photo.id),
+      busy: () => photos.some(photo => photo.busy),
+      clear: () => { photos.length = 0; draw(); },
+    };
+  }
+  function postPhotos(post) {
+    const grid = make('div', `post-photos n${Math.min(post.images.length, 4)}`);
+    post.images.forEach((id, index) => {
+      const link = make('a');
+      link.href = photoUrl(id);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      const image = make('img');
+      image.src = photoUrl(id);
+      image.loading = 'lazy';
+      image.alt = `첨부 사진 ${index + 1}`;
+      link.appendChild(image);
+      grid.appendChild(link);
+    });
+    return grid;
+  }
+
   function renderPost(post) {
     const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
@@ -110,6 +256,7 @@
     const body = make('p', '', post.text);
     body.style.whiteSpace = 'pre-wrap';
     item.appendChild(body);
+    if (post.images?.length) item.appendChild(postPhotos(post));
     const meta = make('div', 'label');
     meta.style.display = 'flex';
     meta.style.flexWrap = 'wrap';
@@ -244,7 +391,8 @@
     save.type = 'submit';
     buttons.append(cancel, save);
     actions.append(note, buttons);
-    form.append(text, actions, status);
+    const editPhotos = photoPicker(post.board, text, post.images || []);
+    form.append(text, editPhotos.element, actions, status);
     const original = [...item.childNodes];
     item.replaceChildren(form);
     text.focus();
@@ -258,7 +406,8 @@
       }
       save.disabled = true;
       try {
-        const result = await api('/api/board/edit', { postId: post.id, text: text.value, title: title.value, ...(category ? { category: category.value } : {}) });
+        if (editPhotos.busy()) { status.textContent = '사진을 올리는 중입니다. 잠시 뒤 다시 눌러 주세요.'; status.dataset.error = 'true'; save.disabled = false; return; }
+        const result = await api('/api/board/edit', { postId: post.id, text: text.value, title: title.value, images: editPhotos.ids(), ...(category ? { category: category.value } : {}) });
         state.posts[post.board] = state.posts[post.board].map(entry => entry.id === post.id ? result.post : entry);
         render(post.board);
         announce(post.board);
@@ -382,6 +531,19 @@
     input.after(paste);
   }
 
+  // 소통·나눔, 시민의 소리, 칼럼·학술 글쓰기 칸에 사진 첨부 도구를 붙인다.
+  const pickers = {};
+  for (const [inputId, board] of [['communityInput', 'community'], ['voiceInput', 'voice'], ['researchInput', 'research']]) {
+    const input = $(inputId);
+    pickers[board] = photoPicker(board, input);
+    (input.nextElementSibling?.classList.contains('paste-btn') ? input.nextElementSibling : input).after(pickers[board].element);
+  }
+  const withPhotos = (board, payload) => {
+    if (pickers[board]?.busy()) { setStatus(board, '사진을 올리는 중입니다. 잠시 뒤 다시 눌러 주세요.', true); return null; }
+    const images = pickers[board]?.ids() || [];
+    return images.length ? { ...payload, images } : payload;
+  };
+
   // A draft carried over from 스페이스 톡 ("게시판에 옮겨 쓰기").
   try {
     const draft = JSON.parse(sessionStorage.getItem('space-draft') || 'null');
@@ -401,19 +563,22 @@
     const input = $('communityInput');
     const title = $('communityTitle');
     if (!input.value.trim()) { setStatus('community', '내용을 입력해 주세요.', true); return; }
-    submit('community', { category: $('communityType').value, title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
+    const payload = withPhotos('community', { category: $('communityType').value, title: title.value, text: input.value });
+    if (payload) submit('community', payload, () => { input.value = ''; title.value = ''; pickers.community.clear(); });
   });
   $('voiceSubmit').addEventListener('click', () => {
     const input = $('voiceInput');
     const title = $('voiceTitle');
     if (!input.value.trim()) { setStatus('voice', '내용을 입력해 주세요.', true); return; }
-    submit('voice', { category: $('voiceCategory').value, title: title.value, text: input.value }, () => { input.value = ''; title.value = ''; });
+    const payload = withPhotos('voice', { category: $('voiceCategory').value, title: title.value, text: input.value });
+    if (payload) submit('voice', payload, () => { input.value = ''; title.value = ''; pickers.voice.clear(); });
   });
   $('researchSubmit').addEventListener('click', () => {
     const title = $('researchTitle');
     const input = $('researchInput');
     if (!title.value.trim() || !input.value.trim()) { setStatus('research', '제목과 내용을 입력해 주세요.', true); return; }
-    submit('research', { category: $('researchType').value, title: title.value, text: input.value }, () => { title.value = ''; input.value = ''; });
+    const payload = withPhotos('research', { category: $('researchType').value, title: title.value, text: input.value });
+    if (payload) submit('research', payload, () => { title.value = ''; input.value = ''; pickers.research.clear(); });
   });
   categoryContainer.addEventListener('click', event => {
     const button = event.target.closest('button.submitPolicy');

@@ -22,7 +22,25 @@ class BoardError extends Error {
   }
 }
 
-function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200 } = {}) {
+// 글에 붙이는 사진: 화면에서 줄이고(긴 변 1600px) 다시 저장해 위치정보(EXIF)를 지운 JPEG을 받는다.
+const MAX_IMAGES = 4;
+const MAX_IMAGE_BYTES = 1500 * 1024;
+const IMAGE_TYPES = { 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47], 'image/webp': [0x52, 0x49, 0x46, 0x46] };
+const IMAGE_ID = /^[0-9a-f]{32}$/;
+
+// 기본 사진 보관소(메모리). Cloudflare에서는 Durable Object SQLite, 내 컴퓨터 서버에서는 파일로 바꿔 끼운다.
+function createMemoryImageStore() {
+  const images = new Map();
+  return {
+    async put(image) { images.set(image.id, { ...image }); },
+    async get(id) { return images.get(id) || null; },
+    async attach(ids, postId) { for (const id of ids) { const image = images.get(id); if (image) image.postId = postId; } },
+    async remove(ids) { for (const id of ids) images.delete(id); },
+    async purgeUnattached(before) { for (const [id, image] of images) if (!image.postId && image.createdAt < before) images.delete(id); },
+  };
+}
+
+function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200, images = createMemoryImageStore() } = {}) {
   if (typeof authenticate !== 'function') throw new Error('Board API requires an authenticate function');
   const filePath = path.join(dataDirectory, 'board.json');
   let writes = Promise.resolve();
@@ -103,7 +121,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const likes = store.likes.filter(entry => entry.postId === post.id);
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
-      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}),
+      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [],
       authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
@@ -119,6 +137,35 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   }
 
   const text = (value, max) => typeof value === 'string' ? value.trim() : '';
+  // 글에 붙일 사진: 내가 올렸고 아직 다른 글에 붙지 않은 사진만(수정할 때는 이 글에 이미 붙은 사진도) 받는다.
+  async function imageIds(input, user, existing = []) {
+    if (input === undefined) return null;
+    if (!Array.isArray(input)) throw new BoardError(400, '사진 목록을 확인해 주세요.');
+    const ids = [...new Set(input)];
+    if (ids.length > MAX_IMAGES) throw new BoardError(400, `사진은 글 하나에 ${MAX_IMAGES}장까지 붙일 수 있습니다.`);
+    for (const id of ids) {
+      if (typeof id !== 'string' || !IMAGE_ID.test(id)) throw new BoardError(400, '사진을 다시 올려 주세요.');
+      if (existing.includes(id)) continue;
+      const image = await images.get(id);
+      if (!image || image.userId !== user.id || image.postId) throw new BoardError(400, '사진을 다시 올려 주세요.');
+    }
+    return ids;
+  }
+  async function readImage(request) {
+    const type = String(request.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (!IMAGE_TYPES[type]) throw new BoardError(415, 'JPG·PNG·WEBP 사진만 올릴 수 있습니다.');
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of request) {
+      size += chunk.length;
+      if (size > MAX_IMAGE_BYTES) throw new BoardError(413, '사진이 너무 큽니다. 1.5MB 이하로 줄여 주세요.');
+      chunks.push(Buffer.from(chunk));
+    }
+    const data = Buffer.concat(chunks);
+    if (data.length < 100 || !IMAGE_TYPES[type].every((byte, index) => data[index] === byte)) throw new BoardError(400, '사진 파일을 읽을 수 없습니다.');
+    return { type, data };
+  }
+
   // 평론 대상 이슈: 화면이 보낸 값을 그대로 믿지 않고 모양만 확인해 짧게 저장한다.
   function issueRef(input) {
     const ref = input && typeof input === 'object' ? input : {};
@@ -148,7 +195,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     return store;
   }
   const publicView = (post, store) => ({
-    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}),
+    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [],
     authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null,
     likes: store.likes.filter(entry => entry.postId === post.id).length,
   });
@@ -157,6 +204,39 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   async function handleBoardApi(request, response, pathname) {
     try {
       const ip = request.socket.remoteAddress;
+      if (pathname === '/api/board/image' && request.method === 'GET') {
+        const id = new URL(request.url, 'http://localhost').searchParams.get('id') || '';
+        if (!IMAGE_ID.test(id)) throw new BoardError(404, '사진을 찾을 수 없습니다.');
+        limit(`board-image:${ip}`, 600, 60000);
+        const image = await images.get(id);
+        if (!image) throw new BoardError(404, '사진을 찾을 수 없습니다.');
+        const { user } = await authenticate(request);
+        let open = Boolean(user && (user.admin || user.id === image.userId));
+        if (!open && image.postId) {
+          const post = (await readStore()).posts.find(entry => entry.id === image.postId);
+          open = Boolean(post && !post.hiddenAt && (BOARDS[post.board]?.publicRead || user));
+        }
+        if (!open) throw new BoardError(404, '사진을 찾을 수 없습니다.');
+        response.writeHead(200, { 'Content-Type': image.type, 'Content-Length': String(image.data.length), 'Cache-Control': image.postId ? 'public, max-age=86400' : 'private, max-age=600',
+          'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'" });
+        response.end(image.data);
+        return;
+      }
+      if (pathname === '/api/board/image') {
+        if (request.method !== 'POST') { response.setHeader('Allow', 'GET, POST'); throw new BoardError(405, '지원하지 않는 요청 방식입니다.'); }
+        const auth = await authenticate(request, { csrf: true });
+        if (auth.error) throw new BoardError(auth.error.status, auth.error.message);
+        if (!auth.user) throw new BoardError(401, '로그인한 회원만 사진을 올릴 수 있습니다.');
+        if (requireVerifiedEmail && !auth.user.emailVerified) throw new BoardError(403, '이메일 인증을 완료한 회원만 사진을 올릴 수 있습니다.');
+        limit(`board-image-up:${auth.user.id}`, 30, 60 * 60000);
+        const { type, data } = await readImage(request);
+        const id = randomUUID().replace(/-/g, '');
+        // 글에 붙이지 않고 하루가 지난 사진은 지운다.
+        await images.purgeUnattached(now() - 24 * 60 * 60 * 1000);
+        await images.put({ id, type, data, userId: auth.user.id, postId: null, createdAt: now() });
+        send(response, 201, { id, url: `/api/board/image?id=${id}` });
+        return;
+      }
       if (pathname === '/api/board') {
         if (request.method !== 'GET') {
           response.setHeader('Allow', 'GET');
@@ -202,13 +282,15 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         const body = text(input.text);
         if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
         limit(`board-post:${user.id}`, 10, 10 * 60000);
+        const attached = (await imageIds(input.images, user)) || [];
         const post = { id: randomUUID(), board, category, title, text: body, authorId: user.id, authorName: user.nickname,
-          createdAt: new Date(now()).toISOString(), ...(rules.issue ? { issue: issueRef(input.issue) } : {}) };
+          createdAt: new Date(now()).toISOString(), ...(rules.issue ? { issue: issueRef(input.issue) } : {}), ...(attached.length ? { images: attached } : {}) };
         await updateStore(store => {
           numberPosts(store);
           post.no = store.posts.reduce((max, entry) => Math.max(max, entry.no || 0), 0) + 1;
           store.posts.push(post);
         });
+        if (attached.length) await images.attach(attached, post.id);
         send(response, 201, { post: view(post, { likes: [], reports: [] }, user), message: '글이 등록되었습니다.' });
         return;
       }
@@ -216,6 +298,9 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
       if (pathname === '/api/board/edit') {
         if (requireVerifiedEmail && !user.emailVerified) throw new BoardError(403, '이메일 인증을 완료한 회원만 글을 수정할 수 있습니다.');
         limit(`board-edit:${user.id}`, 20, 10 * 60000);
+        const before = (await readStore()).posts.find(entry => entry.id === input.postId);
+        const nextImages = before && before.authorId === user.id ? await imageIds(input.images, user, before.images || []) : null;
+        let dropped = [];
         const post = await updateStore(store => {
           const target = findPost(store, input.postId);
           if (target.authorId !== user.id) throw new BoardError(403, '내가 쓴 글만 수정할 수 있습니다.');
@@ -232,12 +317,18 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           if (title.length > 120) throw new BoardError(400, '제목은 120자 이내로 입력해 주세요.');
           const body = text(input.text);
           if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
-          if (body === target.text && title === (target.title || '') && category === target.category) throw new BoardError(400, '바뀐 내용이 없습니다.');
+          const sameImages = !nextImages || nextImages.join() === (target.images || []).join();
+          if (body === target.text && title === (target.title || '') && category === target.category && sameImages) throw new BoardError(400, '바뀐 내용이 없습니다.');
+          if (nextImages) {
+            dropped = (target.images || []).filter(id => !nextImages.includes(id));
+            if (nextImages.length) target.images = nextImages; else delete target.images;
+          }
           // Keep the previous versions so moderators can see what a reported post said before it was edited.
           target.history = [...(target.history || []), { category: target.category, title: target.title, text: target.text, savedAt: target.editedAt || target.createdAt }].slice(-5);
           Object.assign(target, { category, title, text: body, editedAt: new Date(now()).toISOString() });
           return view(target, store, user);
         });
+        if (nextImages) { await images.attach(nextImages, post.id); if (dropped.length) await images.remove(dropped); }
         send(response, 200, { post, message: '글을 수정했습니다.' });
         return;
       }
@@ -275,9 +366,11 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
 
       if (!user.admin) throw new BoardError(403, '운영자만 처리할 수 있습니다.');
       if (!['delete', 'restore'].includes(input.action)) throw new BoardError(400, '처리 방법을 확인해 주세요.');
+      let removedImages = [];
       await updateStore(store => {
         const post = findPost(store, input.postId);
         if (input.action === 'delete') {
+          removedImages = post.images || [];
           store.posts = store.posts.filter(entry => entry.id !== post.id);
           store.likes = store.likes.filter(entry => entry.postId !== post.id);
         } else {
@@ -285,6 +378,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         }
         store.reports = store.reports.filter(entry => entry.postId !== post.id);
       });
+      if (removedImages.length) await images.remove(removedImages);
       send(response, 200, { message: input.action === 'delete' ? '글을 삭제했습니다.' : '글을 다시 공개했습니다.' });
     } catch (error) {
       if (!(error instanceof BoardError)) console.error('Board API failed:', error);
@@ -339,4 +433,4 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   return handleBoardApi;
 }
 
-module.exports = { createBoardApi, BOARDS, REPORT_HIDE_THRESHOLD };
+module.exports = { createBoardApi, createMemoryImageStore, BOARDS, REPORT_HIDE_THRESHOLD, MAX_IMAGES };

@@ -97,9 +97,21 @@ export class CommunityService extends DurableObject {
       storage: new SqlStore(state, 'community', ['comments', 'subscribers']), rateLimit,
       authenticate: this.auth.authenticate, requireVerifiedEmail,
     });
+    // 게시글 사진: 글 데이터와 따로 SQLite에 보관한다(사진 한 장당 1.5MB 이하).
+    sql.exec('CREATE TABLE IF NOT EXISTS board_images (id TEXT PRIMARY KEY, type TEXT NOT NULL, data BLOB NOT NULL, user_id TEXT, post_id TEXT, created_at INTEGER NOT NULL)');
+    const boardImages = {
+      async put(image) { sql.exec('INSERT INTO board_images VALUES (?, ?, ?, ?, ?, ?)', image.id, image.type, image.data, image.userId, image.postId, image.createdAt); },
+      async get(id) {
+        const row = [...sql.exec('SELECT * FROM board_images WHERE id = ?', id)][0];
+        return row ? { id: row.id, type: row.type, data: Buffer.from(row.data), userId: row.user_id, postId: row.post_id, createdAt: row.created_at } : null;
+      },
+      async attach(ids, postId) { for (const id of ids) sql.exec('UPDATE board_images SET post_id = ? WHERE id = ?', postId, id); },
+      async remove(ids) { for (const id of ids) sql.exec('DELETE FROM board_images WHERE id = ?', id); },
+      async purgeUnattached(before) { sql.exec('DELETE FROM board_images WHERE post_id IS NULL AND created_at < ?', before); },
+    };
     this.board = board.createBoardApi('/private', {
       storage: new SqlStore(state, 'board', ['posts', 'likes', 'reports']), rateLimit,
-      authenticate: this.auth.authenticate, requireVerifiedEmail,
+      authenticate: this.auth.authenticate, requireVerifiedEmail, images: boardImages,
     });
     this.requireVerifiedEmail = requireVerifiedEmail;
     this.newsletter = newsletter.createNewsletterApi('/private', {
@@ -140,9 +152,11 @@ export class CommunityService extends DurableObject {
     const url = new URL(request.url);
     const pathname = url.pathname;
     const headers = Object.fromEntries(request.headers);
-    if (Number(request.headers.get('content-length') || 0) > 320 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
+    // 사진 올리기만 1.6MB까지, 나머지 요청은 320KB까지 받는다.
+    const maxBody = pathname === '/api/board/image' ? 1600 * 1024 : 320 * 1024;
+    if (Number(request.headers.get('content-length') || 0) > maxBody) return json({ error: pathname === '/api/board/image' ? '사진이 너무 큽니다.' : '입력 내용이 너무 큽니다.' }, 413);
     const body = request.body ? Buffer.from(await request.arrayBuffer()) : null;
-    if (body && body.length > 320 * 1024) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
+    if (body && body.length > maxBody) return json({ error: '입력 내용이 너무 큽니다.' }, 413);
     const source = {
       method: request.method, headers, url: url.pathname + url.search,
       socket: { remoteAddress: request.headers.get('CF-Connecting-IP') || 'unknown' },

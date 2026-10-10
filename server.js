@@ -30,7 +30,37 @@ const authApi = createAuthApi(dataDirectory, {
   onAccountDeleted: userId => Promise.all([boardApi.anonymizeUser(userId), communityApi.anonymizeUser(userId)]),
 });
 const communityApi = createCommunityApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
-const boardApi = createBoardApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
+// 게시글 사진은 data/board-images 폴더에 파일로 보관한다.
+const boardImageDirectory = path.join(dataDirectory, 'board-images');
+const boardImages = {
+  async put(image) {
+    await fs.promises.mkdir(boardImageDirectory, { recursive: true, mode: 0o700 });
+    await fs.promises.writeFile(path.join(boardImageDirectory, image.id), image.data, { mode: 0o600 });
+    await fs.promises.writeFile(path.join(boardImageDirectory, `${image.id}.json`), JSON.stringify({ ...image, data: undefined }), { mode: 0o600 });
+  },
+  async get(id) {
+    try {
+      const meta = JSON.parse(await fs.promises.readFile(path.join(boardImageDirectory, `${id}.json`), 'utf8'));
+      return { ...meta, data: await fs.promises.readFile(path.join(boardImageDirectory, id)) };
+    } catch { return null; }
+  },
+  async attach(ids, postId) {
+    for (const id of ids) {
+      const image = await this.get(id);
+      if (image) await fs.promises.writeFile(path.join(boardImageDirectory, `${id}.json`), JSON.stringify({ ...image, data: undefined, postId }), { mode: 0o600 });
+    }
+  },
+  async remove(ids) { for (const id of ids) for (const name of [id, `${id}.json`]) await fs.promises.rm(path.join(boardImageDirectory, name), { force: true }); },
+  async purgeUnattached(before) {
+    let names = [];
+    try { names = await fs.promises.readdir(boardImageDirectory); } catch { return; }
+    for (const name of names.filter(entry => entry.endsWith('.json'))) {
+      const meta = JSON.parse(await fs.promises.readFile(path.join(boardImageDirectory, name), 'utf8'));
+      if (!meta.postId && meta.createdAt < before) await this.remove([meta.id]);
+    }
+  },
+};
+const boardApi = createBoardApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured, images: boardImages });
 let newsletterTimer;
 const newsletterApi = createNewsletterApi(dataDirectory, {
   authenticate: authApi.authenticate, mailer, siteUrl,
