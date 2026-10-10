@@ -178,7 +178,7 @@
       add.disabled = photos.length >= MAX_PHOTOS;
     };
     async function addFiles(files) {
-      const list = [...files].filter(item => item.type.startsWith('image/') || /\.(heic|heif)$/i.test(item.name || ''));
+      const list = [...files].filter(item => item.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(item.name || ''));
       if (!list.length) return false;
       if (!canWrite()) {
         setStatus(board, writeHint(), true);
@@ -208,14 +208,16 @@
     add.addEventListener('click', () => file.click());
     file.addEventListener('change', () => { addFiles(file.files); file.value = ''; });
     // 복사한 사진을 글쓰기 칸에 Ctrl+V(휴대폰은 길게 눌러 붙여넣기)로 넣을 수 있다.
-    textarea.addEventListener('paste', event => {
-      const files = [...(event.clipboardData?.items || [])].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
+    const area = textarea.closest('.post-composer, form, .research-composer') || textarea.parentElement;
+    area.addEventListener('paste', event => {
+      const files = [...(event.clipboardData?.files || [])].filter(file => file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name || ''));
+      if (!files.length) files.push(...[...(event.clipboardData?.items || [])].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean));
       if (!files.length) return;
       event.preventDefault();
       addFiles(files);
     });
-    textarea.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
-    textarea.addEventListener('drop', event => {
+    area.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
+    area.addEventListener('drop', event => {
       if (!event.dataTransfer?.files?.length) return;
       event.preventDefault();
       addFiles(event.dataTransfer.files);
@@ -223,6 +225,7 @@
     draw();
     return {
       element: box,
+      addFiles,
       ids: () => photos.filter(photo => photo.id).map(photo => photo.id),
       busy: () => photos.some(photo => photo.busy),
       clear: () => { photos.length = 0; draw(); },
@@ -514,11 +517,22 @@
     const input = $(inputId);
     const paste = make('button', 'like-btn paste-btn', '붙여넣기');
     paste.type = 'button';
-    paste.title = '복사한 글을 이 칸에 붙여넣기';
+    paste.title = '복사한 글이나 사진을 이 칸에 붙여넣기';
     paste.addEventListener('click', async () => {
       try {
+        // 복사한 것이 사진(PNG·JPG)이면 사진으로 붙인다.
+        if (navigator.clipboard.read) {
+          try {
+            const files = [];
+            for (const entry of await navigator.clipboard.read()) {
+              const type = entry.types.find(kind => kind.startsWith('image/'));
+              if (type) files.push(new File([await entry.getType(type)], `clipboard.${type.split('/')[1]}`, { type }));
+            }
+            if (files.length) { await pickers[board].addFiles(files); return; }
+          } catch { /* fall back to text */ }
+        }
         const text = await navigator.clipboard.readText();
-        if (!text) { setStatus(board, '복사한 글이 없습니다. 먼저 붙여넣을 글을 복사해 주세요.', true); return; }
+        if (!text) { setStatus(board, '복사한 글이나 사진이 없습니다. 먼저 붙여넣을 내용을 복사해 주세요.', true); return; }
         const start = input.selectionStart ?? input.value.length;
         input.value = input.value.slice(0, start) + text + input.value.slice(input.selectionEnd ?? start);
         input.focus();
