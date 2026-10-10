@@ -248,6 +248,124 @@
     return grid;
   }
 
+  // ---------- 시민의 소리 → 공식 민원 창구 잇기 ----------
+  // 국민신문고·안전신문고는 외부 사이트가 대신 접수할 수 없어(본인 인증 필요), 민원 양식에 맞춘 글을 복사해 주고 접수 화면을 연다.
+  const OFFICIAL = [
+    { id: 'epeople', name: '국민신문고', url: 'https://www.epeople.go.kr', when: '설치·개선 요청, 행정 불편, 정책 제안', how: '로그인 → 민원신청 → 처리기관에서 해당 시·군(예: 양산시)을 고르고 붙여넣기' },
+    { id: 'safety', name: '안전신문고', url: 'https://www.safetyreport.go.kr', when: '가로등 고장, 도로 파손, 위험 시설 등 안전 신고', how: '안전신문고 앱(권장) 또는 누리집 → 신고하기 → 사진을 찍어 올리고 붙여넣기(위치가 함께 들어갑니다)' },
+  ];
+  const PROGRESS_STATUS = ['접수함', '처리 중', '답변 받음', '해결됨', '반려됨'];
+  const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '기타'];
+  function complaintText(post) {
+    const link = post.no ? `${location.origin}/post/${post.no}` : '';
+    return [
+      post.title ? `제목: ${post.title}` : '',
+      '',
+      post.text.trim(),
+      '',
+      post.images?.length ? `※ 현장 사진 ${post.images.length}장을 함께 첨부합니다. (아래 주소에서도 볼 수 있습니다)` : '',
+      link ? `※ 같은 불편을 겪는 주민들의 의견: 스페이스 커뮤니티 시민의 소리 ${link}` : '',
+    ].filter((line, index, all) => line !== '' || (all[index - 1] !== '' && index > 0)).join('\n').trim();
+  }
+  function officialPanel(post, item) {
+    const existing = item.querySelector('.official-panel');
+    if (existing) { existing.remove(); return; }
+    const panel = make('div', 'official-panel');
+    panel.appendChild(make('p', 'official-lead', '시청·군청이 처리하고 답변하게 하려면 공식 창구에 접수해 주세요. 내용을 복사해 드리니 접수 화면에 붙여넣기만 하면 됩니다. 민원은 본인 이름으로 접수됩니다.'));
+    const preview = make('textarea', 'official-text');
+    preview.value = complaintText(post);
+    preview.rows = 6;
+    preview.setAttribute('aria-label', '접수할 민원 내용(고쳐 써도 됩니다)');
+    const choices = make('div', 'official-choices');
+    for (const channel of OFFICIAL) {
+      const card = make('div', 'official-card');
+      const open = make('button', 'btn btn-primary', `📋 복사하고 ${channel.name} 열기`);
+      open.type = 'button';
+      open.addEventListener('click', async () => {
+        let copied = false;
+        try { await navigator.clipboard.writeText(preview.value); copied = true; } catch {
+          preview.focus(); preview.select();
+          try { copied = document.execCommand('copy'); } catch { copied = false; }
+        }
+        window.open(channel.url, '_blank', 'noopener');
+        status.textContent = copied ? `복사했습니다. 열린 ${channel.name} 화면의 내용 칸에 붙여넣기(Ctrl+V, 휴대폰은 길게 누르기) 하세요.${post.images?.length ? ' 사진은 직접 첨부해 주세요.' : ''}` : '자동 복사가 막혀 있어요. 위 내용을 길게 눌러(또는 Ctrl+A, Ctrl+C) 복사해 붙여넣어 주세요.';
+      });
+      card.append(make('strong', '', channel.name), make('span', 'official-when', channel.when), make('span', 'official-how', channel.how), open);
+      choices.appendChild(card);
+    }
+    const status = make('p', 'official-status');
+    status.setAttribute('role', 'status');
+    const after = make('p', 'official-after', post.mine ? '접수한 뒤 이 글의 「처리 경과 적기」에 접수번호와 답변을 남기면 이웃들도 진행 상황을 볼 수 있어요.' : '같은 불편을 겪고 계시면 본인 이름으로 함께 접수해 주세요. 여러 사람이 접수할수록 힘이 실립니다.');
+    panel.append(preview, choices, status, after);
+    item.querySelector('.label')?.after(panel);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function progressBadge(post) {
+    const box = make('div', `progress-box s-${PROGRESS_STATUS.indexOf(post.progress.status)}`);
+    const head = make('div', 'progress-head');
+    head.append(make('span', 'progress-status', post.progress.status), make('span', '', `${post.progress.channel}${post.progress.receipt ? ` · 접수번호 ${post.progress.receipt}` : ''} · ${new Date(post.progress.updatedAt).toLocaleDateString('ko-KR')} ${post.progress.by || '글쓴이'} 기록`));
+    box.appendChild(head);
+    if (post.progress.answer) {
+      const answer = make('p', 'progress-answer', post.progress.answer);
+      answer.style.whiteSpace = 'pre-wrap';
+      box.appendChild(answer);
+    }
+    return box;
+  }
+  function progressForm(post, item) {
+    const existing = item.querySelector('.progress-form');
+    if (existing) { existing.remove(); return; }
+    const form = make('form', 'progress-form');
+    const row = make('div', 'progress-row');
+    const select = (label, options, value) => {
+      const element = make('select');
+      element.setAttribute('aria-label', label);
+      options.forEach(entry => { const option = make('option', '', entry); option.value = entry; element.appendChild(option); });
+      if (value) element.value = value;
+      return element;
+    };
+    const channel = select('접수한 곳', PROGRESS_CHANNELS, post.progress?.channel);
+    const status = select('진행 상황', PROGRESS_STATUS, post.progress?.status);
+    const receipt = make('input');
+    receipt.maxLength = 40;
+    receipt.placeholder = '접수번호 (선택)';
+    receipt.value = post.progress?.receipt || '';
+    row.append(channel, status, receipt);
+    const answer = make('textarea');
+    answer.maxLength = 800;
+    answer.rows = 3;
+    answer.placeholder = '시청·군청 답변 요지 (선택). 담당 공무원 이름·연락처 등 개인정보는 적지 말아 주세요.';
+    answer.value = post.progress?.answer || '';
+    const actions = make('div', 'progress-actions');
+    const save = make('button', 'btn btn-primary', '처리 경과 저장');
+    save.type = 'submit';
+    actions.appendChild(save);
+    if (post.progress) {
+      const clear = make('button', 'btn btn-outline', '지우기');
+      clear.type = 'button';
+      clear.addEventListener('click', () => sendProgress({ clear: true }));
+      actions.appendChild(clear);
+    }
+    const note = make('p', 'official-status');
+    note.setAttribute('role', 'status');
+    form.append(row, answer, actions, note);
+    async function sendProgress(extra) {
+      save.disabled = true;
+      try {
+        const result = await api('/api/board/progress', { postId: post.id, channel: channel.value, status: status.value, receipt: receipt.value, answer: answer.value, ...extra });
+        state.posts.voice = state.posts.voice.map(entry => entry.id === post.id ? result.post : entry);
+        render('voice');
+        announce('voice');
+        setStatus('voice', result.message);
+      } catch (error) {
+        note.textContent = error.message;
+        save.disabled = false;
+      }
+    }
+    form.addEventListener('submit', event => { event.preventDefault(); sendProgress({}); });
+    item.querySelector('.label')?.after(form);
+  }
+
   function renderPost(post) {
     const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
@@ -260,6 +378,7 @@
     body.style.whiteSpace = 'pre-wrap';
     item.appendChild(body);
     if (post.images?.length) item.appendChild(postPhotos(post));
+    if (post.board === 'voice' && post.progress) item.appendChild(progressBadge(post));
     const meta = make('div', 'label');
     meta.style.display = 'flex';
     meta.style.flexWrap = 'wrap';
@@ -273,6 +392,19 @@
       permalink.title = '이 글만 따로 보기·공유하기';
       permalink.style.textDecoration = 'none';
       meta.appendChild(permalink);
+    }
+    if (post.board === 'voice' && !post.hidden) {
+      const official = make('button', 'like-btn official-btn', '📮 공식 민원으로 보내기');
+      official.type = 'button';
+      official.title = '국민신문고·안전신문고에 이 내용을 접수하기';
+      official.addEventListener('click', () => officialPanel(post, item));
+      meta.appendChild(official);
+      if ((post.mine || state.user?.admin) && state.user) {
+        const progress = make('button', 'like-btn', post.progress ? '처리 경과 고치기' : '처리 경과 적기');
+        progress.type = 'button';
+        progress.addEventListener('click', () => progressForm(post, item));
+        meta.appendChild(progress);
+      }
     }
     if (post.mine && !post.hidden && canWrite()) {
       const edit = make('button', 'like-btn', '수정');

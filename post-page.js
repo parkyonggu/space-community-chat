@@ -91,6 +91,10 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .post-photos { display:grid; gap:8px; margin:18px 0 6px; }
     .post-photos a { display:block; border-radius:10px; overflow:hidden; background:#111; }
     .post-photos img { width:100%; max-height:560px; object-fit:contain; display:block; }
+    .progress-box { margin:16px 0 4px; padding:12px 14px; border-radius:10px; background:#eef7ee; border:1px solid #cfe6cf; font-size:14.5px; }
+    .progress-head { margin:0; color:#245a2a; }
+    .progress-answer { margin:8px 0 0; color:var(--ink); line-height:1.7; }
+    .official-note { margin-top:14px; }
     .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
     .post-body p { margin:0 0 1.1em; }
     .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
@@ -154,6 +158,9 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
 ${bodyHtml(post.text)}
       </div>${(post.images || []).filter(id => /^[0-9a-f]{32}$/.test(id)).length ? `
       <div class="post-photos">${post.images.filter(id => /^[0-9a-f]{32}$/.test(id)).map((id, index) => `<a href="/api/board/image?id=${id}" target="_blank" rel="noopener"><img src="/api/board/image?id=${id}" alt="첨부 사진 ${index + 1}" loading="lazy"></a>`).join('')}</div>` : ''}
+${post.board === 'voice' && post.progress ? `
+      <div class="progress-box"><p class="progress-head"><b>${escapeHtml(post.progress.status)}</b> ${escapeHtml(post.progress.channel)}${post.progress.receipt ? ` · 접수번호 ${escapeHtml(post.progress.receipt)}` : ''} · ${escapeHtml(kstDate(post.progress.updatedAt))} 기록</p>${post.progress.answer ? `<p class="progress-answer">${escapeHtml(post.progress.answer).replace(/\n/g, '<br>')}</p>` : ''}</div>` : ''}${post.board === 'voice' ? `
+      <p class="note official-note">같은 불편을 겪고 계신가요? 시청·군청이 처리하도록 <a href="https://www.epeople.go.kr" target="_blank" rel="noopener">국민신문고</a>(설치·개선 요청)나 <a href="https://www.safetyreport.go.kr" target="_blank" rel="noopener">안전신문고</a>(고장·위험 신고)에 본인 이름으로 함께 접수해 주세요. 커뮤니티 게시판의 「📮 공식 민원으로 보내기」를 누르면 내용을 복사해 드립니다.</p>` : ''}
       <div class="post-foot">
         <span class="likes">♥ 공감 ${post.likes || 0}</span>
         <a class="btn btn-primary" href="/#${board.anchor}">${escapeHtml(post.board === 'issue' ? '오늘의 이슈' : board.name)}에서 ${post.board === 'issue' ? '평론 더 보기·쓰기' : '공감·댓글 남기기'}</a>

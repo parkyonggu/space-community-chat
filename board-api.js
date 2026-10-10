@@ -7,13 +7,16 @@ const POLICY_DEPARTMENTS = ['economy', 'industry', 'finance', 'sme', 'education'
 const BOARDS = {
   // 소통·나눔: 분류는 고르지 않아도 되고(일반 이야기), 시는 '시'로 따로 모은다.
   community: { publicRead: true, categories: ['시'], optionalCategory: true, title: false, max: 5000 },
-  voice: { publicRead: true, categories: ['민원이 불편했어요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
+  voice: { publicRead: true, categories: ['민원이 불편했어요', '우리 동네 고쳐 주세요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000 },
   policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000, likes: true },
   // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
   issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
   research: { publicRead: false, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결'], title: true, max: 50000 },
 };
 const REPORT_HIDE_THRESHOLD = 3;
+// 시민의 소리 '처리 경과': 글쓴이(또는 운영자)가 공식 민원 창구에 접수한 뒤 진행 상황을 적는다.
+const PROGRESS_STATUS = ['접수함', '처리 중', '답변 받음', '해결됨', '반려됨'];
+const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '기타'];
 
 class BoardError extends Error {
   constructor(status, message) {
@@ -121,7 +124,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const likes = store.likes.filter(entry => entry.postId === post.id);
     const reports = store.reports.filter(entry => entry.postId === post.id);
     return {
-      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [],
+      id: post.id, no: post.no || null, board: post.board, category: post.category, title: post.title, text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}),
       authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null, likes: likes.length,
       liked: Boolean(user && likes.some(entry => entry.userId === user.id)),
       reported: Boolean(user && reports.some(entry => entry.userId === user.id)),
@@ -195,7 +198,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     return store;
   }
   const publicView = (post, store) => ({
-    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [],
+    no: post.no, board: post.board, category: post.category || '', title: post.title || '', text: post.text, ...(post.issue ? { issue: post.issue } : {}), images: post.images || [], ...(post.progress ? { progress: post.progress } : {}),
     authorName: post.authorName, createdAt: post.createdAt, editedAt: post.editedAt || null,
     likes: store.likes.filter(entry => entry.postId === post.id).length,
   });
@@ -255,7 +258,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         send(response, 200, { posts: posts.map(post => view(post, store, user)) });
         return;
       }
-      const actions = ['/api/board/posts', '/api/board/edit', '/api/board/like', '/api/board/report', '/api/board/moderate'];
+      const actions = ['/api/board/posts', '/api/board/edit', '/api/board/like', '/api/board/report', '/api/board/moderate', '/api/board/progress'];
       if (!actions.includes(pathname)) throw new BoardError(404, '요청한 기능이 없습니다.');
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -347,6 +350,30 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         return;
       }
 
+      if (pathname === '/api/board/progress') {
+        limit(`board-progress:${user.id}`, 20, 10 * 60000);
+        const status = text(input.status);
+        const channel = text(input.channel);
+        const receipt = text(input.receipt);
+        const answer = text(input.answer).replace(/\r/g, '');
+        if (input.clear !== true) {
+          if (!PROGRESS_STATUS.includes(status)) throw new BoardError(400, '진행 상황을 골라 주세요.');
+          if (!PROGRESS_CHANNELS.includes(channel)) throw new BoardError(400, '접수한 곳을 골라 주세요.');
+          if (!/^[0-9A-Za-z가-힣\- ]{0,40}$/.test(receipt)) throw new BoardError(400, '접수번호는 40자 이내의 숫자·글자로 적어 주세요.');
+          if (answer.length > 800) throw new BoardError(400, '답변 요지는 800자 이내로 적어 주세요.');
+        }
+        const post = await updateStore(store => {
+          const target = findPost(store, input.postId);
+          if (target.board !== 'voice') throw new BoardError(400, '시민의 소리 글에만 처리 경과를 적을 수 있습니다.');
+          if (target.authorId !== user.id && !user.admin) throw new BoardError(403, '글쓴이만 처리 경과를 적을 수 있습니다.');
+          if (input.clear === true) delete target.progress;
+          else target.progress = { status, channel, receipt, answer, updatedAt: new Date(now()).toISOString(), by: user.admin && target.authorId !== user.id ? '운영자' : '글쓴이' };
+          return view(target, store, user);
+        });
+        send(response, 200, { post, message: input.clear === true ? '처리 경과를 지웠습니다.' : '처리 경과를 저장했습니다.' });
+        return;
+      }
+
       if (pathname === '/api/board/report') {
         const reason = text(input.reason);
         if (!reason || reason.length > 200) throw new BoardError(400, '신고 사유를 1~200자로 입력해 주세요.');
@@ -433,4 +460,4 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
   return handleBoardApi;
 }
 
-module.exports = { createBoardApi, createMemoryImageStore, BOARDS, REPORT_HIDE_THRESHOLD, MAX_IMAGES };
+module.exports = { createBoardApi, createMemoryImageStore, BOARDS, REPORT_HIDE_THRESHOLD, MAX_IMAGES, PROGRESS_STATUS, PROGRESS_CHANNELS };

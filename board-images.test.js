@@ -78,3 +78,22 @@ test('unattached photos are private; editing can remove photos; admin delete rem
   assert.equal((await call(api, '/api/board/moderate', { method: 'POST', body: { postId: post.id, action: 'delete' } })).status, 200);
   assert.equal(await images.get(second), null);
 });
+
+test('시민의 소리 authors record official complaint progress; others cannot', async () => {
+  const { api, as } = setup();
+  const post = (await call(api, '/api/board/posts', { method: 'POST', body: { board: 'voice', category: '민원이 불편했어요', title: '가로등 설치가 필요합니다', text: '○○길이 너무 어둡습니다.' } })).body.post;
+  const saved = await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, channel: '국민신문고', status: '접수함', receipt: '1AA-2610-0012345', answer: '' } });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.post.progress.status, '접수함');
+  assert.equal(saved.body.post.progress.by, '글쓴이');
+  as('b');
+  assert.equal((await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, channel: '국민신문고', status: '해결됨' } })).status, 403);
+  as('a');
+  assert.equal((await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, channel: '카톡', status: '접수함' } })).status, 400);
+  const answered = await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, channel: '국민신문고', status: '답변 받음', receipt: '1AA-2610-0012345', answer: '내년 상반기 설치 예정' } });
+  assert.equal(answered.body.post.progress.answer, '내년 상반기 설치 예정');
+  const community = (await call(api, '/api/board/posts', { method: 'POST', body: { board: 'community', text: '안부' } })).body.post;
+  assert.equal((await call(api, '/api/board/progress', { method: 'POST', body: { postId: community.id, channel: '국민신문고', status: '접수함' } })).status, 400);
+  const cleared = await call(api, '/api/board/progress', { method: 'POST', body: { postId: post.id, clear: true } });
+  assert.equal(cleared.body.post.progress, undefined);
+});

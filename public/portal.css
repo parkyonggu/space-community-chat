@@ -628,3 +628,32 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .post-photos.n1 a { aspect-ratio:auto; max-height:420px; }
 .post-photos img { width:100%; height:100%; object-fit:cover; display:block; }
 .post-photos.n1 img { object-fit:contain; max-height:420px; }
+
+/* ---------- 시민의 소리 → 공식 민원 ---------- */
+.official-btn { font-weight:800; color:#8a3b12; border-color:#f0c9a8; background:#fff6ef; }
+.official-panel, .progress-form { margin:10px 0 4px; padding:12px; border:1px solid #f0c9a8; background:#fffaf5; border-radius:12px; display:grid; gap:10px; }
+.progress-form { border-color:#cfe6cf; background:#f6fbf6; }
+.official-lead, .official-after, .official-status { margin:0; font-size:13.5px; color:var(--text); line-height:1.6; }
+.official-status { color:#245a2a; font-weight:700; }
+.official-status:empty { display:none; }
+.official-text, .progress-form textarea, .progress-form input, .progress-form select { width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; font-size:14px; color:var(--ink); background:#fff; }
+.official-text { line-height:1.6; resize:vertical; }
+.official-choices { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap:8px; }
+.official-card { display:flex; flex-direction:column; gap:4px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.official-card strong { font-size:15px; color:var(--ink); }
+.official-when { font-size:13px; color:#8a3b12; font-weight:700; }
+.official-how { font-size:12.5px; color:var(--muted); line-height:1.5; }
+.official-card .btn { margin-top:6px; }
+.progress-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+@media (max-width:560px) { .progress-row { grid-template-columns:1fr; } }
+.progress-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.progress-box { margin:8px 0; padding:10px 12px; border-radius:10px; background:#eef7ee; border:1px solid #cfe6cf; font-size:13.5px; }
+.progress-box.s-4 { background:#f6f2ee; border-color:#e5d9cc; }
+.progress-head { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; color:#245a2a; }
+.progress-status { font-weight:800; background:#245a2a; color:#fff; border-radius:999px; padding:1px 10px; font-size:12.5px; }
+.progress-box.s-0 .progress-status, .progress-box.s-1 .progress-status { background:#3346d3; }
+.progress-box.s-4 .progress-status { background:#8a6d4f; }
+.progress-answer { margin:6px 0 0; color:var(--ink); line-height:1.6; }
+.civic-flow { list-style:none; margin:14px 0 4px; padding:0; display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap:8px; }
+.civic-flow li { padding:10px 12px; border-radius:10px; background:#fff6ef; border:1px solid #f0c9a8; font-size:13.5px; color:var(--text); line-height:1.5; }
+.civic-flow b { display:block; color:#8a3b12; font-size:14px; margin-bottom:2px; }
