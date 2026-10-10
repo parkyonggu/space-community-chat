@@ -94,8 +94,14 @@ function createPension({ key = '', fetchImpl = fetch } = {}) {
   async function load(regionId) {
     const region = REGIONS.find(entry => entry.id === regionId);
     if (!region || !key) return null;
-    const [recipt, sbscrb] = await Promise.all([recipients(region), subscribers(region)]);
-    if (!recipt.length && !sbscrb.length) throw new Error('자료 없음');
+    // 한쪽 API가 막혀도(예: 가입현황 미승인) 다른 쪽 자료만으로 보여 준다.
+    const [reciptResult, sbscrbResult] = await Promise.allSettled([recipients(region), subscribers(region)]);
+    const recipt = reciptResult.status === 'fulfilled' ? reciptResult.value : [];
+    const sbscrb = sbscrbResult.status === 'fulfilled' ? sbscrbResult.value : [];
+    if (!recipt.length && !sbscrb.length) {
+      const failed = [reciptResult, sbscrbResult].find(result => result.status === 'rejected');
+      throw failed ? failed.reason : new Error('자료 없음');
+    }
     return { id: region.id, name: region.name, recipients: recipt, subscribers: sbscrb };
   }
   // 운영 확인용: 정해진 이름의 조건만 받아 원자료(결과 코드 포함)를 그대로 보여 준다(공개 통계).

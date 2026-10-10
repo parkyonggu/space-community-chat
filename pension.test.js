@@ -54,6 +54,17 @@ test('pension endpoint without key or with a key error stays calm', async () => 
   assert.match(result.body.problems[0], /SERVICE_KEY_IS_NOT_REGISTERED_ERROR/);
 });
 
+test('recipient data still shows when only the subscriber API is not approved', async () => {
+  const ok = npsFetch([]);
+  const fetchImpl = async url => (url.includes('NpsSbscrbInfoProvdServiceV2')
+    ? { ok: false, status: 401, text: async () => '<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>' }
+    : ok(url));
+  const result = await call(createPortalApi({ pensionKey: 'k', fetchImpl }), '/api/portal/pension');
+  assert.equal(result.body.regions.length, 3);
+  assert.equal(result.body.regions[0].recipients.length, 2);
+  assert.deepEqual(result.body.regions[0].subscribers, []);
+});
+
 test('JSON-shaped gateway errors are reported, not treated as empty data', async () => {
   const api = createPortalApi({ pensionKey: 'k', fetchImpl: async () => ({ ok: false, status: 403, text: async () => JSON.stringify({ OpenAPI_ServiceResponse: { cmmMsgHeader: { errMsg: 'SERVICE_KEY_IS_NOT_REGISTERED_ERROR', returnAuthMsg: '등록되지 않은 서비스키', returnReasonCode: '30' } } }) }) });
   const result = await call(api, '/api/portal/pension');
