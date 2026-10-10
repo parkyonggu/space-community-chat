@@ -29,6 +29,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
   if (!parsed) return null;
   const { kind, title, body } = parsed;
   const url = `${siteUrl}/e/${record.id}`;
+  const poster = /^[0-9a-f]{32}$/.test(record.image || '') ? `${siteUrl}/api/board/image?id=${record.image}` : '';
   const description = (body.replace(/\s+/g, ' ').slice(0, 110) || '스페이스 커뮤니티가 알려 드립니다.') + (body.length > 110 ? '…' : '');
   const date = new Date(record.at + 9 * 60 * 60 * 1000);
   const dayText = `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 (${'일월화수목금토'[date.getUTCDay()]})`;
@@ -48,9 +49,9 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
   <meta property="og:title" content="${escapeHtml(`${kind.label} ${title}`)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:url" content="${escapeHtml(url)}">
-  <meta property="og:image" content="${escapeHtml(siteUrl + kind.image)}">
+  <meta property="og:image" content="${escapeHtml(poster || siteUrl + kind.image)}">${poster ? '' : `
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:height" content="630">`}
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/icons/icon-192.png">
   <style>
@@ -77,6 +78,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .card-head img { width:28px; height:28px; border-radius:8px; border:1.5px solid var(--gold); }
     .card-head strong { font-size:14px; }
     .card-head span { margin-left:auto; font-size:12px; font-weight:800; color:var(--gold); }
+    .card .poster { display:block; width:100%; max-height:none; background:#f4f5f9; }
     .card h2 { margin:0; padding:12px 14px 4px; font-size:17px; line-height:1.45; color:var(--ink); word-break:keep-all; }
     .card .body { padding:2px 14px 8px; font-size:15px; line-height:1.7; color:var(--text); word-break:keep-all; overflow-wrap:anywhere; }
     .card .actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
@@ -100,6 +102,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
         <div class="msg-line">
           <article class="card">
             <div class="card-head"><img src="/icons/icon-192.png" alt=""><strong>스페이스 커뮤니티</strong><span>${escapeHtml(kind.label)}</span></div>
+            ${poster ? `<a href="${escapeHtml(poster)}" target="_blank" rel="noopener"><img class="poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)} 안내장"></a>` : ''}
             <h2>${escapeHtml(title)}</h2>
             <div class="body">${bodyHtml}</div>
             <div class="actions"><button class="btn kakao" type="button" id="share">카카오톡으로 공유</button></div>
@@ -116,7 +119,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
       const data = { title: ${JSON.stringify(`${kind.label} ${title}`).replace(/</g, '\\u003c')}, url: location.href };
       if (window.spaceKakaoShare && await window.spaceKakaoShare({ title: data.title, description: ${JSON.stringify(description).replace(/</g, '\\u003c')},
         imageUrl: ${JSON.stringify(siteUrl + kind.image)}, link: ${JSON.stringify(url)},
-        card: { kindLabel: ${JSON.stringify(kind.label)}, cardTitle: ${JSON.stringify(title).replace(/</g, '\\u003c')}, body: ${JSON.stringify(body).replace(/</g, '\\u003c')} } })) return;
+        ${poster ? `poster: ${JSON.stringify(poster)}` : `card: { kindLabel: ${JSON.stringify(kind.label)}, cardTitle: ${JSON.stringify(title).replace(/</g, '\\u003c')}, body: ${JSON.stringify(body).replace(/</g, '\\u003c')} }`} })) return;
       try { if (navigator.share) { await navigator.share({ ...data, text: data.title }); return; } } catch (error) { if (error && error.name === 'AbortError') return; }
       try { await navigator.clipboard.writeText(data.title + '\\n' + data.url); alert('주소를 복사했어요. 카카오톡 대화방에 붙여넣어 보내 주세요.'); }
       catch { prompt('아래 주소를 복사해 카카오톡에 붙여넣어 주세요.', data.url); }

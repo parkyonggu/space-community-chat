@@ -156,14 +156,17 @@
   // 모임안내·초청장: 글 끝의 공유 주소(/e/글번호)를 보내면 카카오톡이 스페이스 커뮤니티 로고가 담긴 카드로 보여 준다.
   const ANNOUNCE_KINDS = [{ tag: '[모임안내]', label: '📣 모임안내' }, { tag: '[초청장]', label: '💌 초청장' }];
   const SHARE_LINE = /\n*자세히 보기·카카오톡 공유: (https?:\/\/\S+\/e\/[0-9a-z-]+)\s*$/;
+  const POSTER_LINE = /\n*안내장 사진: (https?:\/\/\S+\/api\/board\/image\?id=[0-9a-f]{32})\s*$/;
   function announcementOf(text) {
     const value = String(text || '');
     const kind = ANNOUNCE_KINDS.find(entry => value.trim().startsWith(entry.tag));
     if (!kind) return null;
     const link = SHARE_LINE.exec(value)?.[1] || '';
-    const lines = value.replace(SHARE_LINE, '').trim().slice(kind.tag.length).split('\n').map(line => line.trim());
+    const rest = value.replace(SHARE_LINE, '').trim();
+    const poster = POSTER_LINE.exec(rest)?.[1] || '';
+    const lines = rest.replace(POSTER_LINE, '').trim().slice(kind.tag.length).split('\n').map(line => line.trim());
     while (lines.length && !lines[0]) lines.shift();
-    return { kind, title: lines.shift() || kind.label, body: lines.join('\n').trim(), link };
+    return { kind, title: lines.shift() || kind.label, body: lines.join('\n').trim(), link, poster };
   }
   function shareAnnouncement(text) {
     const info = announcementOf(text);
@@ -175,7 +178,7 @@
       if (window.spaceKakaoShare && await window.spaceKakaoShare({
         title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
         imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: info.link,
-        card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
+        ...(info.poster ? { poster: info.poster } : { card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body } }),
       })) return;
       await shareText(title, info.link);
     })();
@@ -187,7 +190,17 @@
     logo.src = '/icons/icon-192.png';
     logo.alt = '';
     head.append(logo, make('strong', '', '스페이스 커뮤니티'), make('span', '', info.kind.label));
-    card.append(head, make('strong', 'announce-title', info.title));
+    card.appendChild(head);
+    if (info.poster) {
+      const poster = make('img', 'announce-poster');
+      poster.src = info.poster;
+      poster.alt = `${info.title} 안내장`;
+      poster.loading = 'lazy';
+      poster.addEventListener('click', event => { event.stopPropagation(); viewImage(info.poster); });
+      poster.addEventListener('load', () => keepBottom());
+      card.appendChild(poster);
+    }
+    card.appendChild(make('strong', 'announce-title', info.title));
     if (info.body) {
       const body = make('p', 'announce-body');
       body.appendChild(linkify(info.body));

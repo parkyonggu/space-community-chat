@@ -122,8 +122,12 @@ async function sendPhoto() {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || `사진 올리기 실패 (${response.status})`);
-    const text = chatInput.value.trim().slice(0, 2000);
+    let text = chatInput.value.trim().slice(0, 1990);
+    // 운영자가 모임안내·초청장을 골랐으면 사진도 안내장으로 보낸다(첫 줄 = 제목).
+    const chosen = isAdmin ? announcementKind.value : '';
+    if (chosen && !announcementOf(text)) text = `${chosen}\n${text || ANNOUNCE_KINDS.find(kind => kind.tag === chosen).label.replace(/^\S+\s/, '')}`;
     chatSocket.send(JSON.stringify({ text, image: result.id }));
+    announcementKind.value = '';
     chatInput.value = '';
     clearPhoto();
     chatStatus.textContent = '사진을 보냈습니다.';
@@ -228,10 +232,11 @@ async function shareAnnouncement(message) {
     chatStatus.dataset.error = String(error);
   };
   // 1순위: 카카오톡 공식 공유 카드(스페이스 커뮤니티 로고·이름). 안 되면 휴대폰 공유 창, 그것도 안 되면 주소 복사.
+  const posterUrl = typeof message.image === 'string' && /^[0-9a-f]{32}$/.test(message.image) ? `${location.origin}/api/board/image?id=${message.image}` : '';
   if (info && message.id && window.spaceKakaoShare && await window.spaceKakaoShare({
     title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
     imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: url,
-    card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
+    ...(posterUrl ? { poster: posterUrl } : { card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body } }),
   })) {
     report('카카오톡 공유 창을 열었습니다. 보낼 대화방을 골라 주세요.');
     return;
@@ -285,10 +290,24 @@ function announcementCard(message, info) {
   const kind = document.createElement('span');
   kind.textContent = info.kind.label;
   head.append(logo, brand, kind);
+  card.appendChild(head);
+  if (typeof message.image === 'string' && /^[0-9a-f]{32}$/.test(message.image)) {
+    const link = document.createElement('a');
+    link.href = `/api/board/image?id=${message.image}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    const poster = document.createElement('img');
+    poster.className = 'chat-card-poster';
+    poster.src = link.href;
+    poster.alt = `${info.title} 안내장`;
+    poster.loading = 'lazy';
+    link.appendChild(poster);
+    card.appendChild(link);
+  }
   const title = document.createElement('strong');
   title.className = 'chat-card-title';
   title.textContent = info.title;
-  card.append(head, title);
+  card.appendChild(title);
   if (info.body) {
     const body = document.createElement('p');
     body.className = 'chat-card-body';

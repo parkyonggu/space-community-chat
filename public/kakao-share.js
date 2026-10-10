@@ -117,13 +117,23 @@
 
   // { title, description, imageUrl, link, button, card } → 카카오톡 공유 창을 연다.
   // card: { kindLabel, cardTitle, body } 를 주면 안내문 전체를 그린 그림을 카카오 서버에 올려(100일 보관) 카드 그림으로 쓴다.
-  window.spaceKakaoShare = async ({ title, description = '', imageUrl, link, button = '자세히 보기', card }) => {
+  window.spaceKakaoShare = async ({ title, description = '', imageUrl, link, button = '자세히 보기', card, poster }) => {
     try {
       const Kakao = await load();
       if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY);
       let image = { imageUrl, imageWidth: 1200, imageHeight: 630 };
       let text = { title: String(title).slice(0, 200), description: String(description).slice(0, 200) };
-      if (card) {
+      if (poster) {
+        // 운영자가 올린 안내장 사진(포스터)을 그대로 카드 그림으로 쓴다. 그림 아래는 짧은 제목 한 줄만.
+        const size = await new Promise(resolve => {
+          const probe = new Image();
+          probe.onload = () => resolve({ imageWidth: probe.naturalWidth, imageHeight: probe.naturalHeight });
+          probe.onerror = () => resolve({});
+          probe.src = poster;
+        });
+        image = { imageUrl: poster, ...size };
+        text = { title: String(title).slice(0, 200) };
+      } else if (card) {
         try {
           const blob = await drawCard(card);
           const uploaded = await Kakao.Share.uploadImage({ file: [new File([blob], 'space-card.jpg', { type: 'image/jpeg' })] });

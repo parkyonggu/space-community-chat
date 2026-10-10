@@ -196,3 +196,4 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .announce-body { margin:0; padding:2px 14px 6px; white-space:pre-wrap; line-height:1.65; font-size:14.5px; color:#2b3550; }
 .announce-actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
 .announce-actions .btn { min-height:36px; padding:0 12px; font-size:13.5px; text-decoration:none; }
+.announce-poster { display:block; width:100%; max-height:520px; object-fit:contain; background:#f4f5f9; cursor:zoom-in; }

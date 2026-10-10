@@ -322,12 +322,15 @@ export class ChatRoom extends DurableObject {
     this.broadcast(peer => this.publicMessage(stored, peer.uid));
     // 운영자가 [모임안내]·[초청장]으로 시작한 글: 공유 주소용으로 따로 보관하고 스페이스톡 '📣 모임안내' 채널로 보낸다.
     if (window.admin && announcement.kindOf(text)) {
-      await this.ctx.storage.put(`a:${stored.id}`, { id: stored.id, text, at: now });
+      await this.ctx.storage.put(`a:${stored.id}`, { id: stored.id, text, at: now, ...(image ? { image } : {}) });
       try {
         if (!this.env.TALK) throw new Error('스페이스톡이 연결되어 있지 않습니다.');
-        const link = `${this.env.SITE_URL || 'https://withpluces.com'}/e/${stored.id}`;
+        const site = this.env.SITE_URL || 'https://withpluces.com';
+        const link = `${site}/e/${stored.id}`;
+        // 안내장 사진(포스터)이 있으면 스페이스톡 카드에도 보이도록 사진 주소 줄을 붙인다.
+        const poster = image ? `\n\n안내장 사진: ${site}/api/board/image?id=${image}` : '';
         const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/event-announcement', {
-          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text}\n\n자세히 보기·카카오톡 공유: ${link}` }),
+          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text}${poster}\n\n자세히 보기·카카오톡 공유: ${link}` }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
