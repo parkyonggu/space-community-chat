@@ -508,6 +508,16 @@ function connectChat() {
       if (!squareMessages.length) chatBox.appendChild(Object.assign(document.createElement('p'), { className: 'chat-empty', textContent: `아직 올라온 대화가 없습니다. 광장 대화는 올린 날부터 ${result.retentionDays || 45}일 동안 보입니다.` }));
       return;
     }
+    if (result.type === 'edited') {
+      const item = squareMessages.find(entry => entry.id === result.id);
+      if (item && typeof result.text === 'string') {
+        item.text = result.text;
+        const scroll = chatBox.scrollTop;
+        renderAllChat();
+        chatBox.scrollTop = scroll;
+      }
+      return;
+    }
     if (result.type === 'deleted') {
       squareMessages = squareMessages.filter(item => item.id !== result.id);
       const scroll = chatBox.scrollTop;

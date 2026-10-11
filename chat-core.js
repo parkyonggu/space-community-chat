@@ -9,6 +9,8 @@ const MAX_TEXT = 2000;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const SENDER_DELETE_WINDOW = 5 * 60 * 1000;
+// 보낸 메시지 고치기: 내 메시지는 보낸 뒤 24시간 안에 고칠 수 있다(고치면 '수정됨' 표시).
+const SENDER_EDIT_WINDOW = 24 * 60 * 60 * 1000;
 
 class ChatError extends Error {
   constructor(status, message) {
@@ -45,6 +47,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
   // 공지사항 columns were added after the first release: add them to existing databases.
   const roomColumns = all('PRAGMA table_info(chat_rooms)').map(column => column.name);
   for (const column of ['notice', 'notice_at', 'notice_by']) if (!roomColumns.includes(column)) run(`ALTER TABLE chat_rooms ADD COLUMN ${column} TEXT`);
+  if (!all('PRAGMA table_info(chat_messages)').some(column => column.name === 'edited_at')) run('ALTER TABLE chat_messages ADD COLUMN edited_at TEXT');
 
   function ensureUser(user) {
     if (!user?.id) throw new ChatError(401, '로그인한 회원만 이용할 수 있습니다.');
@@ -98,7 +101,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
 
   const messageView = row => ({
     id: row.id, roomId: row.room_id, seq: row.seq, userId: row.user_id, nickname: row.nickname, kind: row.kind,
-    text: row.deleted_at ? '' : row.text, imageId: row.deleted_at ? null : row.image_id, createdAt: row.created_at, deletedAt: row.deleted_at,
+    text: row.deleted_at ? '' : row.text, imageId: row.deleted_at ? null : row.image_id, createdAt: row.created_at, deletedAt: row.deleted_at, editedAt: row.edited_at || null,
   });
 
   function addMember(room, user, role = 'member') {
@@ -258,6 +261,25 @@ function createChatCore(sql, { now = Date.now } = {}) {
       const value = Math.min(room.last_seq, Math.max(member.last_read_seq, Number(seq) || 0));
       if (value !== member.last_read_seq) run('UPDATE chat_members SET last_read_seq = ? WHERE room_id = ? AND user_id = ?', value, room.id, user.id);
       return { seq: value, changed: value !== member.last_read_seq, memberIds: members(room.id).map(entry => entry.id) };
+    },
+
+    // 보낸 메시지 고치기: 내 글(24시간 안), 또는 운영자가 '스페이스 커뮤니티' 이름으로 보낸 채널 소식(모임안내 등)
+    editMessage(user, roomId, messageId, text) {
+      const { room } = membership(roomId, user.id);
+      const row = one('SELECT * FROM chat_messages WHERE id = ? AND room_id = ?', String(messageId || ''), room.id);
+      if (!row || row.kind !== 'text' || row.deleted_at) throw new ChatError(404, '고칠 수 있는 메시지를 찾을 수 없습니다.');
+      const own = row.user_id === user.id;
+      const official = !row.user_id && room.kind === 'channel' && Boolean(user.admin);
+      if (!own && !official) throw new ChatError(403, '내가 보낸 메시지만 고칠 수 있습니다.');
+      if (own && now() - Date.parse(row.created_at) > SENDER_EDIT_WINDOW) throw new ChatError(403, '보낸 지 24시간이 지난 메시지는 고칠 수 없습니다. 새 메시지로 보내 주세요.');
+      const limit = official ? 20000 : MAX_TEXT;
+      const body = typeof text === 'string' ? text.trim() : '';
+      if (!body || body.length > limit) throw new ChatError(400, `메시지는 1~${limit.toLocaleString('ko-KR')}자로 입력해 주세요.`);
+      if (body !== row.text) {
+        run('UPDATE chat_messages SET text = ?, edited_at = ? WHERE id = ?', body, iso(), row.id);
+        if (row.seq === room.last_seq) run('UPDATE chat_rooms SET last_preview = ? WHERE id = ?', body.slice(0, 80), room.id);
+      }
+      return { message: messageView(one('SELECT * FROM chat_messages WHERE id = ?', row.id)), memberIds: members(room.id).map(entry => entry.id), roomKind: room.kind };
     },
 
     deleteMessage(user, roomId, messageId) {

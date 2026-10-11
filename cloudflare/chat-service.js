@@ -199,6 +199,22 @@ export class ChatService extends DurableObject {
           this.deliver(result, user);
           return json({ message: result.message }, 201);
         }
+        if (action === 'messages' && sub && subAction === 'edit' && method === 'POST') {
+          this.limit(`edit:${user.id}`, 30, 10 * 60 * 1000);
+          const result = this.core.editMessage(user, id, sub, (await body()).text);
+          this.broadcast(result.memberIds, { type: 'edited', roomId: id, message: result.message });
+          // 모임안내·초청장을 고치면 공유 주소(/e/…) 화면과 광장채팅 원문도 같이 고친다.
+          const link = result.roomKind === 'channel' ? /\/e\/(\d{10,15}-[a-z0-9]{6,16})\s*$/.exec(result.message.text) : null;
+          if (link && this.env.CHAT) {
+            const text = result.message.text.replace(/\n*자세히 보기·카카오톡 공유: \S+\s*$/, '').replace(/\n*안내장 사진: \S+\s*$/, '');
+            try {
+              await this.env.CHAT.get(this.env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/announcement-edit', {
+                method: 'POST', body: JSON.stringify({ id: link[1], text }),
+              });
+            } catch (error) { console.error('Announcement source edit failed:', error); }
+          }
+          return json({ message: result.message });
+        }
         if (action === 'messages' && sub && subAction === 'delete' && method === 'POST') {
           const result = this.core.deleteMessage(user, id, sub);
           this.broadcast(result.memberIds, { type: 'deleted', roomId: id, messageId: result.messageId });

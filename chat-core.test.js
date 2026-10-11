@@ -182,3 +182,20 @@ test('회원 불러오기: members add people by name; capacity, guests and dupl
   const dm = chat.startDm(users.alice, { userId: 'u-b' });
   assert.throws(() => chat.addMembers(users.alice, dm.id, [users.carol]), /단체 대화방/);
 });
+
+test('보낸 메시지 고치기: own text within 24h, marked edited; others and old messages are refused', () => {
+  let clock = Date.parse('2026-10-11T03:00:00Z');
+  const chat = createChatCore(memorySql(), { now: () => clock });
+  const { room } = chat.createGroup(users.alice, { name: '동창' });
+  chat.join(users.bob, room.inviteCode);
+  const { message } = chat.send(users.alice, room.id, { text: '모임은 토요일 3시' });
+  assert.throws(() => chat.editMessage(users.bob, room.id, message.id, '고침'), /내가 보낸/);
+  const edited = chat.editMessage(users.alice, room.id, message.id, '모임은 토요일 4시로 바뀌었어요');
+  assert.equal(edited.message.text, '모임은 토요일 4시로 바뀌었어요');
+  assert.ok(edited.message.editedAt);
+  assert.equal(chat.messages(users.bob, room.id).messages.at(-1).editedAt, edited.message.editedAt);
+  assert.equal(chat.listRooms(users.bob)[0].lastPreview, '모임은 토요일 4시로 바뀌었어요');
+  assert.throws(() => chat.editMessage(users.alice, room.id, message.id, '  '), /1~/);
+  clock += 25 * 60 * 60 * 1000;
+  assert.throws(() => chat.editMessage(users.alice, room.id, message.id, '늦은 수정'), /24시간/);
+});

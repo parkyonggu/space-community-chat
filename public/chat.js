@@ -499,6 +499,7 @@
       const unread = message.pending ? 0 : unreadFor(message);
       if (unread) meta.appendChild(make('span', 'unread', String(unread)));
       meta.appendChild(make('span', '', message.pending ? '보내는 중' : timeLabel(message.createdAt)));
+      if (message.editedAt && !message.deletedAt) meta.appendChild(make('span', 'edited', '수정됨'));
     }
     line.append(bubble, meta);
     body.appendChild(line);
@@ -600,6 +601,9 @@
       if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
       if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
       if (!mine && !state.me.guest && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });
+      const canEdit = message.kind === 'text' && ((mine && Date.now() - new Date(message.createdAt) < 24 * 60 * 60 * 1000) ||
+        (state.me.admin && !message.userId && state.room.kind === 'channel'));
+      if (canEdit) add('✏️ 고치기 (보낸 내용 수정)', () => editSheet(message));
       const canDelete = (mine && Date.now() - new Date(message.createdAt) < 5 * 60 * 1000) || state.room.isOwner || state.me.admin;
       if (canDelete) add('삭제 (모두에게서)', async () => {
         if (!confirm('이 메시지를 모두에게서 삭제할까요?')) return;
@@ -608,6 +612,38 @@
       if (!mine && message.userId) add('신고하기', () => reportSheet(message), true);
       body.appendChild(menu);
     });
+  }
+  // 보낸 메시지 고치기. 모임안내 카드는 끝의 '안내장 사진·자세히 보기' 줄을 그대로 두고 본문만 고친다.
+  function editSheet(message) {
+    const trailer = (/(\n*안내장 사진: \S+)?\n*자세히 보기·카카오톡 공유: \S+\s*$/.exec(message.text) || [''])[0];
+    const base = trailer ? message.text.slice(0, message.text.length - trailer.length) : message.text;
+    openSheet('보낸 메시지 고치기', body => {
+      body.appendChild(make('p', '', '고친 내용은 이 방의 모든 사람에게 바로 바뀌어 보이고 "수정됨"이 붙어요. 이미 카카오톡으로 보낸 카드는 바뀌지 않으니, 필요하면 고친 뒤 다시 보내 주세요.'));
+      const input = make('textarea', 'edit-text');
+      input.value = base;
+      input.rows = Math.min(14, Math.max(4, base.split('\n').length + 1));
+      input.setAttribute('aria-label', '고칠 내용');
+      const save = make('button', 'btn navy block', '고친 내용 저장');
+      save.type = 'button';
+      save.addEventListener('click', async () => {
+        const text = input.value.trim();
+        if (!text) { toast('내용을 적어 주세요.'); return; }
+        save.disabled = true;
+        try {
+          const result = await api(`/api/chat/rooms/${state.current}/messages/${message.id}/edit`, { method: 'POST', body: { text: `${text}${trailer}` } });
+          applyEdit(result.message);
+          closeSheet();
+          toast('고쳤어요.');
+        } catch (error) { toast(error.message); save.disabled = false; }
+      });
+      body.append(input, save);
+      setTimeout(() => input.focus(), 50);
+    });
+  }
+  function applyEdit(updated) {
+    if (!updated || updated.roomId !== state.current) return;
+    const message = state.messages.find(entry => entry.id === updated.id);
+    if (message) { message.text = updated.text; message.editedAt = updated.editedAt; renderMessages(); }
   }
   function reportSheet(message) {
     openSheet('메시지 신고', body => {
@@ -835,6 +871,11 @@
     if (data.type === 'read' && data.roomId === state.current && state.room) {
       const member = state.room.members.find(entry => entry.id === data.userId);
       if (member && data.seq > member.lastReadSeq) { member.lastReadSeq = data.seq; renderMessages(); }
+      return;
+    }
+    if (data.type === 'edited') {
+      applyEdit(data.message);
+      loadRooms().catch(() => {});
       return;
     }
     if (data.type === 'deleted') {

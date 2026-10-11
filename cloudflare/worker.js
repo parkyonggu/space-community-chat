@@ -232,6 +232,21 @@ export class ChatRoom extends DurableObject {
       const record = announcement.ID.test(id) ? await this.ctx.storage.get(`a:${id}`) : null;
       return json(record ? { record } : { error: 'not found' }, record ? 200 : 404);
     }
+    // 스페이스톡에서 운영자가 모임안내를 고치면: 공유 주소 원문(a:)과 광장채팅 메시지(m:)도 같은 내용으로 바꾼다.
+    if (url.pathname === '/internal/announcement-edit' && request.method === 'POST') {
+      const { id, text } = await request.json().catch(() => ({}));
+      const body = typeof text === 'string' ? text.trim() : '';
+      if (!announcement.ID.test(String(id || '')) || !announcement.kindOf(body) || body.length > 2000) return json({ error: 'invalid' }, 400);
+      const record = await this.ctx.storage.get(`a:${id}`);
+      if (record) await this.ctx.storage.put(`a:${id}`, { ...record, text: body, editedAt: Date.now() });
+      const key = squareKeyOf(id);
+      const stored = key ? await this.ctx.storage.get(key) : null;
+      if (stored) {
+        await this.ctx.storage.put(key, { ...stored, text: body, edited: true });
+        this.broadcast(() => ({ type: 'edited', id, text: body }));
+      }
+      return json({ ok: true, record: Boolean(record), square: Boolean(stored) });
+    }
     if (url.pathname === '/internal/user-deleted' && request.method === 'POST') {
       const { userId } = await request.json().catch(() => ({}));
       if (userId) await this.removeUser(String(userId));

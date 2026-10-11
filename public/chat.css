@@ -206,3 +206,6 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .member-pick label.member:hover { background:#f3f5fa; }
 .member-pick input[type=checkbox] { width:22px; height:22px; accent-color:#0e1730; }
 .member-pick .empty-note { margin:8px 2px; color:var(--muted); font-size:14px; }
+/* 보낸 메시지 고치기 */
+.meta .edited { color:#8a93a8; font-size:11px; }
+.edit-text { width:100%; min-height:110px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:inherit; font-size:15px; line-height:1.6; margin:4px 0 10px; resize:vertical; }
