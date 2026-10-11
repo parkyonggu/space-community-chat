@@ -156,6 +156,60 @@
   }
   window.spaceDrawPosterCard = drawPoster;
 
+  // 카카오톡 공유는 한 번에 최대 10명(친구) 또는 채팅방까지만 고를 수 있다(카카오 정책).
+  // 그래서 공유 뒤에 '이어서 보내기' 막대를 띄워, 같은 카드(그림은 다시 올리지 않음)를 다음 사람들에게 바로 또 보낼 수 있게 한다.
+  function againBar(Kakao, payload, { title, link }) {
+    if (!document.getElementById('kakao-again-style')) {
+      const style = document.createElement('style');
+      style.id = 'kakao-again-style';
+      style.textContent = `
+        #kakao-again{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;width:min(520px,calc(100% - 24px));
+          background:#0e1730;color:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.28);padding:12px 14px;font:14px/1.5 "Noto Sans KR",system-ui,sans-serif}
+        #kakao-again p{margin:0 0 8px}#kakao-again small{display:block;color:#b9c2dd;font-size:12.5px;margin-top:2px}
+        #kakao-again .row{display:flex;flex-wrap:wrap;gap:6px}
+        #kakao-again button{border:0;border-radius:10px;min-height:38px;padding:0 12px;font:inherit;font-weight:800;cursor:pointer}
+        #kakao-again .again{background:#fee500;color:#191919}#kakao-again .copy{background:#fff;color:#0e1730}#kakao-again .close{background:transparent;color:#b9c2dd;margin-left:auto}`;
+      document.head.appendChild(style);
+    }
+    document.getElementById('kakao-again')?.remove();
+    let sent = 1;
+    const bar = document.createElement('div');
+    bar.id = 'kakao-again';
+    bar.setAttribute('role', 'status');
+    const info = document.createElement('p');
+    const render = () => {
+      info.innerHTML = '';
+      info.append(`카카오톡 공유 창을 ${sent}번 열었어요.`);
+      const hint = document.createElement('small');
+      hint.textContent = '카카오톡은 한 번에 최대 10명까지 보낼 수 있어요. 더 많은 분께는 「이어서 보내기」를 누르거나, 단톡방을 고르면 방 전체가 한 번에 받습니다.';
+      info.appendChild(hint);
+    };
+    render();
+    const row = document.createElement('div');
+    row.className = 'row';
+    const again = document.createElement('button');
+    again.type = 'button';
+    again.className = 'again';
+    again.textContent = '📤 다른 분께 이어서 보내기';
+    again.addEventListener('click', () => { Kakao.Share.sendDefault(payload); sent += 1; render(); });
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'copy';
+    copy.textContent = '🔗 주소 복사';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(`${title}\n${link}`); copy.textContent = '✓ 복사했어요'; }
+      catch { window.prompt('아래 주소를 복사해 카카오톡에 붙여넣어 주세요.', link); }
+    });
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'close';
+    close.textContent = '닫기';
+    close.addEventListener('click', () => bar.remove());
+    row.append(again, copy, close);
+    bar.append(info, row);
+    document.body.appendChild(bar);
+  }
+
   // { title, description, imageUrl, link, button, card } → 카카오톡 공유 창을 연다.
   // card: { kindLabel, cardTitle, body } 를 주면 안내문 전체를 그린 그림을 카카오 서버에 올려(100일 보관) 카드 그림으로 쓴다.
   window.spaceKakaoShare = async ({ title, description = '', imageUrl, link, button = '자세히 보기', card, poster }) => {
@@ -191,11 +245,13 @@
         }
       }
       const target = { mobileWebUrl: link, webUrl: link };
-      Kakao.Share.sendDefault({
+      const payload = {
         objectType: 'feed',
         content: { ...text, ...image, link: target },
         buttons: [{ title: button, link: target }],
-      });
+      };
+      Kakao.Share.sendDefault(payload);
+      againBar(Kakao, payload, { title, link });
       return true;
     } catch (error) {
       console.error('Kakao share failed:', error);
