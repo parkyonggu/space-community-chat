@@ -1,9 +1,14 @@
 // Builds the weekly "경제·정책 브리핑" newsletter draft.
-// Figures come from the Bank of Korea ECOS Open API (official statistics); news/commentary sections are left
-// for the operator to write ("[직접 작성]" markers block sending until they are filled in or removed).
+// 모든 칸을 자동으로 채운다: 수치는 한국은행 ECOS·IMF·한국부동산원·정책브리핑 공식 자료, 해설은 그 수치로 만든 사실 문장,
+// 증시·부동산·세계 정세 소식은 매일경제 RSS의 기사 제목과 원문 링크(본문은 옮기지 않음).
+// 운영자는 맨 아래 '운영자 한마디'에 직접 글을 더할 수 있고, 쓰지 않으면 그 칸은 보낼 때 자동으로 빠진다.
+// 자료를 불러오지 못한 칸에만 "[직접 작성]" 표시가 남아, 확인하기 전에는 보내지 못하게 막는다.
 
 const { weeklyPolicyNews } = require('./policy-news');
+const { fetchFeed, SOFT } = require('./news-issues');
 const MANUAL_MARK = '[직접 작성]';
+// 선택 칸: 이 표시가 남아 있으면 보낼 때 그 칸(제목부터 다음 '---' 앞까지)을 통째로 뺀다.
+const OPTIONAL_MARK = '[선택 작성]';
 const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원부', finance: '금융위원회', sme: '중소벤처기업부', education: '교육부',
   culture: '문화체육관광부', welfare: '보건복지부', labor: '고용노동부', gender: '여성가족부', environment: '환경부', foreign: '외교부',
   unification: '통일부', defense: '국방부', science: '과학기술정보통신부', landtransport: '국토교통부', agriculture: '농림축산식품부',
@@ -39,7 +44,7 @@ async function ecos(fetchImpl, key, code, cycle, start, end, item) {
     .sort((left, right) => left.time.localeCompare(right.time));
 }
 
-async function indicators(fetchImpl, key, now, notes = []) {
+async function indicators(fetchImpl, key, now, notes = [], facts = {}) {
   const end = ymd(now);
   const start = ymd(now - (key === 'sample' ? 11 : 24) * DAY);
   const daily = async (label, code, item, unit, digits, mode) => {
@@ -53,6 +58,7 @@ async function indicators(fetchImpl, key, now, notes = []) {
         else if (mode === 'point') change = ` (1주 전 대비 ${signed(last.value - weekAgo.value, 3, '%p')})`;
         else change = ` (1주 전 대비 ${signed(last.value - weekAgo.value, digits, unit)})`;
       }
+      facts[label] = { value: last.value, previous: weekAgo ? weekAgo.value : null, unit, digits, time: last.time };
       return `- **${label}** ${number(last.value, digits)}${unit}${change} · ${dateLabel(last.time)} 기준`;
     } catch (error) {
       notes.push(`한국은행 ${label}: ${error.message}`);
@@ -67,6 +73,7 @@ async function indicators(fetchImpl, key, now, notes = []) {
   ]);
   try {
     const rows = await ecos(fetchImpl, key, '722Y001', 'D', ymd(now - 7 * DAY), end, '0101000');
+    facts.base = { value: rows.at(-1).value };
     lines.push(`- **한국은행 기준금리** 연 ${number(rows.at(-1).value, 2)}% · ${dateLabel(rows.at(-1).time)} 기준`);
   } catch (error) {
     notes.push(`한국은행 기준금리: ${error.message}`);
@@ -78,6 +85,7 @@ async function indicators(fetchImpl, key, now, notes = []) {
     const lastYear = `${Number(last.time.slice(0, 4)) - 1}${last.time.slice(4)}`;
     const previous = await ecos(fetchImpl, key, '901Y009', 'M', lastYear, lastYear, '0');
     const yoy = ((last.value - previous[0].value) / previous[0].value) * 100;
+    facts.cpi = { yoy, time: last.time };
     lines.push(`- **소비자물가** 전년 동월 대비 ${signed(yoy, 1, '%')} · ${dateLabel(last.time)} 기준`);
   } catch (error) {
     notes.push(`한국은행 소비자물가: ${error.message}`);
@@ -86,7 +94,7 @@ async function indicators(fetchImpl, key, now, notes = []) {
   return lines;
 }
 
-async function globalIndicators(fetchImpl, key, now, notes = []) {
+async function globalIndicators(fetchImpl, key, now, notes = [], facts = {}) {
   const lines = [];
   const monthly = async (code, item, from = 6) => ecos(fetchImpl, key, code, 'M', ym(now - from * 31 * DAY), ym(now), item);
   try {
@@ -95,6 +103,7 @@ async function globalIndicators(fetchImpl, key, now, notes = []) {
     for (const [item, name] of [['US', '미국'], ['XM', '유로'], ['JP', '일본'], ['CN', '중국']]) {
       const rows = await monthly('902Y006', item);
       parts.push(`${name} ${number(rows.at(-1).value, 2)}%`);
+      (facts.rates = facts.rates || []).push({ name, value: rows.at(-1).value, previous: rows.length > 1 ? rows.at(-2).value : null });
       if (!time) time = rows.at(-1).time;
     }
     lines.push(`- **주요국 정책금리** ${parts.join(' · ')} · ${dateLabel(time)} 기준 (BIS)`);
@@ -109,6 +118,8 @@ async function globalIndicators(fetchImpl, key, now, notes = []) {
     const change = rows => (rows.length > 1 ? ` (전월 대비 ${signed(((rows.at(-1).value - rows.at(-2).value) / rows.at(-2).value) * 100, 1, '%')})` : '');
     lines.push(`- **국제유가** 두바이 ${number(dubai.at(-1).value, 1)}달러${change(dubai)} · WTI ${number(wti.at(-1).value, 1)}달러${change(wti)} · ${dateLabel(dubai.at(-1).time)} 평균 (IMF)`);
     lines.push(`- **금 시세** 온스당 ${number(gold.at(-1).value, 1)}달러${change(gold)} · ${dateLabel(gold.at(-1).time)} 평균 (IMF)`);
+    const monthChange = rows => (rows.length > 1 ? ((rows.at(-1).value - rows.at(-2).value) / rows.at(-2).value) * 100 : null);
+    Object.assign(facts, { dubai: { value: dubai.at(-1).value, change: monthChange(dubai), time: dubai.at(-1).time }, gold: { value: gold.at(-1).value, change: monthChange(gold) } });
   } catch (error) {
     notes.push(`한국은행 국제유가·금: ${error.message}`);
     lines.push(`- **국제유가·금** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
@@ -117,6 +128,7 @@ async function globalIndicators(fetchImpl, key, now, notes = []) {
     const us = await monthly('902Y002', 'USA');
     const change = us.length > 1 ? ` (전월 대비 ${signed(((us.at(-1).value - us.at(-2).value) / us.at(-2).value) * 100, 1, '%')})` : '';
     lines.push(`- **미국 주가지수(OECD 종합)** ${number(us.at(-1).value, 1)}${change} · ${dateLabel(us.at(-1).time)} 기준`);
+    facts.usStocks = { change: us.length > 1 ? ((us.at(-1).value - us.at(-2).value) / us.at(-2).value) * 100 : null, time: us.at(-1).time };
   } catch (error) {
     notes.push(`한국은행 미국 주가지수: ${error.message}`);
     lines.push(`- **미국 주가지수** 자료를 불러오지 못했습니다. ${MANUAL_MARK} 직접 확인해 적어 주세요.`);
@@ -220,6 +232,95 @@ async function rebHousing(fetchImpl, key, now = Date.now()) {
   return { lines: [`한국부동산원 주간 아파트 가격동향 (${week} 기준)입니다.`, '', ...lines], problems, data: { week, surveyDate, series } };
 }
 
+// ---------- 수치로 만드는 해설(사실 문장만, 전망·권유 없이) ----------
+const moved = (change, digits, unit, up = '올랐습니다', down = '내렸습니다') =>
+  Math.abs(change) < 10 ** -digits / 2 ? '변동이 거의 없었습니다' : `${number(Math.abs(change), digits)}${unit} ${change > 0 ? up : down}`;
+function domesticCommentary(facts) {
+  const lines = [];
+  const weekly = label => (facts[label]?.previous ? facts[label] : null);
+  const kospi = weekly('KOSPI');
+  const kosdaq = weekly('KOSDAQ');
+  if (kospi) {
+    const rate = index => ((index.value - index.previous) / index.previous) * 100;
+    const word = change => (Math.abs(change) < 0.005 ? '보합' : `${number(Math.abs(change), 2)}% ${change > 0 ? '상승' : '하락'}`);
+    const parts = [`코스피는 ${word(rate(kospi))}`, ...(kosdaq ? [`코스닥은 ${word(rate(kosdaq))}`] : [])];
+    const last = parts.at(-1);
+    parts[parts.length - 1] = last.endsWith('보합') ? `${last}이었습니다` : `${last}했습니다`;
+    lines.push(`- 지난 한 주 ${parts.join(', ')}.`);
+  }
+  const won = weekly('원/달러 환율');
+  if (won) {
+    const change = won.value - won.previous;
+    lines.push(`- 원/달러 환율은 ${number(won.value, 1)}원으로 1주 전보다 ${moved(change, 1, '원')}${Math.abs(change) >= 0.05 ? (change > 0 ? '(원화 약세)' : '(원화 강세)') : ''}.`);
+  }
+  const bond = weekly('국고채 3년 금리');
+  if (bond) lines.push(`- 국고채 3년 금리는 연 ${number(bond.value, 3)}%로 1주 전보다 ${moved(bond.value - bond.previous, 3, '%p', '높아졌습니다', '낮아졌습니다')}${facts.base ? ` (한국은행 기준금리 연 ${number(facts.base.value, 2)}%)` : ''}.`);
+  if (facts.cpi) {
+    const gap = facts.cpi.yoy - 2;
+    lines.push(`- ${dateLabel(facts.cpi.time)} 소비자물가 상승률은 ${number(facts.cpi.yoy, 1)}%로, 한국은행 물가안정목표(2%)${Math.abs(gap) < 0.15 ? '와 비슷한 수준입니다' : gap > 0 ? `보다 ${number(gap, 1)}%p 높습니다` : `보다 ${number(-gap, 1)}%p 낮습니다`}.`);
+  }
+  return lines.length ? ['**한 줄 정리**', '', ...lines] : [];
+}
+function globalCommentary(facts) {
+  const lines = [];
+  const us = facts.rates?.find(rate => rate.name === '미국');
+  if (us) lines.push(`- 미국 정책금리는 ${number(us.value, 2)}%${us.previous !== null && us.previous !== us.value ? `로 직전 달(${number(us.previous, 2)}%)보다 ${us.value > us.previous ? '높아졌습니다' : '낮아졌습니다'}` : '로 직전 달과 같습니다'}.`);
+  if (facts.dubai?.change !== null && facts.dubai) lines.push(`- 두바이유는 배럴당 ${number(facts.dubai.value, 1)}달러로 전월보다 ${moved(facts.dubai.change, 1, '%')}.`);
+  if (facts.gold?.change !== null && facts.gold) lines.push(`- 금값은 온스당 ${number(facts.gold.value, 1)}달러로 전월보다 ${moved(facts.gold.change, 1, '%')}.`);
+  return lines.length ? ['**한 줄 정리**', '', ...lines] : [];
+}
+function stockCommentary(facts) {
+  const lines = [];
+  const rate = label => (facts[label]?.previous ? ((facts[label].value - facts[label].previous) / facts[label].previous) * 100 : null);
+  if (rate('KOSPI') !== null) lines.push(`- **국내** 코스피 ${number(facts.KOSPI.value, 2)}(1주 ${signed(rate('KOSPI'), 2, '%')})${rate('KOSDAQ') !== null ? ` · 코스닥 ${number(facts.KOSDAQ.value, 2)}(1주 ${signed(rate('KOSDAQ'), 2, '%')})` : ''}`);
+  if (facts.usStocks?.change !== null && facts.usStocks) lines.push(`- **미국** OECD 종합 주가지수가 ${dateLabel(facts.usStocks.time)} 한 달 동안 ${signed(facts.usStocks.change, 1, '%')} 움직였습니다(월간 자료).`);
+  return lines;
+}
+
+// ---------- 매일경제 RSS: 지난 한 주 많이 보도된 기사 제목·원문 링크 ----------
+const NEWS_FEEDS = { headline: '30000001', all: '40300001', economy: '30100041', world: '30300018' };
+const TOPICS = {
+  stock: /코스피|코스닥|증시|주가|나스닥|S&P|다우|상장|IPO|공매도|시가총액|외국인.{0,4}(순매수|순매도)|반도체주|배당|실적|어닝/,
+  realestate: /부동산|아파트|집값|전세|월세|청약|분양|재건축|재개발|주택|LTV|DSR|공시가격|토지거래허가|임대차|미분양/,
+};
+const NEWS_SKIP = /관심종목|추천주|급등주|매수 추천|목표주가|리딩방|\[MBN\]|\[영상\]|\[포토\]/;
+const wordsOf = title => new Set(String(title).replace(/\[[^\]]*\]/g, ' ').replace(/[“”"‘’'…·,.!?()<>~:;/|\-]/g, ' ').split(/\s+/).filter(word => word.length >= 2));
+function topNews(items, count) {
+  const list = items.filter(item => !SOFT.test(item.title) && !NEWS_SKIP.test(item.title));
+  const words = list.map(item => wordsOf(item.title));
+  const scored = list.map((item, index) => ({ item, score: words.reduce((sum, other, j) => sum + (j !== index && [...words[index]].filter(word => other.has(word)).length >= 2 ? 1 : 0), 0) }));
+  const chosen = [];
+  for (const { item } of scored.sort((left, right) => right.score - left.score || String(right.item.at).localeCompare(String(left.item.at)))) {
+    const mine = wordsOf(item.title);
+    if (chosen.some(other => [...wordsOf(other.title)].filter(word => mine.has(word)).length >= 2)) continue;
+    chosen.push(item);
+    if (chosen.length >= count) break;
+  }
+  return chosen;
+}
+const newsLine = item => `- [${item.title.replace(/[\[\]]/g, '')}](${item.link})${item.at ? ` · ${dateLabel(ymd(Date.parse(item.at)))}` : ''}`;
+async function weeklyNews(fetchImpl, now, notes = []) {
+  const all = new Map();
+  const world = [];
+  for (const [name, code] of Object.entries(NEWS_FEEDS)) {
+    try {
+      for (const item of await fetchFeed(fetchImpl, code)) {
+        if (item.at && now - Date.parse(item.at) > 7 * DAY) continue;
+        all.set(item.no, item);
+        if (name === 'world') world.push(item);
+      }
+    } catch (error) {
+      notes.push(`매일경제 RSS(${name}): ${error.message}`);
+    }
+  }
+  const items = [...all.values()];
+  return {
+    stock: topNews(items.filter(item => TOPICS.stock.test(item.title)), 3),
+    realestate: topNews(items.filter(item => TOPICS.realestate.test(item.title)), 3),
+    world: topNews(world.length ? world : items.filter(item => /world|international/.test(item.path)), 3),
+  };
+}
+
 function highlightLines(posts, siteUrl) {
   const lines = [];
   const clip = text => {
@@ -241,7 +342,10 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, policyKey 
   const title = `${sendDate.getUTCMonth() + 1}월 ${sendDate.getUTCDate()}일`;
   const key = ecosKey || 'sample';
   const notes = [];
-  const [figures, global, outlook] = await Promise.all([indicators(fetchImpl, key, now, notes), globalIndicators(fetchImpl, key, now, notes), imfOutlook(fetchImpl, now, notes)]);
+  const facts = {};
+  const [figures, global, outlook, news] = await Promise.all([indicators(fetchImpl, key, now, notes, facts), globalIndicators(fetchImpl, key, now, notes, facts), imfOutlook(fetchImpl, now, notes),
+    weeklyNews(fetchImpl, now, notes)]);
+  const newsBlock = (items, intro) => (items.length ? [intro, '', ...items.map(newsLine)] : []);
   let housing;
   try {
     const result = await rebHousing(fetchImpl, rebKey, now);
@@ -275,7 +379,7 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, policyKey 
     '',
     ...figures,
     '',
-    `${MANUAL_MARK} 금리·환율·물가 흐름에 대한 한두 줄 해설을 적어 주세요.`,
+    ...domesticCommentary(facts),
     '',
     '## 세계 경제',
     '',
@@ -285,40 +389,60 @@ async function buildWeeklyDraft({ fetchImpl = fetch, ecosKey, rebKey, policyKey 
     '',
     ...outlook,
     '',
-    `${MANUAL_MARK} 미국 연준·중국 경기 등 이번 주 세계 경제의 핵심 흐름을 한두 줄로 정리해 주세요.`,
+    ...globalCommentary(facts),
     '',
     '## 주식 시장',
     '',
-    `${MANUAL_MARK} 나스닥·S&P500 등 해외 증시의 주간 흐름을 적어 주세요. (해외 지수 일별 수치는 무료로 재배포가 허용된 공식 API가 없어 직접 입력합니다.)`,
+    ...stockCommentary(facts),
     '',
-    `${MANUAL_MARK} 이번 주 이슈 종목 2~3개를 골라 '종목명 — 무슨 일이 있었는지(실적·공시·정책 등 사실)'로 짧게 적고 원문 링크를 붙여 주세요. 매수·매도 권유나 목표주가 같은 표현은 쓰지 않습니다.`,
+    ...newsBlock(news.stock, '**이번 주 증시에서 많이 보도된 소식** (기사 제목·원문 링크)'),
     '',
     '## 부동산',
     '',
-    ...(housing || [`${MANUAL_MARK} 한국부동산원 주간 아파트 가격동향(전국·서울·수도권·지방 매매·전세 변동률)을 적어 주세요. 부동산원 인증키(REB_API_KEY)를 등록하면 자동으로 채워집니다.`]),
+    ...(housing || ['한국부동산원 주간 아파트 가격동향은 인증키(REB_API_KEY)를 등록하면 자동으로 채워집니다.']),
     '',
-    `${MANUAL_MARK} 정부 대책·청약·거래 동향을 요약하고 원문 링크를 붙여 주세요. 예: [기사 제목](https://원문주소) — 직접 쓴 두세 줄 요약`,
+    ...newsBlock(news.realestate, '**이번 주 부동산 주요 소식** (정책·청약·거래 — 기사 제목·원문 링크)'),
     '',
     '## 세계 정세',
     '',
-    `${MANUAL_MARK} 경제에 영향을 준 국제 정치·외교 이슈를 사실 중심으로 요약하고, 정부·국제기구 공식 발표나 복수 언론의 원문 링크를 붙여 주세요.`,
+    ...(news.world.length ? newsBlock(news.world, '지난 한 주 국제 면에서 가장 많이 다뤄진 소식입니다. (기사 제목·원문 링크)')
+      : [`${MANUAL_MARK} 국제 뉴스를 불러오지 못했습니다. 경제에 영향을 준 국제 이슈를 사실 중심으로 적고 원문 링크를 붙여 주세요.`]),
     '',
     '## 이번 주 정부 정책',
     '',
-    ...(policy ? [...policy, '', `${MANUAL_MARK} 위 정책뉴스 가운데 생활에 영향이 큰 것을 골라 한두 줄 해설을 덧붙이고, 관련 없는 항목은 지워 주세요.`]
-      : [`${MANUAL_MARK} 생활에 영향이 큰 정책 발표를 골라 요약과 원문 링크를 적어 주세요. 정책브리핑 인증키(POLICY_NEWS_KEY)를 등록하면 지난 한 주 경제 정책뉴스가 자동으로 채워집니다.`]),
+    ...(policy || ['정책브리핑 인증키(POLICY_NEWS_KEY)를 등록하면 지난 한 주 경제 정책뉴스가 자동으로 채워집니다.']),
     '',
     '## 커뮤니티에서 나온 목소리',
     '',
     ...highlightLines(posts, siteUrl),
     '',
+    '## ✍️ 운영자 한마디',
+    '',
+    `${OPTIONAL_MARK} 이 칸은 운영자가 직접 쓰는 곳입니다. 이 줄을 지우고 이번 주 해설·의견·소식을 자유롭게 적어 주세요. 아무것도 쓰지 않으면 이 칸은 보낼 때 자동으로 빠집니다.`,
+    '',
     '---',
     '',
     '이 뉴스레터는 정보 제공을 위한 것이며 특정 금융상품이나 종목의 매매를 권유하지 않습니다. 투자 판단과 그 결과의 책임은 투자자 본인에게 있습니다.',
     '',
-    '자료 출처: 한국은행 경제통계시스템(ECOS) · 국제통화기금(IMF) World Economic Outlook(https://www.imf.org/external/datamapper)' + (housing ? ' · 한국부동산원 부동산통계정보시스템(R-ONE)' : '') + (policy ? ' · 대한민국 정책브리핑(www.korea.kr, 공공누리 제1유형)' : '') + '. 국제 지표는 한국은행이 BIS·IMF·OECD 자료를 수록한 것입니다.',
+    '자료 출처: 한국은행 경제통계시스템(ECOS) · 국제통화기금(IMF) World Economic Outlook(https://www.imf.org/external/datamapper)' + (housing ? ' · 한국부동산원 부동산통계정보시스템(R-ONE)' : '') + (policy ? ' · 대한민국 정책브리핑(www.korea.kr, 공공누리 제1유형)' : '') + ((news.stock.length || news.realestate.length || news.world.length) ? ' · 매일경제(기사 제목과 원문 링크만 소개, 저작권은 매일경제에 있음)' : '') + '. 국제 지표는 한국은행이 BIS·IMF·OECD 자료를 수록한 것입니다.',
   ].join('\n');
   return { subject: `스페이스 레터 · ${title} 주간 경제·정책 브리핑`, body, sendAt, notes: notes.map(note => note.slice(0, 300)) };
 }
 
-module.exports = { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK, ecos, rebHousing, HEADERS };
+// 보낼 때: '[선택 작성]' 표시가 남은 선택 칸(## 제목부터 다음 ## 또는 --- 앞까지)을 통째로 뺀다.
+function stripOptional(body) {
+  const lines = String(body).split('\n');
+  const out = [];
+  for (let index = 0; index < lines.length; index++) {
+    if (/^## /.test(lines[index])) {
+      let end = index + 1;
+      while (end < lines.length && !/^(## |---)/.test(lines[end])) end++;
+      const block = lines.slice(index, end);
+      if (block.some(line => line.includes(OPTIONAL_MARK))) { index = end - 1; continue; }
+    }
+    if (!lines[index].includes(OPTIONAL_MARK)) out.push(lines[index]);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+module.exports = { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK, OPTIONAL_MARK, stripOptional, ecos, rebHousing, HEADERS, domesticCommentary, topNews };

@@ -208,7 +208,19 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   const requested = [];
   const fetchImpl = async (url, options = {}) => {
     requested.push(url);
-    assert.match(options.headers?.['User-Agent'] || '', /withpluces/);
+    assert.match(options.headers?.['User-Agent'] || '', /withpluces/i);
+    if (url.startsWith('https://www.mk.co.kr/rss/')) {
+      const code = url.split('/')[4];
+      const at = 'Sat, 03 Oct 2026 09:00:00 +09:00';
+      const item = (no, path, title) => `<item><no>${no}</no><title><![CDATA[${title}]]></title><link>https://www.mk.co.kr/news/${path}/${no}</link><pubDate>${at}</pubDate></item>`;
+      const feeds = {
+        30300018: [item(11, 'world', '미중 정상 관세 협상 타결 임박'), item(12, 'world', '미중 관세 협상 막판 진통'), item(13, 'world', '유럽 에너지 가격 다시 상승')],
+        30100041: [item(21, 'stock', '코스피 7000 돌파 사상 최고'), item(22, 'stock', '코스피 7000 시대 개막 외국인 순매수'), item(23, 'stock', '관심종목 급등주 추천'),
+          item(31, 'realestate', '서울 아파트 전세 매물 감소'), item(32, 'realestate', '수도권 청약 경쟁률 상승'), item(33, 'economy', '정부 가계부채 대책 발표')],
+      };
+      const xml = `<rss><channel>${(feeds[code] || []).join('')}</channel></rss>`;
+      return { ok: true, status: 200, text: async () => xml };
+    }
     if (url.startsWith('https://www.imf.org/')) {
       return { ok: true, json: async () => ({ values: { NGDP_RPCH: { WEOWORLD: { 2026: 3.1, 2027: 3.2 }, KOR: { 2026: 1.9, 2027: 2.1 }, USA: { 2026: 2.3, 2027: 2.1 } } } }) };
     }
@@ -257,7 +269,19 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   assert.ok(draft.body.includes('주식투자운용전략 공유 1') || draft.body.includes('주식투자운용전략  공유 1'), 'markdown characters stripped');
   assert.ok(!draft.body.includes('*주식'));
   assert.deepEqual(draft.notes, []);
-  assert.ok(draft.body.includes('[직접 작성]'));
+  // 해설·뉴스까지 모두 자동으로 채워져 '[직접 작성]' 표시가 없다. 운영자 한마디는 선택 칸.
+  assert.ok(!draft.body.includes('[직접 작성]'));
+  assert.ok(draft.body.includes('지난 한 주 코스피는 3.00% 상승, 코스닥은 1.51% 상승했습니다.'));
+  assert.ok(draft.body.includes('원/달러 환율은 1,358.5원으로 1주 전보다 11.5원 내렸습니다(원화 강세).'));
+  assert.ok(draft.body.includes('미국 정책금리는 4.00%로 직전 달(4.25%)보다 낮아졌습니다.'));
+  assert.ok(draft.body.includes('[코스피 7000 돌파 사상 최고](https://www.mk.co.kr/news/stock/21)'));
+  assert.ok(!draft.body.includes('코스피 7000 시대 개막'), 'same story is listed once');
+  assert.ok(!draft.body.includes('급등주'), 'stock tips are skipped');
+  assert.ok(draft.body.includes('[서울 아파트 전세 매물 감소](https://www.mk.co.kr/news/realestate/31)'));
+  assert.ok(draft.body.includes('[미중 정상 관세 협상 타결 임박](https://www.mk.co.kr/news/world/11)'));
+  assert.ok(draft.body.includes('## ✍️ 운영자 한마디'));
+  assert.ok(draft.body.includes('[선택 작성]'));
+  assert.ok(draft.body.includes('매일경제(기사 제목과 원문 링크만 소개'));
   assert.ok(draft.body.includes('매매를 권유하지 않습니다'));
   const notice = f.sent.at(-1);
   assert.equal(notice.to, 'admin@example.com');
@@ -274,12 +298,19 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   await f.post('/api/newsletter', { email: 'reader@example.com', consent: true });
   await f.post('/api/newsletter/confirm', { token: f.tokenFrom(f.sent.at(-1), 'confirm') });
 
-  // unfinished draft cannot be sent or scheduled; test send is allowed
-  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: draft.body }, 'admin')).status, 400);
-  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: draft.body, schedule: 'monday' }, 'admin')).status, 400);
-  assert.equal((await f.post('/api/admin/newsletter/test', { subject: draft.subject, body: draft.body }, 'admin')).status, 200);
+  // a '[직접 작성]' mark (data that could not be loaded) still blocks sending; test send is allowed
+  const unfinished = `${draft.body}\n\n[직접 작성] 확인 필요`;
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: unfinished }, 'admin')).status, 400);
+  assert.equal((await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: unfinished, schedule: 'monday' }, 'admin')).status, 400);
+  assert.equal((await f.post('/api/admin/newsletter/test', { subject: draft.subject, body: unfinished }, 'admin')).status, 200);
+  // the untouched optional section is dropped from what is sent
+  const preview = await (await f.post('/api/admin/newsletter/preview', { subject: draft.subject, body: draft.body }, 'admin')).json();
+  assert.ok(!preview.text.includes('운영자 한마디') && !preview.text.includes('[선택 작성]'));
+  assert.ok(preview.text.includes('커뮤니티에서 나온 목소리'));
+  const written = await (await f.post('/api/admin/newsletter/preview', { subject: draft.subject, body: draft.body.replace(/\[선택 작성\][^\n]*/, '이번 주는 금리 흐름을 눈여겨봤습니다.') }, 'admin')).json();
+  assert.ok(written.text.includes('운영자 한마디') && written.text.includes('이번 주는 금리 흐름을 눈여겨봤습니다.'));
 
-  const finished = draft.body.replaceAll('[직접 작성]', '');
+  const finished = draft.body;
   const scheduled = await f.post('/api/admin/newsletter/send', { subject: draft.subject, body: finished, schedule: 'monday' }, 'admin');
   assert.equal(scheduled.status, 201);
   assert.match((await scheduled.json()).message, /10월 5일\(월\) 07:00/);

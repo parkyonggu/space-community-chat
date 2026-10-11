@@ -1,7 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID, randomBytes, createHash } = require('node:crypto');
-const { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK } = require('./weekly-brief');
+const { buildWeeklyDraft, nextMondaySeven, MANUAL_MARK, stripOptional } = require('./weekly-brief');
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOTICE_INTERVAL = 2 * 365 * DAY - 14 * DAY;
@@ -210,7 +210,8 @@ function createNewsletterApi(dataDirectory, {
 
   function compose(input) {
     const subject = typeof input.subject === 'string' ? input.subject.trim() : '';
-    const body = typeof input.body === 'string' ? input.body.trim() : '';
+    // '운영자 한마디'처럼 비워 둔 선택 칸은 미리보기·시험·발송 모두에서 뺀다.
+    const body = typeof input.body === 'string' ? stripOptional(input.body.trim()).trim() : '';
     if (!subject || subject.length > 150) throw new NewsletterError(400, '제목을 1~150자로 입력해 주세요.');
     if (!body || body.length > 50000) throw new NewsletterError(400, '본문을 1~50,000자로 입력해 주세요.');
     return { subject, body, ad: input.ad === true };
@@ -356,7 +357,7 @@ function createNewsletterApi(dataDirectory, {
     });
     if (notify) {
       const when = kstText(nextMondaySeven(now()));
-      await notifyAdmins('[스페이스 레터] 이번 주 브리핑 초안이 준비되었습니다', `# 이번 주 브리핑 초안이 준비되었습니다\n\n경제 지표와 커뮤니티 글을 모아 초안을 만들었습니다. "${MANUAL_MARK}" 칸을 채운 뒤 시험 발송으로 확인하고 **${when}** 예약 발송을 눌러 주세요.\n\n[뉴스레터 관리 열기](${origin}/newsletter-admin)${entry.notes.length ? `\n\n**불러오지 못한 자료**\n\n${entry.notes.map(note => `- ${note}`).join('\n')}` : ''}`);
+      await notifyAdmins('[스페이스 레터] 이번 주 브리핑 초안이 준비되었습니다', `# 이번 주 브리핑 초안이 준비되었습니다\n\n경제 지표·해설·주요 뉴스·커뮤니티 글까지 모두 자동으로 채운 초안입니다. 내용을 읽어 보고 필요하면 '운영자 한마디'에 직접 글을 더한 뒤(자료를 못 불러온 칸이 있으면 "${MANUAL_MARK}" 표시를 채우고) 시험 발송으로 확인하고 **${when}** 예약 발송을 눌러 주세요.\n\n[뉴스레터 관리 열기](${origin}/newsletter-admin)${entry.notes.length ? `\n\n**불러오지 못한 자료**\n\n${entry.notes.map(note => `- ${note}`).join('\n')}` : ''}`);
     }
     return entry;
   }

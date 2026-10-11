@@ -213,7 +213,7 @@
       $('ad').checked = false;
       schedulePreview();
       $('subject').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus('draft-status', '초안을 편집기로 불러왔습니다. [직접 작성] 칸을 채워 주세요.');
+      setStatus('draft-status', '초안을 편집기로 불러왔습니다. 내용을 확인하고, 필요하면 맨 아래 \'운영자 한마디\'에 직접 글을 더해 주세요(쓰지 않으면 자동으로 빠집니다).');
     } catch (error) { setStatus('draft-status', error.message, true); }
   }
 

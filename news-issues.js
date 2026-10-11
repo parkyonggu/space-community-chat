@@ -183,4 +183,4 @@ function cleanManual(input) {
   return { field: field.id, label: field.label, id, title, link: url.href, at: null, source: String(input.source || '').trim().slice(0, 30) || host, manual: true };
 }
 
-module.exports = { FIELDS, FEEDS, parseRss, pickIssues, loadFeeds, cleanManual, DEFENSE };
+module.exports = { FIELDS, FEEDS, parseRss, pickIssues, loadFeeds, fetchFeed, cleanManual, DEFENSE, SOFT };
