@@ -247,6 +247,30 @@
           <p class="source" id="bf-source">출처: 행정안전부 「대한민국 공공서비스(혜택) 정보」(정부24 보조금24) · 공공데이터포털. 정확한 조건과 기간은 '자세히'에서 꼭 확인하세요.</p>
         </section>
 
+        <section class="panel panel-pad fm-panel" id="farm-panel" aria-labelledby="fm-title" hidden>
+          <div class="panel-head"><h2 id="fm-title">🌾 우리 동네 농사정보</h2><span class="hint" id="fm-updated">농산물 가격 · 이번 주 농사정보</span></div>
+          <div class="fm-block" id="fm-prices-block" hidden>
+            <div class="fm-head">
+              <h3>오늘의 농산물 가격 <small id="fm-date"></small></h3>
+              <div class="re-tabs" role="tablist" aria-label="가격 종류">
+                <button type="button" class="chip" role="tab" data-fm-kind="retail" aria-selected="true">소매(장보기)</button>
+                <button type="button" class="chip" role="tab" data-fm-kind="wholesale" aria-selected="false">도매(출하)</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table class="pn-table fm-table" id="fm-table"></table></div>
+          </div>
+          <div class="fm-block" id="fm-news-block" hidden>
+            <h3>이번 주 농사정보 <small>농촌진흥청</small></h3>
+            <ul class="fm-news" id="fm-news"></ul>
+          </div>
+          <p class="pn-empty" id="fm-empty" hidden></p>
+          <div class="pn-links">
+            <a class="btn btn-outline" href="https://www.kamis.or.kr" target="_blank" rel="noopener">농산물 가격 더 보기 (KAMIS) ↗</a>
+            <a class="btn btn-outline" href="https://www.nongsaro.go.kr" target="_blank" rel="noopener">농사로 농업기술 ↗</a>
+          </div>
+          <p class="source">출처: 한국농수산식품유통공사 농산물유통정보(KAMIS) 전국 평균 가격 · 농촌진흥청 농사로 Open API. 가격은 조사일 기준이며 지역·품질에 따라 다릅니다.</p>
+        </section>
+
         <section class="panel panel-pad pn-panel" id="pension-panel" aria-labelledby="pn-title" hidden>
           <div class="panel-head"><h2 id="pn-title">우리 동네 국민연금</h2><span class="hint">국민연금공단 통계 · 매월 갱신</span></div>
           <div class="re-tabs" role="tablist" aria-label="지역" id="pn-regions"></div>

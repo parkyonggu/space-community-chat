@@ -139,6 +139,7 @@ export class CommunityService extends DurableObject {
       benefitKey: env.GOV_BENEFIT_KEY || env.POLICY_NEWS_KEY || '', authenticate: this.auth.authenticate,
       weatherKey: env.WEATHER_API_KEY || env.POLICY_NEWS_KEY || '',
       pensionKey: env.PENSION_API_KEY || env.POLICY_NEWS_KEY || '',
+      farmKeys: { kamisKey: env.KAMIS_CERT_KEY || '', kamisId: env.KAMIS_CERT_ID || '', nongsaroKey: env.NONGSARO_API_KEY || '' },
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {

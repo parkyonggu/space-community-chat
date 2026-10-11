@@ -430,3 +430,19 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
   기록하면 글에 「스페이스 커뮤니티가 ○○시에 전달했습니다」와 처리 경과가 표시되고 글쓴이에게 메일이 간다.
 - 미리 할 일: 국민신문고에 (주)위드플러시아 법인(사업자) 회원 가입.
 - 「🙋 저도 겪어요」(공감) 수가 전달 문안에 함께 들어간다.
+
+
+## 우리 동네 농사정보 (KAMIS_CERT_KEY, KAMIS_CERT_ID, NONGSARO_API_KEY)
+
+- 첫 화면 '🌾 우리 동네 농사정보' 칸. 키가 하나도 없으면 칸이 숨겨지고, 넣은 쪽만 보입니다.
+- 농산물 가격: 한국농수산식품유통공사 KAMIS Open-API(www.kamis.or.kr → 고객센터 → Open-API)에서 신청합니다.
+  - `npx wrangler secret put KAMIS_CERT_KEY` — 발급받은 인증키
+  - `npx wrangler secret put KAMIS_CERT_ID` — KAMIS 가입 아이디(요청자 ID)
+  - 「최근일자 도·소매가격정보(상품 기준)」(action=dailySalesList), 전국 평균, 3시간마다 갱신.
+- 농사정보: 농촌진흥청 농사로(www.nongsaro.go.kr → 공공데이터 → Open API 신청) 「주간농사정보」.
+  - `npx wrangler secret put NONGSARO_API_KEY`
+  - 12시간마다 갱신.
+- 점검(운영자 로그인 상태에서 주소창에 입력):
+  - `/api/portal/farm` — 화면에 쓰는 자료와 오류(problems)
+  - `/api/portal/farm/raw?source=kamis` — KAMIS 실제 응답 앞부분
+  - `/api/portal/farm/raw?source=nongsaro&service=weekFarmInfo&operation=weekFarmInfoList` — 농사로 실제 응답 앞부분

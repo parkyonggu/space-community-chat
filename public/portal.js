@@ -1154,6 +1154,72 @@
   }
   if ($('pension-panel')) loadPension();
 
+  // ---------- 우리 동네 농사정보 (KAMIS 가격 · 농사로 주간농사정보) ----------
+  const fm = { data: null, kind: 'retail' };
+  const fmWon = value => (value === null || value === undefined ? '–' : `${Number(value).toLocaleString('ko-KR')}원`);
+  function fmChange(now, before) {
+    if (!now || !before) return ['–', ''];
+    const rate = ((now - before) / before) * 100;
+    if (Math.abs(rate) < 0.05) return ['–', 'same'];
+    return [`${rate > 0 ? '▲' : '▼'} ${Math.abs(rate).toFixed(1)}%`, rate > 0 ? 'up' : 'down'];
+  }
+  function renderFarm() {
+    const data = fm.data;
+    const panel = $('farm-panel');
+    if (!panel || !data) return;
+    const connected = data.connected || {};
+    if (!connected.prices && !connected.news) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const prices = data.prices;
+    const rows = prices ? prices[fm.kind] || [] : [];
+    $('fm-prices-block').hidden = !connected.prices;
+    if (connected.prices) {
+      $('fm-date').textContent = prices?.date ? `${prices.date} 조사 · 전국 평균` : '';
+      panel.querySelectorAll('[data-fm-kind]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.fmKind === fm.kind)));
+      const table = $('fm-table');
+      const head = make('tr');
+      ['품목', '단위', '가격', '전날보다', '한 달 전보다', '1년 전보다'].forEach(text => head.appendChild(make('th', '', text)));
+      const body = rows.map(row => {
+        const tr = make('tr');
+        tr.appendChild(make('td', '', row.name));
+        tr.appendChild(make('td', 'fm-unit', row.unit));
+        tr.appendChild(make('td', 'money', fmWon(row.price)));
+        for (const before of [row.prevDay, row.prevMonth, row.prevYear]) {
+          const [label, tone] = fmChange(row.price, before);
+          tr.appendChild(make('td', `fm-change ${tone}`, label));
+        }
+        return tr;
+      });
+      table.replaceChildren(head, ...(body.length ? body : [(() => { const tr = make('tr'); const td = make('td', 'pn-empty', data.problems?.length ? '가격 자료를 받지 못했습니다. 잠시 뒤 다시 확인해 주세요.' : '오늘 조사된 가격이 아직 없습니다.'); td.colSpan = 6; tr.appendChild(td); return tr; })()]));
+    }
+    const news = data.news?.items || [];
+    $('fm-news-block').hidden = !connected.news;
+    if (connected.news) {
+      $('fm-news').replaceChildren(...(news.length ? news.map(item => {
+        const li = make('li');
+        const link = make('a', '', item.title);
+        link.href = item.link;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        li.appendChild(link);
+        if (item.date) li.appendChild(make('span', 'fm-date', item.date));
+        return li;
+      }) : [make('li', 'pn-empty', '농사정보를 받아 오는 중입니다.')]));
+    }
+  }
+  async function loadFarm() {
+    try {
+      const response = await fetch('/api/portal/farm', { credentials: 'same-origin' });
+      if (!response.ok) return;
+      fm.data = await response.json();
+      renderFarm();
+    } catch { /* offline */ }
+  }
+  if ($('farm-panel')) {
+    $('farm-panel').querySelectorAll('[data-fm-kind]').forEach(chip => chip.addEventListener('click', () => { fm.kind = chip.dataset.fmKind; renderFarm(); }));
+    loadFarm();
+  }
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);

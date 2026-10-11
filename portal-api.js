@@ -7,6 +7,7 @@ const { recentPolicyNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
 const { createPension } = require('./pension');
+const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -39,7 +40,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', weatherKey = '', pensionKey = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', weatherKey = '', pensionKey = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -49,6 +50,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
   const pension = createPension({ key: pensionKey, fetchImpl: (...args) => fetchImpl(...args) });
+  const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
   async function loadIndicators() {
     const at = now();
@@ -254,6 +256,28 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
   }
 
+  // ---------- 우리 동네 농사정보 (KAMIS 농산물 가격 + 농촌진흥청 농사로 주간농사정보) ----------
+  async function handleFarm(request, send, pathname) {
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const ip = request.socket?.remoteAddress || 'unknown';
+    if (rateLimit && !rateLimit(`farm:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    if (pathname === '/api/portal/farm/raw') {
+      const auth = authenticate ? await authenticate(request) : { user: null };
+      if (!auth.user?.admin) { send(403, { error: '운영자만 볼 수 있습니다.' }); return; }
+      try { send(200, await farm.raw({ source: params.get('source'), service: params.get('service') || undefined, operation: params.get('operation') || undefined, action: params.get('action') || undefined })); }
+      catch (error) { send(200, { error: error.message }); }
+      return;
+    }
+    const [prices, news] = await Promise.all([
+      farm.kamisReady ? cached('farm-prices', 3 * 60 * 60 * 1000, farm.prices) : null,
+      farm.nongsaroReady ? cached('farm-news', 12 * 60 * 60 * 1000, farm.farmNews) : null,
+    ]);
+    const problems = ['farm-prices', 'farm-news'].map(name => lastErrors.get(name)).filter(Boolean);
+    send(200, { connected: { prices: farm.kamisReady, news: farm.nongsaroReady }, prices, news, problems,
+      source: { prices: '한국농수산식품유통공사 농산물유통정보(KAMIS) · 전국 평균', news: '농촌진흥청 농사로 주간농사정보' } });
+  }
+
   // ---------- 오늘의 이슈 (매일경제 헤드라인 자동 선별 + 관리자 수정) ----------
   // 이슈 날짜는 오전 6시(KST)에 바뀐다. 낮 12시까지는 1시간마다 새 헤드라인으로 다시 고르고, 그 뒤로는 그날 이슈를 고정한다.
   const ISSUE_REFRESH = 60 * 60 * 1000;
@@ -362,6 +386,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
     if (pathname === '/api/portal/pension' || pathname === '/api/portal/pension/raw') { await handlePension(request, send, pathname); return; }
+    if (pathname === '/api/portal/farm' || pathname === '/api/portal/farm/raw') { await handleFarm(request, send, pathname); return; }
     if (pathname !== '/api/portal') { send(404, { error: '요청한 기능이 없습니다.' }); return; }
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
