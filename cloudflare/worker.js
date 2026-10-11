@@ -189,6 +189,11 @@ export class CommunityService extends DurableObject {
     if (pathname === '/internal/public-post') {
       return json(await this.board.publicPost(url.searchParams.get('no')));
     }
+    // 스페이스 톡 '회원 불러오기'용(TALK 대화방 서버만 부른다: /internal/ 경로는 바깥에서 들어올 수 없음)
+    if (pathname === '/internal/member-search') {
+      const ids = url.searchParams.get('ids');
+      return json({ members: await this.auth.findMembers(ids !== null ? { ids: ids.split(',').filter(Boolean).slice(0, 50) } : { q: url.searchParams.get('q') || '' }) });
+    }
     if (pathname === '/internal/public-posts') {
       return json({ posts: await this.board.publicPosts() });
     }

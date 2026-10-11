@@ -166,3 +166,19 @@ test('정책브리핑 채널: 구독, 읽기 전용, 채널 글은 구독자에�
   assert.ok(core.messages(bob, 'event-channel').messages.some(message => message.text === '[모임안내] 토요일 오후 2시에 만나요.'));
   assert.equal(core.messages(bob, 'event-channel').messages[0].nickname, '스페이스톡');
 });
+
+test('회원 불러오기: members add people by name; capacity, guests and duplicates are checked', () => {
+  const chat = createChatCore(memorySql());
+  const { room } = chat.createGroup(users.alice, { name: '야유회', maxMembers: 3 });
+  assert.throws(() => chat.addMembers(users.bob, room.id, [users.carol]), /참여한 대화방/);
+  const result = chat.addMembers(users.alice, room.id, [users.bob, { id: 'guest-x', nickname: '손님' }]);
+  assert.deepEqual(result.addedIds, ['u-b']);
+  assert.equal(result.message.text, '앨리스님이 밥님을 불렀습니다.');
+  assert.equal(chat.listRooms(users.bob)[0].id, room.id, 'the added member sees the room');
+  assert.throws(() => chat.addMembers(users.bob, room.id, [users.alice]), /새로 불러올/);
+  assert.throws(() => chat.addMembers(users.bob, room.id, [users.carol, users.admin]), /정원\(3명\)/);
+  chat.addMembers(users.bob, room.id, [users.carol]);
+  assert.deepEqual(chat.acquaintances(users.carol).map(person => person.nickname).sort(), ['밥', '앨리스']);
+  const dm = chat.startDm(users.alice, { userId: 'u-b' });
+  assert.throws(() => chat.addMembers(users.alice, dm.id, [users.carol]), /단체 대화방/);
+});

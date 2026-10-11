@@ -197,3 +197,12 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .announce-actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
 .announce-actions .btn { min-height:36px; padding:0 12px; font-size:13.5px; text-decoration:none; }
 .announce-poster { display:block; width:100%; max-height:520px; object-fit:contain; background:#f4f5f9; cursor:zoom-in; }
+/* 회원 불러오기 */
+.call-members { margin:6px 0 10px; }
+.member-search { width:100%; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:12px; font:inherit; font-size:15px; margin:4px 0 2px; }
+.member-pick { display:grid; gap:2px; max-height:48vh; overflow:auto; margin:0 0 12px; }
+.member-pick label.member { display:flex !important; flex-direction:row; align-items:center; gap:10px; cursor:pointer; border-radius:10px; padding:6px 6px; margin:0; }
+.member-pick label.member .who strong { margin:0; }
+.member-pick label.member:hover { background:#f3f5fa; }
+.member-pick input[type=checkbox] { width:22px; height:22px; accent-color:#0e1730; }
+.member-pick .empty-note { margin:8px 2px; color:var(--muted); font-size:14px; }

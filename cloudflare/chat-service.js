@@ -82,6 +82,14 @@ export class ChatService extends DurableObject {
     this.ctx.waitUntil(this.notify(result.message.roomId, sender.id, result.memberIds).catch(error => console.error('Notify failed:', error)));
   }
 
+  // 회원 정보는 회원 서버(CommunityService)에서 확인한다: 이메일 인증을 마친 회원의 번호·닉네임만 받는다.
+  async findMembers({ q, ids }) {
+    const query = ids ? `ids=${ids.map(encodeURIComponent).join(',')}` : `q=${encodeURIComponent(q || '')}`;
+    const response = await this.env.COMMUNITY.get(this.env.COMMUNITY.idFromName('community-v1')).fetch(`https://internal.invalid/internal/member-search?${query}`);
+    if (!response.ok) throw new ChatError(503, '회원 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    return (await response.json()).members || [];
+  }
+
   announce(roomId, memberIds, message) {
     if (message) this.broadcast(memberIds, { type: 'message', roomId, message });
     this.broadcast(memberIds, { type: 'room', roomId });
@@ -221,6 +229,26 @@ export class ChatService extends DurableObject {
           const result = this.core.update(user, id, await body());
           this.announce(id, result.memberIds, result.message);
           return json({ room: result.room });
+        }
+        // 회원 불러오기: 이름으로 회원 찾기(검색어가 없으면 함께 대화한 사람들) → 골라서 바로 방에 넣기
+        if (action === 'candidates' && method === 'GET') {
+          guestOnly('회원 불러오기는 회원만 할 수 있습니다.');
+          this.limit(`search:${user.id}`, 60, 60000);
+          const room = this.core.room(user, id);
+          const inRoom = new Set(room.members.map(member => member.id));
+          const q = (url.searchParams.get('q') || '').trim().slice(0, 20);
+          const found = q ? await this.findMembers({ q }) : this.core.acquaintances(user);
+          return json({ members: found.filter(person => person.id !== user.id).map(person => ({ ...person, inRoom: inRoom.has(person.id) })), query: q });
+        }
+        if (action === 'add' && method === 'POST') {
+          guestOnly('회원 불러오기는 회원만 할 수 있습니다.');
+          this.limit(`add:${user.id}`, 20, 60 * 60 * 1000);
+          const input = await body();
+          const ids = Array.isArray(input.userIds) ? input.userIds.map(String).slice(0, 50) : [];
+          const people = ids.length ? await this.findMembers({ ids }) : [];
+          const result = this.core.addMembers(user, id, people);
+          this.announce(id, result.memberIds, result.message);
+          return json({ room: result.room, added: result.addedIds.length });
         }
         if (method === 'POST' && action === 'kick') {
           const result = this.core.kick(user, id, (await body()).userId);

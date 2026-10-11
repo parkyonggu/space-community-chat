@@ -868,6 +868,12 @@
       const online = new Set(room.online || []);
       if (room.kind === 'group') {
         body.appendChild(make('div', 'section-title', `참여자 ${room.memberCount}명 / 최대 ${room.maxMembers}명`));
+        if (!state.me.guest) {
+          const call = make('button', 'btn gold block call-members', '👥 회원 불러오기 (이름으로 찾아 바로 넣기)');
+          call.type = 'button';
+          call.addEventListener('click', () => addMembersSheet(room));
+          body.appendChild(call);
+        }
         for (const member of room.members) {
           const row = make('div', 'member');
           row.appendChild(avatar(member.nickname, member.id, true));
@@ -999,10 +1005,87 @@
       name.focus();
     });
   }
+  // ---------- 회원 불러오기: 닉네임으로 찾아 여러 명을 골라 한 번에 방에 넣는다 ----------
+  function addMembersSheet(room) {
+    const chosen = new Map();
+    openSheet('회원 불러오기', body => {
+      body.appendChild(make('p', '', `스페이스 커뮤니티 회원을 이름(닉네임)으로 찾아 '${room.name}' 방에 바로 넣어요. 불린 회원의 스페이스 톡 목록에 이 방이 바로 생깁니다. 회원이 아닌 분은 초대 링크로 불러 주세요.`));
+      const search = make('input', 'member-search');
+      search.type = 'search';
+      search.placeholder = '이름(닉네임) 검색 — 예: 홍길동';
+      search.setAttribute('aria-label', '회원 이름 검색');
+      search.maxLength = 20;
+      const heading = make('div', 'section-title', '함께 대화한 사람들');
+      const list = make('div', 'member-pick');
+      const submit = make('button', 'btn navy block', '선택한 회원 불러오기');
+      submit.type = 'button';
+      submit.disabled = true;
+      const refreshButton = () => {
+        submit.disabled = !chosen.size;
+        submit.textContent = chosen.size ? `선택한 ${chosen.size}명 불러오기` : '불러올 회원을 골라 주세요';
+      };
+      const render = (people, query) => {
+        heading.textContent = query ? `'${query}' 검색 결과` : '함께 대화한 사람들';
+        list.replaceChildren();
+        if (!people.length) {
+          list.appendChild(make('p', 'empty-note', query ? '찾는 회원이 없어요. 이름을 다시 확인하거나, 초대 링크를 보내 주세요.' : '위 칸에 이름을 적어 회원을 찾아 보세요.'));
+          return;
+        }
+        for (const person of people) {
+          const row = make('label', 'member');
+          row.appendChild(avatar(person.nickname, person.id, true));
+          const who = make('div', 'who');
+          who.appendChild(make('strong', '', person.nickname));
+          if (person.inRoom) who.appendChild(make('span', '', '이미 이 방에 있어요'));
+          const box = make('input');
+          box.type = 'checkbox';
+          box.disabled = person.inRoom;
+          box.checked = person.inRoom || chosen.has(person.id);
+          box.setAttribute('aria-label', `${person.nickname} 고르기`);
+          box.addEventListener('change', () => {
+            if (box.checked) chosen.set(person.id, person.nickname); else chosen.delete(person.id);
+            refreshButton();
+          });
+          row.append(who, box);
+          list.appendChild(row);
+        }
+      };
+      let timer = null;
+      let latest = 0;
+      const load = async () => {
+        const query = search.value.trim();
+        const ticket = ++latest;
+        try {
+          const result = await api(`/api/chat/rooms/${room.id}/candidates?q=${encodeURIComponent(query)}`);
+          if (ticket === latest) render(result.members || [], query);
+        } catch (error) { if (ticket === latest) list.replaceChildren(make('p', 'empty-note', error.message)); }
+      };
+      search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 300); });
+      submit.addEventListener('click', async () => {
+        submit.disabled = true;
+        try {
+          const result = await api(`/api/chat/rooms/${room.id}/add`, { method: 'POST', body: { userIds: [...chosen.keys()] } });
+          toast(`${result.added}명을 불렀어요.`);
+          closeSheet();
+          if (state.current === room.id && result.room) state.room = { ...state.room, ...result.room };
+          loadRooms();
+        } catch (error) { toast(error.message); refreshButton(); }
+      });
+      body.append(search, heading, list, submit);
+      refreshButton();
+      load();
+      setTimeout(() => search.focus(), 50);
+    });
+  }
   function inviteSheet(room) {
     const url = `${location.origin}/chat#join=${room.inviteCode}`;
     openSheet('친구 초대하기', body => {
-      body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 아래 '카카오톡으로 보내기'로 초대하세요. 받은 사람은 링크를 누르고 이름만 적으면 회원가입 없이 바로 들어옵니다.`));
+      body.appendChild(make('p', '', `'${room.name}' 대화방이 만들어졌어요. 스페이스 커뮤니티 회원은 이름으로 바로 불러오고, 회원이 아닌 분은 아래 초대 링크를 보내 주세요.`));
+      const call = make('button', 'btn gold block call-members', '👥 회원 불러오기 (이름으로 찾아 바로 넣기)');
+      call.type = 'button';
+      call.addEventListener('click', () => addMembersSheet(room));
+      body.appendChild(call);
+      body.appendChild(make('div', 'section-title', '회원이 아닌 분 초대 링크'));
       body.appendChild(linkBox(url));
       const share = shareButton(url, inviteText(room.name));
       if (share) body.appendChild(share);

@@ -410,6 +410,19 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
   }
   handleAuthApi.authenticate = authenticate;
   // 게시판 알림용: 이메일 인증을 마친 회원의 주소만 돌려준다.
+  // 스페이스 톡 '회원 불러오기': 이메일 인증을 마친 회원을 닉네임으로 찾거나(q), 회원 번호로 확인한다(ids). 이메일 등 다른 정보는 내보내지 않는다.
+  handleAuthApi.findMembers = async ({ q = '', ids = null, limit = 20 } = {}) => {
+    const users = (await readStore()).users.filter(entry => entry.emailVerifiedAt || !mailer?.configured);
+    if (Array.isArray(ids)) {
+      const wanted = new Set(ids.map(String));
+      return users.filter(entry => wanted.has(entry.id)).map(entry => ({ id: entry.id, nickname: entry.nickname }));
+    }
+    const keyword = String(q || '').trim().toLowerCase();
+    if (!keyword) return [];
+    return users.filter(entry => String(entry.nickname || '').toLowerCase().includes(keyword))
+      .sort((left, right) => (left.nickname.toLowerCase() === keyword ? -1 : 0) - (right.nickname.toLowerCase() === keyword ? -1 : 0) || left.nickname.localeCompare(right.nickname, 'ko'))
+      .slice(0, Math.min(50, limit)).map(entry => ({ id: entry.id, nickname: entry.nickname }));
+  };
   handleAuthApi.emailOf = async userId => {
     const user = (await readStore()).users.find(entry => entry.id === userId);
     return user?.emailVerifiedAt ? user.email : null;

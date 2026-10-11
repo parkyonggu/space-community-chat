@@ -302,6 +302,28 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return { message, memberIds: members(room.id).map(entry => entry.id), removedId: targetId };
     },
 
+    // 회원 불러오기: 단체 대화방 참여자가 다른 회원을 이름으로 골라 바로 방에 넣는다(카카오톡의 '대화상대 초대'처럼).
+    // people: 회원 서버에서 확인한 [{ id, nickname }] (손님·나 자신·이미 있는 사람은 건너뛴다)
+    addMembers(user, roomId, people = []) {
+      const { room } = membership(roomId, user.id);
+      if (room.kind !== 'group') throw new ChatError(400, '단체 대화방에서만 회원을 불러올 수 있습니다.');
+      const current = new Set(members(room.id).map(entry => entry.id));
+      const fresh = people.filter(person => person?.id && person.id !== user.id && !current.has(person.id) && !String(person.id).startsWith('guest-'));
+      if (!fresh.length) throw new ChatError(400, '새로 불러올 회원을 골라 주세요.');
+      if (current.size + fresh.length > room.max_members) throw new ChatError(409, `대화방 정원(${room.max_members}명)을 넘습니다. 지금 ${room.max_members - current.size}명까지 더 부를 수 있어요.`);
+      for (const person of fresh) addMember(room, ensureUser(person));
+      const names = fresh.map(person => person.nickname);
+      const message = addMessage(room, { kind: 'system', text: `${user.nickname}님이 ${names.slice(0, 5).join(', ')}${names.length > 5 ? ` 외 ${names.length - 5}명` : ''}님을 불렀습니다.` });
+      return { room: roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id), message,
+        memberIds: members(room.id).map(entry => entry.id), addedIds: fresh.map(person => person.id) };
+    },
+    // 검색어 없이 열면 보여 줄 '함께한 사람들': 나와 다른 대화방에 같이 있는 회원(손님 제외)
+    acquaintances(user, limit = 30) {
+      return all(`SELECT DISTINCT u.id, u.nickname FROM chat_members a JOIN chat_members b ON a.room_id = b.room_id JOIN chat_users u ON u.id = b.user_id
+        JOIN chat_rooms r ON r.id = a.room_id WHERE a.user_id = ? AND b.user_id != ? AND r.kind != 'channel' AND u.id NOT LIKE 'guest-%' ORDER BY u.nickname LIMIT ?`, user.id, user.id, limit)
+        .map(row => ({ id: row.id, nickname: row.nickname }));
+    },
+
     update(user, roomId, { name, resetInvite } = {}) {
       const { room, member } = membership(roomId, user.id);
       if (room.kind !== 'group' || member.role !== 'owner') throw new ChatError(403, '방장만 바꿀 수 있습니다.');
