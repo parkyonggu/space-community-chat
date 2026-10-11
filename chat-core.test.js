@@ -46,7 +46,7 @@ test('group rooms: invite, unread counts, read receipts, members-only history, o
 
   assert.throws(() => chat.kick(users.bob, room.id, 'u-c'), /방장만/);
   assert.equal(chat.kick(users.alice, room.id, 'u-c').removedId, 'u-c');
-  assert.throws(() => chat.update(users.bob, room.id, { name: 'x' }), /방장만/);
+  assert.throws(() => chat.update(users.bob, room.id, { name: 'x' }), /방장 또는 운영자/);
   const old = room.inviteCode;
   const updated = chat.update(users.alice, room.id, { name: '새 이름', resetInvite: true }).room;
   assert.equal(updated.name, '새 이름');
@@ -200,16 +200,15 @@ test('보낸 메시지 고치기: own text within 24h, marked edited; others and
   assert.throws(() => chat.editMessage(users.alice, room.id, message.id, '늦은 수정'), /24시간/);
 });
 
-test('내 목록 이름: each member can rename a room only for themselves; empty resets', () => {
+test('대화방 이름: only the owner or a site admin can rename a group room', () => {
   const chat = createChatCore(memorySql());
   const { room } = chat.createGroup(users.alice, { name: '○○고 25회' });
   chat.join(users.bob, room.inviteCode);
-  const mine = chat.setMyName(users.bob, room.id, '  고등학교 동창  ');
-  assert.equal(mine.name, '고등학교 동창');
-  assert.equal(mine.originalName, '○○고 25회');
-  assert.equal(chat.listRooms(users.alice)[0].name, '○○고 25회', 'others still see the real name');
-  assert.equal(chat.setMyName(users.bob, room.id, '').name, '○○고 25회');
-  assert.throws(() => chat.setMyName(users.carol, room.id, 'x'), /참여한 대화방/);
-  const dm = chat.startDm(users.alice, { userId: 'u-b' });
-  assert.equal(chat.setMyName(users.alice, dm.id, '밥 사장님').name, '밥 사장님');
+  chat.join(users.admin, room.inviteCode);
+  assert.throws(() => chat.update(users.bob, room.id, { name: '바꿈' }), /방장 또는 운영자/);
+  const byAdmin = chat.update(users.admin, room.id, { name: '○○고 25회 동창회' });
+  assert.equal(byAdmin.room.name, '○○고 25회 동창회');
+  assert.match(byAdmin.message.text, /^운영자가 대화방 이름/);
+  assert.throws(() => chat.update(users.admin, room.id, { resetInvite: true }), /방장 또는 운영자/);
+  assert.equal(chat.update(users.alice, room.id, { name: '동창회' }).room.name, '동창회');
 });

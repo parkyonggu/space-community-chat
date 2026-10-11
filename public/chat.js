@@ -366,6 +366,9 @@
   function renderRoomHead() {
     const room = state.room;
     $('room-title').textContent = room.name;
+    const canRename = room.kind === 'group' && (room.isOwner || state.me.admin);
+    $('room-title').style.cursor = canRename ? 'pointer' : '';
+    $('room-title').title = canRename ? '눌러서 대화방 이름 바꾸기' : '';
     const online = (room.online || []).filter(id => id !== state.me.id).length;
     $('room-sub').textContent = room.kind === 'channel' ? `소식 채널 · ${room.memberCount}명 구독` : room.kind === 'group' ? `${room.memberCount}명 참여${online ? ` · ${online}명 접속 중` : ''}` : online ? '접속 중' : '1:1 대화';
     $('composer').hidden = room.kind === 'channel';
@@ -919,13 +922,10 @@
     route();
   });
   $('btn-room-menu').addEventListener('click', () => roomMenu());
-  // 대화방 이름을 누르면 바로 이름 바꾸기(방장은 모두에게, 그 밖에는 내 목록 이름)
-  $('room-title').title = '눌러서 대화방 이름 바꾸기';
-  $('room-title').style.cursor = 'pointer';
+  // 방장·운영자는 대화방 이름을 눌러 바로 이름을 바꿀 수 있다.
   $('room-title').addEventListener('click', () => {
     const room = state.room;
-    if (!room || state.me.guest) return;
-    if (room.kind === 'group' && room.isOwner) renameSheet(room); else myNameSheet(room);
+    if (room?.kind === 'group' && (room.isOwner || state.me.admin)) renameSheet(room);
   });
   function roomMenu() {
     const room = state.room;
@@ -985,7 +985,6 @@
         button.addEventListener('click', action);
         menu.appendChild(button);
       };
-      add(room.myName ? `🏷️ 내 목록 이름 바꾸기 (지금: ${room.myName})` : '🏷️ 내 목록에서 보이는 이름 바꾸기', () => myNameSheet(room));
       add(room.muted ? '이 방 알림 켜기' : '이 방 알림 끄기', async () => {
         try {
           const result = await api(`/api/chat/rooms/${room.id}/mute`, { method: 'POST', body: { muted: !room.muted } });
@@ -1000,8 +999,8 @@
       if (room.kind !== 'channel' && (room.isOwner || room.kind === 'dm' || state.me.admin)) add(room.notice ? '공지사항 수정·내리기' : '공지사항 등록', () => noticeSheet(room));
       if (room.notice) add('공지 복사', () => { closeSheet(); copyText(room.notice.text); });
       if (room.notice) add('공지를 카카오톡으로 보내기', () => { closeSheet(); shareText(`[${room.name} 공지]\n${room.notice.text}`); });
+      if (room.kind === 'group' && (room.isOwner || state.me.admin)) add('✏️ 대화방 이름 바꾸기 (모든 참여자에게)', () => renameSheet(room));
       if (room.kind === 'group' && room.isOwner) {
-        add('✏️ 대화방 이름 바꾸기 (모든 참여자에게)', () => renameSheet(room));
         add('초대 링크 새로 만들기', async () => {
           if (!confirm('기존 초대 링크는 더 이상 쓸 수 없게 됩니다. 새 링크를 만들까요?')) return;
           try { const result = await api(`/api/chat/rooms/${room.id}/update`, { method: 'POST', body: { resetInvite: true } }); state.room = result.room; toast('새 초대 링크를 만들었어요.'); roomMenu(); } catch (error) { toast(error.message); }
@@ -1020,36 +1019,9 @@
       body.appendChild(menu);
     });
   }
-  // 내 목록에서만 보이는 이름: 다른 참여자에게는 바뀌지 않는다.
-  function myNameSheet(room) {
-    openSheet('내 목록에서 보이는 이름', body => {
-      body.appendChild(make('p', '', `나에게만 이 이름으로 보이고, 다른 참여자에게는 원래 이름('${room.originalName || room.name}')이 그대로 보여요. 비워 두고 저장하면 원래 이름으로 돌아갑니다.`));
-      const field = make('input');
-      field.type = 'text';
-      field.maxLength = 40;
-      field.value = room.myName || '';
-      field.placeholder = room.originalName || room.name;
-      field.setAttribute('aria-label', '내 목록 이름');
-      const save = make('button', 'btn navy block', '저장');
-      save.type = 'button';
-      save.addEventListener('click', async () => {
-        save.disabled = true;
-        try {
-          const result = await api(`/api/chat/rooms/${room.id}/my-name`, { method: 'POST', body: { name: field.value } });
-          if (state.current === room.id) { state.room = { ...state.room, ...result.room, members: state.room.members, online: state.room.online }; renderRoomHead(); }
-          await loadRooms();
-          closeSheet();
-          toast(field.value.trim() ? '내 목록 이름을 바꿨어요.' : '원래 이름으로 돌아갔어요.');
-        } catch (error) { toast(error.message); save.disabled = false; }
-      });
-      field.addEventListener('keydown', event => { if (event.key === 'Enter') save.click(); });
-      body.append(field, save);
-      setTimeout(() => field.focus(), 50);
-    });
-  }
   function renameSheet(room) {
     openSheet('대화방 이름 바꾸기 (모든 참여자에게)', body => {
-      body.appendChild(make('p', '', '방장이 바꾸면 이 방의 모든 참여자에게 새 이름으로 보이고, 대화방에 "방장이 이름을 바꿨습니다"가 표시됩니다.'));
+      body.appendChild(make('p', '', '대화방 이름은 방장 또는 운영자만 바꿀 수 있어요. 바꾸면 이 방의 모든 참여자에게 새 이름으로 보이고, 대화방에 바뀌었다는 안내가 표시됩니다.'));
       const label = make('label', '', '새 이름');
       const field = make('input');
       field.type = 'text';

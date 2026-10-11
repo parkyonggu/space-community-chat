@@ -243,11 +243,6 @@ export class ChatService extends DurableObject {
           this.announce(id, result.memberIds, result.message);
           return json({ room: result.room });
         }
-        if (method === 'POST' && action === 'my-name') {
-          const room = this.core.setMyName(user, id, (await body()).name);
-          this.broadcast([user.id], { type: 'room', roomId: id });
-          return json({ room });
-        }
         if (method === 'POST' && action === 'update') {
           const result = this.core.update(user, id, await body());
           this.announce(id, result.memberIds, result.message);

@@ -48,8 +48,6 @@ function createChatCore(sql, { now = Date.now } = {}) {
   const roomColumns = all('PRAGMA table_info(chat_rooms)').map(column => column.name);
   for (const column of ['notice', 'notice_at', 'notice_by']) if (!roomColumns.includes(column)) run(`ALTER TABLE chat_rooms ADD COLUMN ${column} TEXT`);
   if (!all('PRAGMA table_info(chat_messages)').some(column => column.name === 'edited_at')) run('ALTER TABLE chat_messages ADD COLUMN edited_at TEXT');
-  // 내 목록에서만 보이는 대화방 이름(카카오톡의 '채팅방 이름 설정'처럼 사람마다 따로)
-  if (!all('PRAGMA table_info(chat_members)').some(column => column.name === 'custom_name')) run('ALTER TABLE chat_members ADD COLUMN custom_name TEXT');
 
   function ensureUser(user) {
     if (!user?.id) throw new ChatError(401, '로그인한 회원만 이용할 수 있습니다.');
@@ -76,13 +74,12 @@ function createChatCore(sql, { now = Date.now } = {}) {
   function roomView(room, userId) {
     const list = room.kind === 'channel' ? members(room.id).filter(entry => entry.id === userId) : members(room.id);
     const me = list.find(entry => entry.id === userId);
-    const member = one('SELECT muted, last_read_seq, custom_name FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, userId);
+    const member = one('SELECT muted, last_read_seq FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, userId);
     const unread = member ? one('SELECT COUNT(*) AS count FROM chat_messages WHERE room_id = ? AND seq > ? AND (user_id IS NULL OR user_id != ?) AND kind != ?',
       room.id, member.last_read_seq, userId, 'system').count : 0;
     const other = room.kind === 'dm' ? list.find(entry => entry.id !== userId) : null;
     return {
-      id: room.id, kind: room.kind, name: member?.custom_name || (room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name),
-      originalName: room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name, myName: member?.custom_name || null,
+      id: room.id, kind: room.kind, name: room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name,
       ownerId: room.owner_id, maxMembers: room.max_members,
       memberCount: room.kind === 'channel' ? one('SELECT COUNT(*) AS count FROM chat_members WHERE room_id = ?', room.id).count : list.length, members: list,
       inviteCode: room.kind === 'group' ? room.invite_code : null, isOwner: me?.role === 'owner',
@@ -349,24 +346,18 @@ function createChatCore(sql, { now = Date.now } = {}) {
         .map(row => ({ id: row.id, nickname: row.nickname }));
     },
 
-    // 내 목록에서만 보이는 이름 바꾸기(빈 값이면 원래 이름으로)
-    setMyName(user, roomId, name) {
-      const { room } = membership(roomId, user.id);
-      const title = clean(name, 40);
-      run('UPDATE chat_members SET custom_name = ? WHERE room_id = ? AND user_id = ?', title || null, room.id, user.id);
-      return roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id);
-    },
-
     update(user, roomId, { name, resetInvite } = {}) {
       const { room, member } = membership(roomId, user.id);
-      if (room.kind !== 'group' || member.role !== 'owner') throw new ChatError(403, '방장만 바꿀 수 있습니다.');
+      // 대화방 이름은 방장 또는 운영자만, 초대 링크 바꾸기는 방장만
+      const owner = member.role === 'owner';
+      if (room.kind !== 'group' || !(owner || user.admin) || (resetInvite && !owner)) throw new ChatError(403, '대화방 이름은 방장 또는 운영자만 바꿀 수 있습니다.');
       let message = null;
       if (name !== undefined) {
         const title = clean(name, 40);
         if (!title) throw new ChatError(400, '대화방 이름을 1~40자로 입력해 주세요.');
         if (title !== room.name) {
           run('UPDATE chat_rooms SET name = ? WHERE id = ?', title, room.id);
-          message = addMessage(room, { kind: 'system', text: `방장이 대화방 이름을 '${title}'(으)로 바꿨습니다.` });
+          message = addMessage(room, { kind: 'system', text: `${owner ? '방장이' : '운영자가'} 대화방 이름을 '${title}'(으)로 바꿨습니다.` });
         }
       }
       if (resetInvite) run('UPDATE chat_rooms SET invite_code = ? WHERE id = ?', code(), room.id);
