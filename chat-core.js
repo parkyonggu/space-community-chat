@@ -48,6 +48,8 @@ function createChatCore(sql, { now = Date.now } = {}) {
   const roomColumns = all('PRAGMA table_info(chat_rooms)').map(column => column.name);
   for (const column of ['notice', 'notice_at', 'notice_by']) if (!roomColumns.includes(column)) run(`ALTER TABLE chat_rooms ADD COLUMN ${column} TEXT`);
   if (!all('PRAGMA table_info(chat_messages)').some(column => column.name === 'edited_at')) run('ALTER TABLE chat_messages ADD COLUMN edited_at TEXT');
+  // 내 목록에서만 보이는 대화방 이름(카카오톡의 '채팅방 이름 설정'처럼 사람마다 따로)
+  if (!all('PRAGMA table_info(chat_members)').some(column => column.name === 'custom_name')) run('ALTER TABLE chat_members ADD COLUMN custom_name TEXT');
 
   function ensureUser(user) {
     if (!user?.id) throw new ChatError(401, '로그인한 회원만 이용할 수 있습니다.');
@@ -74,12 +76,13 @@ function createChatCore(sql, { now = Date.now } = {}) {
   function roomView(room, userId) {
     const list = room.kind === 'channel' ? members(room.id).filter(entry => entry.id === userId) : members(room.id);
     const me = list.find(entry => entry.id === userId);
-    const member = one('SELECT muted, last_read_seq FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, userId);
+    const member = one('SELECT muted, last_read_seq, custom_name FROM chat_members WHERE room_id = ? AND user_id = ?', room.id, userId);
     const unread = member ? one('SELECT COUNT(*) AS count FROM chat_messages WHERE room_id = ? AND seq > ? AND (user_id IS NULL OR user_id != ?) AND kind != ?',
       room.id, member.last_read_seq, userId, 'system').count : 0;
     const other = room.kind === 'dm' ? list.find(entry => entry.id !== userId) : null;
     return {
-      id: room.id, kind: room.kind, name: room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name,
+      id: room.id, kind: room.kind, name: member?.custom_name || (room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name),
+      originalName: room.kind === 'dm' ? (other?.nickname || '대화 상대 없음') : room.name, myName: member?.custom_name || null,
       ownerId: room.owner_id, maxMembers: room.max_members,
       memberCount: room.kind === 'channel' ? one('SELECT COUNT(*) AS count FROM chat_members WHERE room_id = ?', room.id).count : list.length, members: list,
       inviteCode: room.kind === 'group' ? room.invite_code : null, isOwner: me?.role === 'owner',
@@ -344,6 +347,14 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return all(`SELECT DISTINCT u.id, u.nickname FROM chat_members a JOIN chat_members b ON a.room_id = b.room_id JOIN chat_users u ON u.id = b.user_id
         JOIN chat_rooms r ON r.id = a.room_id WHERE a.user_id = ? AND b.user_id != ? AND r.kind != 'channel' AND u.id NOT LIKE 'guest-%' ORDER BY u.nickname LIMIT ?`, user.id, user.id, limit)
         .map(row => ({ id: row.id, nickname: row.nickname }));
+    },
+
+    // 내 목록에서만 보이는 이름 바꾸기(빈 값이면 원래 이름으로)
+    setMyName(user, roomId, name) {
+      const { room } = membership(roomId, user.id);
+      const title = clean(name, 40);
+      run('UPDATE chat_members SET custom_name = ? WHERE room_id = ? AND user_id = ?', title || null, room.id, user.id);
+      return roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id);
     },
 
     update(user, roomId, { name, resetInvite } = {}) {

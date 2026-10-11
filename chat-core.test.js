@@ -199,3 +199,17 @@ test('보낸 메시지 고치기: own text within 24h, marked edited; others and
   clock += 25 * 60 * 60 * 1000;
   assert.throws(() => chat.editMessage(users.alice, room.id, message.id, '늦은 수정'), /24시간/);
 });
+
+test('내 목록 이름: each member can rename a room only for themselves; empty resets', () => {
+  const chat = createChatCore(memorySql());
+  const { room } = chat.createGroup(users.alice, { name: '○○고 25회' });
+  chat.join(users.bob, room.inviteCode);
+  const mine = chat.setMyName(users.bob, room.id, '  고등학교 동창  ');
+  assert.equal(mine.name, '고등학교 동창');
+  assert.equal(mine.originalName, '○○고 25회');
+  assert.equal(chat.listRooms(users.alice)[0].name, '○○고 25회', 'others still see the real name');
+  assert.equal(chat.setMyName(users.bob, room.id, '').name, '○○고 25회');
+  assert.throws(() => chat.setMyName(users.carol, room.id, 'x'), /참여한 대화방/);
+  const dm = chat.startDm(users.alice, { userId: 'u-b' });
+  assert.equal(chat.setMyName(users.alice, dm.id, '밥 사장님').name, '밥 사장님');
+});
