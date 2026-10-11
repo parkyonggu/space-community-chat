@@ -272,6 +272,15 @@ function createNewsletterApi(dataDirectory, {
   async function deliver(to, email) {
     await mailer.send({ to, subject: email.subject, text: email.text, html: email.html });
   }
+  // 메일 서버가 돌려준 오류를 운영자 화면에 보여 줄 짧은 글로(받는 주소 등 개인정보는 넣지 않는다)
+  const mailError = error => `${String(error?.code || error?.name || 'error').slice(0, 40)}${error?.message ? `: ${String(error.message).slice(0, 160)}` : ''}`;
+  // 구독자별 마지막 확인 메일 결과(보냄/실패) 기록
+  async function noteMail(subscriberId, ok, error) {
+    await updateStore(store => {
+      const subscriber = store.subscribers.find(entry => entry.id === subscriberId);
+      if (subscriber) Object.assign(subscriber, { lastMailAt: iso(), lastMailOk: ok, lastMailError: ok ? null : mailError(error) });
+    });
+  }
 
   function summary(store) {
     const subscribers = store.subscribers;
@@ -406,8 +415,8 @@ function createNewsletterApi(dataDirectory, {
           subject: batch.campaign.subject, body: batch.campaign.body, ad: batch.campaign.ad }));
         outcomes.push({ id: subscriber.id, ok: true });
       } catch (error) {
-        console.error('Newsletter delivery failed:', error.code || error.name || 'error');
-        outcomes.push({ id: subscriber.id, ok: false, code: String(error.code || error.name || 'error').slice(0, 60) });
+        console.error('Newsletter delivery failed:', mailError(error));
+        outcomes.push({ id: subscriber.id, ok: false, code: mailError(error).slice(0, 120) });
       }
     }
     const more = await updateStore(store => {
@@ -423,6 +432,10 @@ function createNewsletterApi(dataDirectory, {
             campaign.failedIds.push(outcome.id);
             campaign.errors.push(outcome.code);
             if (campaign.errors.length > 20) campaign.errors.splice(0, campaign.errors.length - 20);
+          }
+          if (campaign.kind === 'confirm' || campaign.kind === 'notice') {
+            const subscriber = store.subscribers.find(entry => entry.id === outcome.id);
+            if (subscriber) Object.assign(subscriber, { lastMailAt: iso(), lastMailOk: outcome.ok, lastMailError: outcome.ok ? null : outcome.code });
           }
           if (outcome.ok && campaign.kind === 'notice') {
             const subscriber = store.subscribers.find(entry => entry.id === outcome.id);
@@ -542,7 +555,8 @@ function createNewsletterApi(dataDirectory, {
         const store = await readStore();
         if (pathname === '/api/admin/newsletter') sendJson(response, 200, summary(store));
         else sendJson(response, 200, { subscribers: store.subscribers.map(entry => ({ email: entry.email, status: entry.status,
-          requestedAt: entry.requestedAt, consentAt: entry.consentAt || null, lastNoticeAt: entry.lastNoticeAt || null })) });
+          requestedAt: entry.requestedAt, consentAt: entry.consentAt || null, lastNoticeAt: entry.lastNoticeAt || null,
+          lastMailAt: entry.lastMailAt || null, lastMailOk: entry.lastMailOk ?? null, lastMailError: entry.lastMailError || null })) });
         return;
       }
 
@@ -559,6 +573,22 @@ function createNewsletterApi(dataDirectory, {
           const content = compose(input);
           const email = buildEmail({ ...content });
           sendJson(response, 200, { subject: email.subject, html: email.html, text: email.text });
+          return;
+        }
+        // 운영자 점검: 아무 주소로나 짧은 시험 메일을 보내고, 실패하면 메일 서버가 돌려준 오류를 그대로 보여 준다.
+        if (action === 'test-to') {
+          if (!mailReady()) throw new NewsletterError(503, '메일 발송이 설정되지 않았습니다.');
+          const to = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
+          if (to.length > 254 || !EMAIL.test(to)) throw new NewsletterError(400, '받을 이메일 주소를 확인해 주세요.');
+          limit(`nl-test-to:${user.id}`, 10, 60 * 60000);
+          try {
+            await deliver(to, { subject: '[스페이스 레터] 메일 발송 시험', text: `스페이스 커뮤니티(withpluces.com)에서 보낸 시험 메일입니다.\n이 메일이 보이면 발송이 정상입니다.\n보낸 시각: ${new Date(now()).toISOString()}`,
+              html: '<p>스페이스 커뮤니티(withpluces.com)에서 보낸 <b>시험 메일</b>입니다.</p><p>이 메일이 보이면 발송이 정상입니다.</p>' });
+            sendJson(response, 200, { ok: true, message: `${to}(으)로 시험 메일을 보냈습니다(메일 서버가 받음). 몇 분 안에 받은편지함·스팸함에 없으면 받는 쪽(메일 회사)에서 막은 것입니다.` });
+          } catch (error) {
+            console.error('Newsletter test-to failed:', mailError(error));
+            sendJson(response, 200, { ok: false, message: `보내지 못했습니다 — ${mailError(error)}` });
+          }
           return;
         }
         if (action === 'test') {
@@ -640,9 +670,11 @@ function createNewsletterApi(dataDirectory, {
           try {
             limit(`newsletter-mail:${email}`, 3, 60 * 60000);
             await deliver(email, buildEmail({ kind: 'confirm', subscriber: pending }));
+            await noteMail(pending.id, true);
           } catch (error) {
             if (error instanceof NewsletterError) throw error;
-            console.error('Newsletter confirmation mail failed:', error.code || error.name || 'error');
+            console.error('Newsletter confirmation mail failed:', mailError(error));
+            await noteMail(pending.id, false, error).catch(() => {});
             throw new NewsletterError(503, '확인 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.');
           }
         }

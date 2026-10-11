@@ -398,3 +398,22 @@ test('admin can see who received each campaign, with results and opens', async t
   const confirmCampaign = campaigns.find(entry => entry.kind === 'confirm');
   if (confirmCampaign) assert.equal((await f.get(`/api/admin/newsletter/recipients?id=${confirmCampaign.id}`, 'admin')).status, 200);
 });
+
+test('mail diagnostics: per-subscriber confirmation result and admin test-to with the server error', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.post('/api/newsletter', { email: 'ok@example.com', consent: true })).status, 200);
+  f.mailer.failFor.add('blocked@example.com');
+  assert.equal((await f.post('/api/newsletter', { email: 'blocked@example.com', consent: true })).status, 503);
+  const { subscribers } = await (await f.get('/api/admin/newsletter/subscribers', 'admin')).json();
+  const byEmail = Object.fromEntries(subscribers.map(entry => [entry.email, entry]));
+  assert.equal(byEmail['ok@example.com'].lastMailOk, true);
+  assert.equal(byEmail['blocked@example.com'].lastMailOk, false);
+  assert.equal(byEmail['blocked@example.com'].lastMailError, 'E_TEST: fail');
+  const good = await (await f.post('/api/admin/newsletter/test-to', { email: 'me@example.net' }, 'admin')).json();
+  assert.equal(good.ok, true);
+  assert.equal(f.sent.at(-1).to, 'me@example.net');
+  const bad = await (await f.post('/api/admin/newsletter/test-to', { email: 'blocked@example.com' }, 'admin')).json();
+  assert.equal(bad.ok, false);
+  assert.match(bad.message, /E_TEST: fail/);
+  assert.equal((await f.post('/api/admin/newsletter/test-to', { email: 'me@example.net' }, 'member')).status, 403);
+});

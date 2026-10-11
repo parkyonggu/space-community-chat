@@ -353,6 +353,17 @@
       } catch (error) { setStatus('compose-status', error.message, true); }
       load();
     });
+    // 아무 주소로나 시험 메일 보내기(발송이 되는지, 실패하면 왜 안 되는지 바로 보여 준다)
+    $('test-to-send').addEventListener('click', async () => {
+      const email = $('test-to').value.trim();
+      if (!email) { setStatus('ops-status', '받을 이메일 주소를 적어 주세요.', true); return; }
+      $('test-to-send').disabled = true;
+      try {
+        const result = await api('/api/admin/newsletter/test-to', { email });
+        setStatus('ops-status', result.message, !result.ok);
+      } catch (error) { setStatus('ops-status', error.message, true); }
+      $('test-to-send').disabled = false;
+    });
     $('show-subscribers').addEventListener('click', async () => {
       const box = $('subscriber-list');
       if (!box.hidden) { box.hidden = true; return; }
@@ -360,12 +371,13 @@
         const { subscribers } = await api('/api/admin/newsletter/subscribers');
         const table = document.createElement('table');
         const head = document.createElement('tr');
-        ['이메일', '상태', '신청일', '수신동의일'].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
+        ['이메일', '상태', '신청일', '수신동의일', '확인 메일 발송'].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
         table.appendChild(head);
         const label = { confirmed: '구독 중', pending: '확인 대기', legacy: '기존 신청' };
         subscribers.forEach(entry => {
           const tr = document.createElement('tr');
-          tr.append(cell(entry.email), cell(label[entry.status] || entry.status), cell(date(entry.requestedAt)), cell(date(entry.consentAt)));
+          const mail = entry.lastMailAt ? `${date(entry.lastMailAt)} ${entry.lastMailOk ? '보냄' : `실패 — ${entry.lastMailError || ''}`}` : '기록 없음';
+          tr.append(cell(entry.email), cell(label[entry.status] || entry.status), cell(date(entry.requestedAt)), cell(date(entry.consentAt)), cell(mail));
           table.appendChild(tr);
         });
         box.replaceChildren(table);

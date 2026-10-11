@@ -29,7 +29,7 @@ test('parses MK RSS without keeping article text and skips daily corners', () =>
 test('picks one issue per field, defense first, in headline order', () => {
   const feeds = Object.fromEntries(Object.entries({ headline: '30000001', politics: '30200030', economy: '30100041', society: '50400012', world: '30300018', culture: '30000023' })
     .map(([name, code]) => [name, parseRss(FEEDS[code])]));
-  const picks = Object.fromEntries(pickIssues(feeds).map(item => [item.field, item]));
+  const picks = Object.fromEntries(pickIssues(feeds, Date.parse('2026-10-10T00:00:00Z')).map(item => [item.field, item]));
   assert.equal(picks.defense.title, '北 탄도미사일 발사…합참 “정밀 분석 중”');
   assert.equal(picks.politics.title, '여야, 국정감사 첫날부터 충돌');
   assert.equal(picks.economy.id, 'mk-2');
