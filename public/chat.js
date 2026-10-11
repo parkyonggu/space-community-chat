@@ -1009,12 +1009,12 @@
   function addMembersSheet(room) {
     const chosen = new Map();
     openSheet('회원 불러오기', body => {
-      body.appendChild(make('p', '', `스페이스 커뮤니티 회원을 이름(닉네임)으로 찾아 '${room.name}' 방에 바로 넣어요. 불린 회원의 스페이스 톡 목록에 이 방이 바로 생깁니다. 회원이 아닌 분은 초대 링크로 불러 주세요.`));
+      body.appendChild(make('p', '', `스페이스 커뮤니티 회원을 이름(닉네임)이나 가입한 이메일 주소로 찾아 '${room.name}' 방에 바로 넣어요. 휴대폰 번호를 적으면 그 번호로 초대 문자를 보낼 수 있어요.`));
       const search = make('input', 'member-search');
       search.type = 'search';
-      search.placeholder = '이름(닉네임) 검색 — 예: 홍길동';
+      search.placeholder = '이름(닉네임) 또는 가입한 이메일 주소';
       search.setAttribute('aria-label', '회원 이름 검색');
-      search.maxLength = 20;
+      search.maxLength = 254;
       const heading = make('div', 'section-title', '함께 대화한 사람들');
       const list = make('div', 'member-pick');
       const submit = make('button', 'btn navy block', '선택한 회원 불러오기');
@@ -1028,7 +1028,7 @@
         heading.textContent = query ? `'${query}' 검색 결과` : '함께 대화한 사람들';
         list.replaceChildren();
         if (!people.length) {
-          list.appendChild(make('p', 'empty-note', query ? '찾는 회원이 없어요. 이름을 다시 확인하거나, 초대 링크를 보내 주세요.' : '위 칸에 이름을 적어 회원을 찾아 보세요.'));
+          list.appendChild(make('p', 'empty-note', query ? (query.includes('@') ? '이 이메일로 가입한 회원이 없어요. 주소 전체를 정확히 적었는지 확인하거나, 초대 링크를 보내 주세요.' : '이 이름(닉네임)의 회원이 없어요. 전화기에 저장된 이름과 사이트 닉네임이 다를 수 있어요. 이메일 주소로 찾거나, 휴대폰 번호를 적어 초대 문자를 보내 보세요.') : '위 칸에 이름이나 이메일을 적어 회원을 찾아 보세요.'));
           return;
         }
         for (const person of people) {
@@ -1052,9 +1052,31 @@
       };
       let timer = null;
       let latest = 0;
+      // 휴대폰 번호: 스페이스 커뮤니티는 전화번호를 받지 않아 회원을 찾을 수 없으므로, 그 번호로 초대 문자(링크)를 보내게 한다.
+      const phoneOf = value => {
+        const digits = value.replace(/[\s-]/g, '');
+        return /^(01[016789]\d{7,8}|0\d{8,10})$/.test(digits) ? digits : null;
+      };
+      const phoneInvite = phone => {
+        heading.textContent = '휴대폰 번호로 초대하기';
+        list.replaceChildren();
+        list.appendChild(make('p', 'empty-note', '스페이스 커뮤니티는 가입할 때 전화번호를 받지 않아서, 번호로는 회원을 찾을 수 없어요. 대신 이 번호로 초대 문자를 보내면, 받은 분이 링크를 누르고 이름만 적어 바로 들어옵니다.'));
+        if (!room.inviteCode) return;
+        const url = `${location.origin}/chat#join=${room.inviteCode}`;
+        const text = `${inviteText(room.name)}\n${url}`;
+        const sms = make('a', 'btn gold block', `📱 ${phone.replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3')}로 초대 문자 보내기`);
+        sms.href = `sms:${phone}${/iPhone|iPad|iPod/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`;
+        const copy = make('button', 'btn block', '초대 문구 복사 (카톡에 붙여넣기)');
+        copy.type = 'button';
+        copy.addEventListener('click', async () => { if (await copyText(text)) toast('복사했어요. 카카오톡이나 문자에 붙여넣어 보내세요.'); });
+        list.append(sms, copy);
+        if (!/Android|iPhone|iPad|iPod/.test(navigator.userAgent)) list.appendChild(make('p', 'empty-note', 'PC에서는 문자 보내기가 열리지 않을 수 있어요. 휴대폰에서 누르거나 초대 문구를 복사해 보내 주세요.'));
+      };
       const load = async () => {
         const query = search.value.trim();
         const ticket = ++latest;
+        const phone = phoneOf(query);
+        if (phone) { phoneInvite(phone); return; }
         try {
           const result = await api(`/api/chat/rooms/${room.id}/candidates?q=${encodeURIComponent(query)}`);
           if (ticket === latest) render(result.members || [], query);

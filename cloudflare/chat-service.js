@@ -236,7 +236,7 @@ export class ChatService extends DurableObject {
           this.limit(`search:${user.id}`, 60, 60000);
           const room = this.core.room(user, id);
           const inRoom = new Set(room.members.map(member => member.id));
-          const q = (url.searchParams.get('q') || '').trim().slice(0, 20);
+          const q = (url.searchParams.get('q') || '').trim().slice(0, 254);
           const found = q ? await this.findMembers({ q }) : this.core.acquaintances(user);
           return json({ members: found.filter(person => person.id !== user.id).map(person => ({ ...person, inRoom: inRoom.has(person.id) })), query: q });
         }
