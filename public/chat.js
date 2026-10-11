@@ -1,5 +1,11 @@
 // 스페이스 톡 클라이언트: 대화 목록·대화방·실시간 전송·읽음 표시·사진·초대·1:1·웹 알림
 (() => {
+  // 카카오톡 카드 링크는 /chat?join=… 모양으로 보낸다(# 뒷부분이 빠지는 앱이 있어서). 열리면 예전처럼 #join=… 으로 바꿔 쓴다.
+  {
+    const query = new URLSearchParams(location.search);
+    const key = ['join', 'dm'].find(name => query.get(name));
+    if (key) history.replaceState(null, '', `/chat#${key}=${encodeURIComponent(query.get(key))}`);
+  }
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -228,11 +234,21 @@
       '아래 링크를 누르고 이름만 적으면 바로 들어옵니다. (회원가입 필요 없음)',
     ].join('\n');
   }
-  function shareButton(url, text) {
+  // 초대 링크 보내기: 카카오톡 공유 창(한 번에 최대 10명·단톡방 선택, 보낸 뒤 '이어서 보내기')으로 로고 카드를 보낸다.
+  // 카카오 공유를 쓸 수 없으면 휴대폰 공유 창 → 복사 순서로 대신한다.
+  function shareButton(url, text, card) {
     const wrap = make('div', 'share-row');
-    const kakao = make('button', 'btn kakao block', '카카오톡으로 보내기');
+    const kakao = make('button', 'btn kakao block', '카카오톡으로 보내기 (여러 명·단톡방)');
     kakao.type = 'button';
-    kakao.addEventListener('click', () => shareText(text, url));
+    kakao.addEventListener('click', async () => {
+      const kakaoUrl = url.replace('/chat#', '/chat?');
+      kakao.disabled = true;
+      try {
+        if (card && window.spaceKakaoShare && await window.spaceKakaoShare({ title: card.cardTitle, description: text, imageUrl: `${location.origin}/share/invitation.png`,
+          link: kakaoUrl, button: card.button || '대화방 들어가기', card })) return;
+        await shareText(text, url);
+      } finally { kakao.disabled = false; }
+    });
     const copy = make('button', 'btn block', '초대 문구 복사 (카톡·문자에 붙여넣기)');
     copy.type = 'button';
     copy.addEventListener('click', async () => { if (await copyText(`${text}\n${url}`)) toast('복사했어요. 카카오톡 대화방에 붙여넣기 하세요.'); });
@@ -908,7 +924,7 @@
         const url = `${location.origin}/chat#join=${room.inviteCode}`;
         body.appendChild(make('p', '', '링크를 받은 사람은 이름만 적고 회원가입 없이 바로 들어올 수 있습니다. 링크가 원치 않게 퍼졌다면 방장이 새 링크로 바꿀 수 있습니다.'));
         body.appendChild(linkBox(url));
-        const share = shareButton(url, inviteText(room.name));
+        const share = shareButton(url, inviteText(room.name), { kindLabel: '💬 스페이스 톡 초대', cardTitle: `'${room.name}' 대화방에 초대합니다`, body: '아래 「대화방 들어가기」를 누르고 이름만 적으면 바로 들어올 수 있어요.\n회원가입은 필요 없습니다.' });
         if (share) body.appendChild(share);
       }
       const menu = make('div', 'menu-list');
@@ -1109,7 +1125,7 @@
       body.appendChild(call);
       body.appendChild(make('div', 'section-title', '회원이 아닌 분 초대 링크'));
       body.appendChild(linkBox(url));
-      const share = shareButton(url, inviteText(room.name));
+      const share = shareButton(url, inviteText(room.name), { kindLabel: '💬 스페이스 톡 초대', cardTitle: `'${room.name}' 대화방에 초대합니다`, body: '아래 「대화방 들어가기」를 누르고 이름만 적으면 바로 들어올 수 있어요.\n회원가입은 필요 없습니다.' });
       if (share) body.appendChild(share);
     });
   }
@@ -1140,7 +1156,8 @@
     openSheet('초대하기 (1:1 대화)', body => {
       body.appendChild(make('p', '', '이 링크를 받은 회원은 나와 바로 1:1 대화를 시작할 수 있어요. 링크를 아는 회원만 대화를 걸 수 있습니다.'));
       body.appendChild(linkBox(url));
-      const share = shareButton(url, `[스페이스 톡] ${state.me.nickname}님과 1:1 대화해요.\n아래 링크를 누르고 로그인하면 바로 대화가 시작됩니다. (처음이면 회원가입 후 이용)`);
+      const share = shareButton(url, `[스페이스 톡] ${state.me.nickname}님과 1:1 대화해요.\n아래 링크를 누르고 로그인하면 바로 대화가 시작됩니다. (처음이면 회원가입 후 이용)`,
+        { kindLabel: '💬 스페이스 톡 1:1 대화', cardTitle: `${state.me.nickname}님과 1:1 대화해요`, body: '아래 「대화 시작하기」를 누르고 로그인하면 바로 대화가 시작됩니다.\n처음이면 회원가입 후 이용해 주세요.', button: '대화 시작하기' });
       if (share) body.appendChild(share);
     });
   }

@@ -207,7 +207,8 @@
     close.addEventListener('click', () => bar.remove());
     row.append(again, copy, close);
     bar.append(info, row);
-    document.body.appendChild(bar);
+    // 창(대화상자)이 떠 있으면 그 위에 보이도록 창 안에 붙인다.
+    (document.querySelector('dialog[open]') || document.body).appendChild(bar);
   }
 
   // { title, description, imageUrl, link, button, card } → 카카오톡 공유 창을 연다.
