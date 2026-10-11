@@ -184,6 +184,8 @@ export class ChatService extends DurableObject {
           guestOnly('대화방 만들기는 회원만 할 수 있습니다. 회원가입 후 이용해 주세요.');
           this.limit(`create:${user.id}`, 10, 60 * 60 * 1000);
           const result = this.core.createGroup(user, await body());
+          // 같은 계정으로 켜 둔 다른 기기(PC·휴대폰)에도 새 대화방이 바로 보이게 한다.
+          this.broadcast([user.id], { type: 'room', roomId: result.room.id });
           return json({ room: result.room }, 201);
         }
       }

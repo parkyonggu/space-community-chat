@@ -907,6 +907,8 @@
 
   document.addEventListener('visibilitychange', () => {
     send({ type: 'presence', visible: document.visibilityState === 'visible' });
+    // 다른 기기(휴대폰·PC)에서 만들거나 초대받은 대화방이 있을 수 있으니, 창으로 돌아오면 목록을 새로 받는다.
+    if (document.visibilityState === 'visible') loadRooms().catch(() => {});
     if (document.visibilityState === 'visible') { markRead(); if (navigator.clearAppBadge && !state.rooms.some(room => room.unread)) navigator.clearAppBadge().catch(() => {}); }
   });
 
@@ -1215,11 +1217,12 @@
         menu.appendChild(button);
       };
       if (state.me.guest) {
-        body.appendChild(make('p', 'guest-badge', `${state.me.nickname}(으)로 참여 중입니다. 초대받은 대화방에서 대화할 수 있고, 이 휴대폰(브라우저)에서 계속 이어서 쓸 수 있어요. 대화방을 직접 만들거나 다른 기기에서도 쓰려면 회원가입을 해 주세요.`));
+        body.appendChild(make('p', 'guest-badge', `${state.me.nickname}(으)로 참여 중입니다. 초대받은 대화방에서 대화할 수 있고, 이 휴대폰(브라우저)에서 계속 이어서 쓸 수 있어요. 대화방을 직접 만들거나 PC 등 다른 기기에서도 같은 대화방을 보려면 회원가입(또는 로그인)을 해 주세요. 손님으로 들어온 대화는 이 기기에만 보입니다.`));
         const join = make('a', '', '회원가입 하기');
         join.href = '/#signup';
         menu.appendChild(join);
       } else {
+        body.appendChild(make('p', 'account-line', `접속 계정: ${state.me.nickname} (회원) — 휴대폰과 PC에서 같은 계정으로 로그인하면 대화방이 똑같이 보여요.`));
         add('새 대화방 만들기', createSheet);
         add('초대하기', myLinkSheet);
       }
