@@ -44,8 +44,9 @@ test('weekly draft fills "이번 주 정부 정책" from 정책브리핑 when th
 test('오늘의 정책브리핑: recent 제1유형 news, newest first, marked when economy related', async () => {
   const calls = [];
   const items = await recentPolicyNews(async url => { calls.push(url); return { ok: true, status: 200, text: async () => xml(sample) }; }, 'P', Date.parse('2026-10-08T03:00:00Z'));
-  assert.equal(calls.length, 1);
-  assert.ok(calls[0].includes('startDate=20261007') && calls[0].includes('endDate=20261008'));
+  assert.equal(calls.length, 2, 'few news in the last days → also looks at the three days before');
+  assert.ok(calls[0].includes('startDate=20261006') && calls[0].includes('endDate=20261008'));
+  assert.ok(calls[1].includes('startDate=20261003') && calls[1].includes('endDate=20261005'));
   assert.deepEqual(items.map(item => [item.title, item.economy, item.kind]), [['국민성장펀드 200조원으로 확대', true, 'news'], ['가을 축제 안내', false, 'news'], ['소상공인 정책자금 금리 인하', true, 'news']]);
   assert.equal(items[2].url, 'https://www.korea.kr/news/4');
 });

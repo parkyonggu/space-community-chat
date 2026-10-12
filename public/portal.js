@@ -620,7 +620,7 @@
       return !fact;
     });
     if (!policyData) { list.replaceChildren(make('li', 'feed-empty', '정책브리핑 자료를 연결하고 있습니다. 곧 자동으로 표시됩니다.')); return; }
-    if (!items.length) { list.replaceChildren(make('li', 'feed-empty', ({ news: '오늘 새로 올라온 정책뉴스가 아직 없습니다.', economy: '오늘은 경제·금융·부동산 분야 정책뉴스가 아직 없습니다.', fact: '최근 이틀 동안 올라온 \'사실은 이렇습니다\'(보도 설명 자료)가 없습니다.' })[pbTab])); return; }
+    if (!items.length) { list.replaceChildren(make('li', 'feed-empty', ({ news: '최근 며칠 사이 새로 올라온 정책뉴스가 아직 없습니다.', economy: '최근 며칠 사이 경제·금융·부동산 분야 정책뉴스가 없습니다.', fact: '최근 며칠 사이 올라온 \'사실은 이렇습니다\'(보도 설명 자료)가 없습니다.' })[pbTab])); return; }
     const when = at => {
       if (!at) return '';
       const date = new Date(at);

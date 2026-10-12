@@ -89,15 +89,26 @@ async function weeklyPolicyNews(fetchImpl, key, now, { limit = 8 } = {}) {
 }
 
 // 첫 화면 '오늘의 정책브리핑': 최근 이틀 동안의 정책뉴스(제1유형) 전체를 최신순으로. 경제 관련 표시를 붙인다.
+// 주말·연휴 다음 날 아침에는 최근 이틀 사이 정책뉴스가 거의 없어(보도 설명 자료만 남는다), 정책뉴스가 적으면
+// 그 앞 사흘을 한 번 더 찾아 채운다(정책브리핑 API는 한 번에 사흘 안쪽 기간을 받는다).
+const ENOUGH_NEWS = 8;
 async function recentPolicyNews(fetchImpl, key, now, { limit = 40 } = {}) {
   if (!key) return null;
   const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
-  const url = `https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2?serviceKey=${serviceKey}&startDate=${ymd(now - DAY)}&endDate=${ymd(now)}`;
-  const response = await fetchImpl(url, { headers: { Accept: 'application/xml' } });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`HTTP ${response.status} ${decode(text).slice(0, 80)}`);
+  const raw = [];
+  for (const [start, end] of [[now - 2 * DAY, now], [now - 5 * DAY, now - 3 * DAY]]) {
+    const url = `https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2?serviceKey=${serviceKey}&startDate=${ymd(start)}&endDate=${ymd(end)}`;
+    const response = await fetchImpl(url, { headers: { Accept: 'application/xml' } });
+    const text = await response.text();
+    if (!response.ok) {
+      if (raw.length) break;
+      throw new Error(`HTTP ${response.status} ${decode(text).slice(0, 80)}`);
+    }
+    raw.push(...parseNews(text));
+    if (raw.filter(item => item.Title && isTypeOne(item.KoglType) && !isFact(item)).length >= ENOUGH_NEWS) break;
+  }
   const seen = new Set();
-  return parseNews(text)
+  return raw
     .filter(item => item.Title && item.OriginalUrl && isTypeOne(item.KoglType))
     .filter(item => { const id = item.NewsItemId || item.OriginalUrl; if (seen.has(id)) return false; seen.add(id); return true; })
     .map(item => ({
