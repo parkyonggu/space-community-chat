@@ -274,13 +274,15 @@ export class ChatRoom extends DurableObject {
   // 지금 접속한 사람: 회원은 닉네임(중복 접속은 한 번만), 로그인하지 않았거나 인증 전인 방문자는 숫자만.
   presence(leaving) {
     const members = new Set();
+    const people = new Map(); // 회원 번호 → 닉네임: '지금 함께 있는 회원과 스페이스톡'에서 고를 수 있게
     let guests = 0;
     for (const peer of this.ctx.getWebSockets()) {
       if (peer === leaving) continue;
       const info = peer.deserializeAttachment() || {};
-      if (info.name) members.add(info.name); else guests += 1;
+      if (info.name) { members.add(info.name); if (info.uid) people.set(info.uid, info.name); } else guests += 1;
     }
-    return { type: 'presence', members: [...members].sort((a, b) => a.localeCompare(b, 'ko')), guests };
+    return { type: 'presence', members: [...members].sort((a, b) => a.localeCompare(b, 'ko')), guests,
+      people: [...people].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'ko')) };
   }
 
   announcePresence(leaving) {
@@ -318,6 +320,27 @@ export class ChatRoom extends DurableObject {
     try { input = JSON.parse(message); } catch { error('올바른 채팅 요청이 아닙니다.'); return; }
     let window = socket.deserializeAttachment();
     if (!window.name) { error('로그인한 회원만 채팅을 보낼 수 있습니다.'); return; }
+    // 광장에서 스페이스톡 대화방을 만든 회원이, 지금 광장을 보고 있는 초대 대상에게만 '초대 알림'을 띄운다(광장 글로 남지 않음).
+    if (input?.type === 'talk-invite') {
+      const roomId = String(input.roomId || '');
+      const ids = Array.isArray(input.userIds) ? input.userIds.map(String).slice(0, 50) : [];
+      if (!window.uid || !/^[0-9a-f-]{36}$/.test(roomId) || !ids.length) { error('초대 알림을 보낼 수 없습니다.'); return; }
+      const now = Date.now();
+      if (now - window.start >= 60000) window = { ...window, start: now, count: 0 };
+      window.count += 3;
+      socket.serializeAttachment(window);
+      if (window.count > 30) { error('요청이 많습니다. 잠시 후 다시 시도해 주세요.'); return; }
+      const wanted = new Set(ids);
+      const roomName = typeof input.roomName === 'string' ? input.roomName.trim().slice(0, 40) : '';
+      let delivered = 0;
+      for (const peer of this.ctx.getWebSockets()) {
+        const info = peer.deserializeAttachment() || {};
+        if (!info.uid || info.uid === window.uid || !wanted.has(info.uid)) continue;
+        try { peer.send(JSON.stringify({ type: 'talk-invite', from: window.name, roomId, roomName })); delivered += 1; } catch { /* 연결 끊김 */ }
+      }
+      socket.send(JSON.stringify({ type: 'talk-invite-sent', delivered }));
+      return;
+    }
     if (input?.type === 'delete') {
       const key = squareKeyOf(input.id);
       const stored = key ? await this.ctx.storage.get(key) : null;

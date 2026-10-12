@@ -441,7 +441,122 @@ function renderPresence(result) {
     rest.title = '로그인하지 않고 화면만 보고 있는 방문자';
     list.appendChild(rest);
   }
-  chatPresence.replaceChildren(label, list);
+  squarePeople = Array.isArray(result.people) ? result.people.filter(person => person && typeof person.id === 'string' && typeof person.name === 'string') : [];
+  const others = squarePeople.filter(person => person.name !== myName);
+  const parts = [label, list];
+  if (canSend && others.length) {
+    const talk = document.createElement('button');
+    talk.type = 'button';
+    talk.className = 'presence-talk';
+    talk.textContent = `💬 지금 함께 있는 ${others.length}명과 스페이스톡`;
+    talk.title = '지금 광장을 보고 있는 회원들과 스페이스톡 단체 대화방을 바로 만듭니다';
+    talk.addEventListener('click', openTalkTogether);
+    parts.push(talk);
+  }
+  chatPresence.replaceChildren(...parts);
+}
+
+// ---------- 광장에서 바로 스페이스톡: 지금 접속한 회원을 골라 단체 대화방을 만들고 초대 알림을 띄운다 ----------
+let squarePeople = [];
+function talkDialog() {
+  let dialog = document.getElementById('talk-together');
+  if (dialog) return dialog;
+  dialog = document.createElement('dialog');
+  dialog.id = 'talk-together';
+  dialog.className = 'talk-together';
+  dialog.innerHTML = `<form method="dialog" class="tt-form">
+    <h3>지금 함께 있는 회원과 스페이스톡</h3>
+    <p class="tt-help">함께 이야기할 회원을 고르세요. 고른 회원은 새 단체 대화방에 바로 들어가고, 광장을 보고 있으면 초대 알림이 뜹니다.</p>
+    <div class="tt-people" role="group" aria-label="함께할 회원"></div>
+    <label class="tt-name">대화방 이름 <input type="text" maxlength="40" required></label>
+    <p class="tt-status" role="status"></p>
+    <div class="tt-actions"><button type="button" class="tt-create">대화방 만들기</button><button type="submit" class="tt-close">닫기</button></div>
+  </form>`;
+  document.body.appendChild(dialog);
+  dialog.querySelector('.tt-create').addEventListener('click', createTalkTogether);
+  return dialog;
+}
+function openTalkTogether() {
+  const dialog = talkDialog();
+  const others = squarePeople.filter(person => person.name !== myName);
+  const box = dialog.querySelector('.tt-people');
+  box.replaceChildren(...others.map(person => {
+    const row = document.createElement('label');
+    row.className = 'tt-person';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.value = person.id;
+    check.checked = true;
+    check.dataset.name = person.name;
+    const name = document.createElement('span');
+    name.textContent = person.name;
+    name.style.color = colorOf(person.name);
+    row.append(check, name);
+    return row;
+  }));
+  const today = new Date();
+  dialog.querySelector('.tt-name input').value = `광장 대화 · ${today.getMonth() + 1}월 ${today.getDate()}일`;
+  const status = dialog.querySelector('.tt-status');
+  status.textContent = others.length ? '' : '지금 함께 있는 다른 회원이 없습니다.';
+  const create = dialog.querySelector('.tt-create');
+  create.hidden = false;
+  create.disabled = !others.length;
+  if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+}
+async function talkApi(path, body) {
+  const response = await fetch(path, {
+    method: 'POST', credentials: 'same-origin', cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.spaceAuth?.csrfToken || '' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `오류가 발생했습니다 (${response.status})`);
+  return data;
+}
+async function createTalkTogether() {
+  const dialog = talkDialog();
+  const status = dialog.querySelector('.tt-status');
+  const create = dialog.querySelector('.tt-create');
+  const chosen = [...dialog.querySelectorAll('.tt-person input:checked')];
+  const name = dialog.querySelector('.tt-name input').value.trim();
+  if (!chosen.length) { status.textContent = '함께할 회원을 한 명 이상 골라 주세요.'; return; }
+  if (!name) { status.textContent = '대화방 이름을 적어 주세요.'; return; }
+  create.disabled = true;
+  status.textContent = '대화방을 만드는 중입니다…';
+  try {
+    const userIds = chosen.map(input => input.value);
+    const { room } = await talkApi('/api/chat/rooms', { name, maxMembers: Math.max(30, userIds.length + 1) });
+    await talkApi(`/api/chat/rooms/${encodeURIComponent(room.id)}/add`, { userIds });
+    if (chatSocket?.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'talk-invite', roomId: room.id, roomName: name, userIds }));
+    const link = document.createElement('a');
+    link.href = `/chat#room=${room.id}`;
+    link.className = 'tt-open';
+    link.textContent = '스페이스톡에서 대화 시작하기 →';
+    status.replaceChildren(document.createTextNode(`「${name}」 대화방을 만들고 ${chosen.map(input => input.dataset.name).join(', ')}님을 불렀습니다. `), link);
+    create.hidden = true;
+  } catch (error) {
+    status.textContent = error.message;
+    create.disabled = false;
+  }
+}
+function showTalkInvite(result) {
+  const from = typeof result.from === 'string' ? result.from : '회원';
+  const roomName = typeof result.roomName === 'string' && result.roomName ? `「${result.roomName}」 ` : '';
+  const bar = document.createElement('div');
+  bar.className = 'talk-invite';
+  bar.setAttribute('role', 'alert');
+  const text = document.createElement('span');
+  text.textContent = `💬 ${from}님이 스페이스톡 ${roomName}대화방에 불렀어요.`;
+  const open = document.createElement('a');
+  open.href = `/chat#room=${encodeURIComponent(result.roomId)}`;
+  open.textContent = '대화방 열기';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.setAttribute('aria-label', '알림 닫기');
+  close.textContent = '×';
+  close.addEventListener('click', () => bar.remove());
+  bar.append(text, open, close);
+  chatPresence?.after(bar);
 }
 function renderAllChat() {
   chatBox.replaceChildren();
@@ -492,6 +607,12 @@ function connectChat() {
       return;
     }
     if (result.type === 'presence') { renderPresence(result); return; }
+    if (result.type === 'talk-invite') { if (typeof result.roomId === 'string') showTalkInvite(result); return; }
+    if (result.type === 'talk-invite-sent') {
+      const status = document.querySelector('#talk-together .tt-status');
+      if (status && result.delivered) status.append(document.createTextNode(` (광장에 있는 ${result.delivered}명에게 알림을 보냈어요)`));
+      return;
+    }
     if (result.type === 'forwarded') {
       chatStatus.textContent = `스페이스톡 「📣 모임안내」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}. 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.`;
       chatStatus.dataset.error = 'false';
