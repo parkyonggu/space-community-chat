@@ -1220,6 +1220,32 @@
     loadFarm();
   }
 
+  // ---------- 첫 화면 사진 카드의 '살아 있는 소식 한 줄': 접속자·방금 올라온 글·정책브리핑을 번갈아 보여 준다 ----------
+  const heroTicker = { index: 0, timer: null };
+  function heroTickerItems() {
+    const items = ['CONNECTING IDEAS · 생각이 연결되는 곳'];
+    if (Number(state.online) > 0) items.push(`지금 ${state.online}명이 광장에서 이야기 중`);
+    const latest = allPosts()[0];
+    if (latest) items.push(`방금 올라온 글 · ${titleOf(latest).slice(0, 34)}`);
+    const policy = (policyData?.items || []).find(item => item.kind !== 'fact');
+    if (policy) items.push(`오늘의 정책 · ${policy.title.slice(0, 34)}`);
+    return items;
+  }
+  function startHeroTicker() {
+    const element = $('hero-ticker');
+    if (!element || heroTicker.timer || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    heroTicker.timer = setInterval(() => {
+      if (document.hidden) return;
+      const items = heroTickerItems();
+      heroTicker.index = (heroTicker.index + 1) % items.length;
+      element.textContent = items[heroTicker.index];
+      element.classList.remove('swap');
+      void element.offsetWidth;
+      element.classList.add('swap');
+    }, 4500);
+  }
+  startHeroTicker();
+
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);

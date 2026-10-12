@@ -74,14 +74,43 @@ a { color:var(--primary); }
 .stat-label { font-size:12.5px; color:#b9c2dd; }
 .stat-value { display:block; margin-top:4px; font-size:28px; font-weight:800; color:#fff; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 .stat-value small { font-size:14px; font-weight:700; color:#b9c2dd; margin-left:2px; }
-/* 첫 화면 오른쪽 액자형 사진(B안): 금색 테두리 + 은은한 빛, 현황 숫자는 그 아래 한 줄로 */
-.hero-visual { flex:1 1 420px; min-width:0; position:relative; margin:0; border-radius:20px; overflow:hidden; aspect-ratio:1536/837; background:#0b1430;
+/* 첫 화면: 왼쪽 소개 / 오른쪽 사진 카드 + 현황 숫자 — 두 칸을 꽉 채운다 */
+.hero-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:28px 48px; align-items:center; }
+.hero-copy .hero-note { margin-top:22px; max-width:620px; }
+.hero-stage { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.hero-stage .hero-side { flex:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+@media (max-width:900px) { .hero-grid { grid-template-columns:1fr; } }
+
+/* 사진 카드: 금색 테두리 + 은은한 빛, 천천히 다가가는 화면 · 빛의 흐름 · 빛나는 점 · 지나가는 반사광 · 살아 있는 소식 한 줄 */
+.hero-visual { position:relative; margin:0; border-radius:20px; overflow:hidden; aspect-ratio:1536/837; background:#0b1430; isolation:isolate;
   border:1px solid rgba(245,185,65,.45); box-shadow:0 0 0 6px rgba(255,255,255,.03), 0 24px 60px rgba(0,0,0,.45), 0 0 80px rgba(80,140,255,.18); }
-.hero-visual img { width:100%; height:100%; object-fit:cover; display:block; }
-.hero-visual figcaption { position:absolute; left:14px; bottom:12px; padding:6px 12px; border-radius:999px; background:rgba(10,18,40,.72); backdrop-filter:blur(6px); color:#ffe3a3; font-size:12.5px; font-weight:700; letter-spacing:.02em; }
-.hero-visual + .hero-side { flex-basis:100%; grid-template-columns:repeat(3,minmax(0,1fr)) 2fr; }
-.hero-visual + .hero-side .hero-note { grid-column:auto; margin:0; display:flex; align-items:center; }
-@media (max-width:760px) { .hero-visual + .hero-side { grid-template-columns:repeat(3,minmax(0,1fr)); } .hero-visual + .hero-side .hero-note { grid-column:1 / -1; } }
+.hv-layer { position:absolute; inset:0; transform-origin:55% 50%; animation:hv-drift 28s ease-in-out infinite alternate; }
+.hv-layer img { width:100%; height:100%; object-fit:cover; display:block; }
+@keyframes hv-drift { from { transform:scale(1) translate(0,0); } to { transform:scale(1.08) translate(-1.5%,-1%); } }
+.hv-links { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.hv-links path { fill:none; stroke:rgba(140,200,255,.55); stroke-width:3; stroke-linecap:round; stroke-dasharray:10 16; animation:hv-flow 1.6s linear infinite; filter:drop-shadow(0 0 6px rgba(120,190,255,.9)); }
+.hv-links circle { fill:#bfe3ff; filter:drop-shadow(0 0 10px #7fc4ff) drop-shadow(0 0 4px #fff); }
+.hv-links circle.gold { fill:#ffe3a3; filter:drop-shadow(0 0 10px #f5b941) drop-shadow(0 0 4px #fff); }
+@keyframes hv-flow { to { stroke-dashoffset:-26; } }
+.hv-pulse { position:absolute; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:#bfe3ff; box-shadow:0 0 12px 3px rgba(127,196,255,.9); }
+.hv-pulse.gold { background:#ffe3a3; box-shadow:0 0 12px 3px rgba(245,185,65,.9); }
+.hv-pulse::before { content:""; position:absolute; inset:-6px; border-radius:50%; border:2px solid currentColor; color:rgba(127,196,255,.8); animation:hv-ring 2.4s ease-out infinite; }
+.hv-pulse.gold::before { color:rgba(245,185,65,.85); animation-delay:.8s; }
+@keyframes hv-ring { from { transform:scale(.6); opacity:1; } to { transform:scale(3.2); opacity:0; } }
+.hero-visual::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:linear-gradient(105deg, transparent 38%, rgba(255,255,255,.14) 48%, rgba(255,227,163,.10) 52%, transparent 62%); transform:translateX(-120%); animation:hv-sweep 8s ease-in-out infinite 2s; }
+@keyframes hv-sweep { 0% { transform:translateX(-120%); } 35%, 100% { transform:translateX(120%); } }
+.hv-caption { position:absolute; left:14px; right:14px; bottom:12px; z-index:2; display:flex; align-items:center; gap:8px; width:max-content; max-width:calc(100% - 28px);
+  padding:7px 14px 7px 12px; border-radius:999px; background:rgba(10,18,40,.74); backdrop-filter:blur(6px); border:1px solid rgba(245,185,65,.35); color:#ffe3a3; font-size:13px; font-weight:700; letter-spacing:.01em; }
+.hv-caption #hero-ticker { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hv-caption #hero-ticker.swap { animation:hv-swap .6s ease; }
+@keyframes hv-swap { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.hv-live { flex:none; width:8px; height:8px; border-radius:50%; background:#3ddc84; box-shadow:0 0 0 0 rgba(61,220,132,.7); animation:hv-live 1.8s ease-out infinite; }
+@keyframes hv-live { to { box-shadow:0 0 0 8px rgba(61,220,132,0); } }
+@media (prefers-reduced-motion: reduce) {
+  .hv-layer, .hv-links path, .hv-pulse::before, .hero-visual::after, .hv-live, .hv-caption #hero-ticker.swap { animation:none !important; }
+  .hv-links circle { display:none; }
+}
 .hero-note { grid-column:1 / -1; margin:4px 0 0; padding:12px 14px; border-left:3px solid var(--gold); background:rgba(255,255,255,.04); border-radius:0 10px 10px 0; color:#c9d0e3; font-size:13.5px; }
 
 /* ===== Notice ticker ===== */

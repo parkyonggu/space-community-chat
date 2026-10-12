@@ -79,16 +79,34 @@
           <a class="btn btn-ghost" href="/chat">💬 스페이스 톡</a>
           <a class="btn btn-ghost" href="#newsletter-section" data-letter-cta>스페이스 레터 구독</a>
         </div>
-      </div>
-      <figure class="hero-visual">
-        <img src="/hero-network.jpg" width="1536" height="837" alt="휴대폰 화면 속 글과 댓글이 도시 위로 서로 이어지는 모습 — 생각이 연결되는 스페이스 커뮤니티" fetchpriority="high" decoding="async">
-        <figcaption>CONNECTING IDEAS · 생각이 연결되는 곳</figcaption>
-      </figure>
-      <div class="hero-side" aria-label="커뮤니티 현황">
-        <div class="stat"><span class="stat-label">오늘 올라온 글</span><span class="stat-value" id="stat-today">–</span></div>
-        <div class="stat"><span class="stat-label">이번 주 정책 제안</span><span class="stat-value" id="stat-policy">–</span></div>
-        <div class="stat"><span class="stat-label">지금 채팅 중</span><span class="stat-value" id="stat-online">–</span></div>
         <p class="hero-note">대한민국 헌법이 보장하는 국민 참여 정신을 바탕으로, 사실에 기반한 대화와 함께 만드는 변화를 지향합니다.</p>
+      </div>
+      <div class="hero-stage">
+        <figure class="hero-visual">
+          <div class="hv-layer">
+            <img src="/hero-network.jpg" width="1536" height="837" alt="휴대폰 화면 속 글과 댓글이 도시 위로 서로 이어지는 모습 — 생각이 연결되는 스페이스 커뮤니티" fetchpriority="high" decoding="async">
+            <!-- 글 → 공감 → 댓글로 이어지는 빛의 흐름 (그림 좌표 1536×837 기준) -->
+            <svg class="hv-links" viewBox="0 0 1536 837" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <path id="hv-a" d="M640 420 C 700 360, 750 380, 805 410 S 900 430, 960 415" />
+              <path id="hv-b" d="M960 415 C 1010 520, 980 600, 950 665" />
+              <path id="hv-c" d="M625 300 C 600 220, 570 180, 535 145" />
+              <path id="hv-d" d="M960 330 C 950 260, 940 210, 1005 155" />
+              <circle r="7"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#hv-a" /></animateMotion></circle>
+              <circle r="6" class="gold"><animateMotion dur="2.6s" begin="1.1s" repeatCount="indefinite"><mpath href="#hv-b" /></animateMotion></circle>
+              <circle r="6"><animateMotion dur="2.4s" begin=".6s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1"><mpath href="#hv-c" /></animateMotion></circle>
+              <circle r="6" class="gold"><animateMotion dur="2.8s" begin="1.6s" repeatCount="indefinite"><mpath href="#hv-d" /></animateMotion></circle>
+            </svg>
+            <span class="hv-pulse" style="left:52.4%;top:49%" aria-hidden="true"></span>
+            <span class="hv-pulse gold" style="left:34.8%;top:17.3%" aria-hidden="true"></span>
+            <span class="hv-pulse" style="left:61.8%;top:79.5%" aria-hidden="true"></span>
+          </div>
+          <figcaption class="hv-caption"><span class="hv-live" aria-hidden="true"></span><span id="hero-ticker">CONNECTING IDEAS · 생각이 연결되는 곳</span></figcaption>
+        </figure>
+        <div class="hero-side" aria-label="커뮤니티 현황">
+          <div class="stat"><span class="stat-label">오늘 올라온 글</span><span class="stat-value" id="stat-today">–</span></div>
+          <div class="stat"><span class="stat-label">이번 주 정책 제안</span><span class="stat-value" id="stat-policy">–</span></div>
+          <div class="stat"><span class="stat-label">지금 채팅 중</span><span class="stat-value" id="stat-online">–</span></div>
+        </div>
       </div>
     </div>
   </section>
