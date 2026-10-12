@@ -23,6 +23,13 @@ function sameToken(left, right) {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+// '닉네임으로 계정 찾기'에서 보여 줄 가린 이메일: 앞 두 글자와 도메인만 남긴다 (예: dr*****@gmail.com).
+function maskEmail(email) {
+  const [local = '', domain = ''] = String(email || '').split('@');
+  const shown = local.slice(0, Math.min(2, Math.max(1, local.length - 1)));
+  return `${shown}*****@${domain}`;
+}
+
 function publicUser(user) {
   return { id: user.id, email: user.email, nickname: user.nickname, emailVerified: Boolean(user.emailVerifiedAt) };
 }
@@ -165,11 +172,22 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
     if (!mailer?.configured) throw new AuthError(503, '메일 발송 설정이 아직 완료되지 않았습니다. 잠시 후 다시 시도하거나 운영자에게 문의해 주세요.');
   }
 
-  async function issueMail(user, purpose) {
-    requireMailer();
+  // 계정 메일(인증·재설정) 발송 결과를 회원 기록에 남겨, 운영자가 '메일이 안 와요' 문의를 확인할 수 있게 한다.
+  async function noteAuthMail(userId, purpose, error) {
+    try {
+      await updateStore(current => {
+        const target = current.users.find(entry => entry.id === userId);
+        if (target) target.lastAuthMail = { at: new Date(now()).toISOString(), purpose, ok: !error, ...(error ? { error: String(error).slice(0, 120) } : {}) };
+      });
+    } catch (noteError) {
+      console.error('Auth mail note failed:', noteError.message);
+    }
+  }
+
+  // 재설정 토큰만 만든다(메일 없이). 운영자가 직접 전해 줄 링크에도 쓴다.
+  async function createMailToken(user, purpose, lifetime) {
     const value = token();
     const tokenHash = hash(value);
-    const lifetime = purpose === 'verify' ? day : 30 * 60000;
     await updateStore(current => {
       if (purpose === 'reset' && current.users.find(entry => entry.id === user.id)?.password.hash !== user.password.hash) {
         throw new AuthError(409, '계정 정보가 변경되었습니다. 새 재설정 메일을 요청해 주세요.');
@@ -179,17 +197,26 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
     });
     const url = new URL('/community.html', allowedOrigin);
     url.hash = `${purpose === 'verify' ? 'verify' : 'reset'}=${value}`;
+    return { value, tokenHash, url };
+  }
+
+  async function issueMail(user, purpose) {
+    requireMailer();
+    const lifetime = purpose === 'verify' ? day : 30 * 60000;
+    const { tokenHash, url } = await createMailToken(user, purpose, lifetime);
     try {
       await mailer.send({
         to: user.email,
         subject: purpose === 'verify' ? '[스페이스] 이메일 주소 인증' : '[스페이스] 비밀번호 재설정',
         text: `${purpose === 'verify' ? '이메일 주소를 인증하려면' : '비밀번호를 재설정하려면'} 다음 링크를 열어 주세요.\n\n${url.href}\n\n${purpose === 'verify' ? '24시간' : '30분'} 동안 한 번만 사용할 수 있습니다. 요청하지 않으셨다면 이 메일을 무시하세요.\n비밀번호나 인증 링크를 다른 사람에게 알려주지 마세요.`,
       });
+      await noteAuthMail(user.id, purpose);
     } catch (error) {
-      console.error('Account mail delivery failed:', error.code || error.name || 'SMTP error');
+      console.error('Account mail delivery failed:', error.code || error.name || 'SMTP error', error.message || '');
       await updateStore(current => {
         current.mailTokens = current.mailTokens.filter(entry => entry.tokenHash !== tokenHash);
       });
+      await noteAuthMail(user.id, purpose, error.code || error.message || 'send failed');
       throw new AuthError(503, '메일 발송 서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도하거나 운영자에게 문의해 주세요.');
     }
   }
@@ -227,7 +254,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
       const isSession = pathname === '/api/auth/session';
       const isAction = ['/api/auth/register', '/api/auth/login', '/api/auth/logout',
         '/api/auth/verify/request', '/api/auth/verify/confirm', '/api/auth/password/request', '/api/auth/password/reset',
-        '/api/auth/account/delete'].includes(pathname);
+        '/api/auth/account/delete', '/api/auth/account/find', '/api/auth/admin/members', '/api/auth/admin/reset-link'].includes(pathname);
       if (!isSession && !isAction) throw new AuthError(404, '요청한 기능이 없습니다.');
       if ((isSession && request.method !== 'GET') || (isAction && request.method !== 'POST')) {
         response.setHeader('Allow', isSession ? 'GET' : 'POST');
@@ -259,6 +286,47 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         return;
       }
       const input = await body(request);
+      // 닉네임으로 계정(가입 이메일) 찾기: 가린 이메일만 보여 준다.
+      if (pathname === '/api/auth/account/find') {
+        limit(`find:${ip}`, 6, 15 * 60000);
+        const nickname = typeof input.nickname === 'string' ? input.nickname.trim().toLowerCase() : '';
+        if (nickname.length < 2 || nickname.length > 25) throw new AuthError(400, '가입할 때 쓴 닉네임을 2~25자로 입력해 주세요.');
+        const found = store.users.filter(entry => String(entry.nickname || '').trim().toLowerCase() === nickname).slice(0, 3);
+        send(response, 200, {
+          accounts: found.map(entry => ({ email: maskEmail(entry.email) })),
+          message: found.length ? '이 닉네임으로 가입한 이메일입니다. 이 주소로 재설정 메일을 요청해 주세요.' : '이 닉네임으로 가입한 계정이 없습니다. 닉네임을 다시 확인하거나 운영자에게 문의해 주세요.',
+        });
+        return;
+      }
+      // 운영자: 회원 찾기와 비밀번호 재설정 링크 직접 만들기(메일이 닿지 않는 회원용)
+      if (pathname.startsWith('/api/auth/admin/')) {
+        const admin = session.userId ? store.users.find(entry => entry.id === session.userId) : null;
+        if (!admin || !isAdmin(admin)) throw new AuthError(403, '운영자만 쓸 수 있습니다.');
+        limit(`admin-members:${admin.id}`, 60, 15 * 60000);
+        const adminView = entry => ({ id: entry.id, email: entry.email, nickname: entry.nickname, emailVerified: Boolean(entry.emailVerifiedAt),
+          createdAt: entry.createdAt || null, lastAuthMail: entry.lastAuthMail || null });
+        if (pathname === '/api/auth/admin/members') {
+          const q = typeof input.q === 'string' ? input.q.trim().toLowerCase() : '';
+          if (q.length < 2) throw new AuthError(400, '이메일이나 닉네임을 2자 이상 입력해 주세요.');
+          const members = store.users.filter(entry => String(entry.email).toLowerCase().includes(q) || String(entry.nickname || '').toLowerCase().includes(q))
+            .slice(0, 20).map(adminView);
+          send(response, 200, { members });
+          return;
+        }
+        const target = store.users.find(entry => entry.id === input.userId);
+        if (!target) throw new AuthError(404, '회원을 찾을 수 없습니다.');
+        const { url } = await createMailToken(target, 'reset', day);
+        // 운영자가 본인 확인을 마쳤다면 이메일 인증도 함께 처리할 수 있다(메일이 닿지 않아 인증을 못 한 회원).
+        if (input.verify === true && !target.emailVerifiedAt) {
+          await updateStore(current => {
+            const member = current.users.find(entry => entry.id === target.id);
+            if (member && !member.emailVerifiedAt) member.emailVerifiedAt = new Date(now()).toISOString();
+          });
+        }
+        send(response, 200, { link: url.href, expiresInHours: 24, member: adminView({ ...target, emailVerifiedAt: target.emailVerifiedAt || (input.verify === true ? true : null) }),
+          message: '재설정 링크를 만들었습니다. 24시간 동안 한 번만 쓸 수 있으니 회원에게 직접(카톡·문자) 전해 주세요.' });
+        return;
+      }
       if (pathname === '/api/auth/account/delete') {
         const user = session.userId ? store.users.find(entry => entry.id === session.userId) : null;
         if (!user) throw new AuthError(401, '로그인 후 탈퇴할 수 있습니다.');
@@ -432,4 +500,4 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
   return handleAuthApi;
 }
 
-module.exports = { createAuthApi };
+module.exports = { createAuthApi, maskEmail };

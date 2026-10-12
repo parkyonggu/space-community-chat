@@ -51,3 +51,9 @@ body.signup-open { overflow:hidden; }
   .signup-dialog { padding:22px 18px; }
   .signup-heading h2 { font-size:22px; }
 }
+
+.forgot-more { margin-top:14px; border-top:1px solid #34506f; padding-top:10px; }
+.forgot-more summary { cursor:pointer; color:#cfe0f5; font-size:14px; font-weight:700; }
+.find-result { margin:8px 0; padding:10px 14px; list-style:none; background:#203750; border-radius:10px; font-weight:700; letter-spacing:.02em; }
+.forgot-help { font-size:13px; }
+.forgot-help a { color:#9cc4ff; }

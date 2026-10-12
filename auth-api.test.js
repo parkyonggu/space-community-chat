@@ -12,7 +12,7 @@ const credentials = {
   password: 'TestOnlyPassword123!', terms: true, privacy: true, remember: true,
 };
 
-async function fixture(t, { useMailer = false } = {}) {
+async function fixture(t, { useMailer = false, adminEmails = [] } = {}) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'space-auth-test-'));
   let timestamp = Date.now();
   const messages = [];
@@ -22,7 +22,7 @@ async function fixture(t, { useMailer = false } = {}) {
     async verify() { if (this.fail) throw new Error('Test SMTP unavailable'); },
     async send(message) { if (this.fail) throw new Error('Test SMTP unavailable'); messages.push(message); },
   };
-  const options = { now: () => timestamp, ...(useMailer ? { mailer } : {}) };
+  const options = { now: () => timestamp, adminEmails, ...(useMailer ? { mailer } : {}) };
   let handler = createAuthApi(directory, options);
   const server = createServer((request, response) => handler(request, response, request.url));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -326,4 +326,54 @@ test('authenticate exposes the signed-in user, admin flag and CSRF protection fo
   assert.equal(result.user.admin, false, 'unverified email is never admin');
   assert.equal((await api.authenticate(local(), { csrf: true })).error.status, 403);
   assert.equal((await api.authenticate(local({ origin: 'http://127.0.0.1', 'x-csrf-token': browser.csrf }), { csrf: true })).user.email, credentials.email);
+});
+
+test('닉네임으로 가린 이메일 찾기, 운영자 재설정 링크(24시간)와 메일 발송 기록', async t => {
+  const f = await fixture(t, { useMailer: true, adminEmails: ['admin@example.com'] });
+  const admin = f.client();
+  await admin.request('session');
+  await admin.request('register', { ...credentials, email: 'admin@example.com', nickname: '운영자' });
+  const verifyToken = new URL(f.messages.at(-1).text.match(/https?:\/\/\S+/)[0]).hash.split('=')[1];
+  const confirmed = await admin.request('verify/confirm', { token: verifyToken });
+  assert.equal(confirmed.response.status, 200, JSON.stringify(confirmed.data));
+  const member = f.client();
+  await member.request('session');
+  await member.request('register', { ...credentials, email: 'mjin8722@naver.com', nickname: '민진' });
+
+  // 닉네임 찾기: 가린 주소만
+  const guest = f.client();
+  await guest.request('session');
+  const found = await guest.request('account/find', { nickname: ' 민진 ' });
+  assert.equal(found.response.status, 200);
+  assert.deepEqual(found.data.accounts, [{ email: 'mj*****@naver.com' }]);
+  assert.equal((await guest.request('account/find', { nickname: '없는사람' })).data.accounts.length, 0);
+
+  // 운영자 아닌 회원은 막힌다
+  assert.equal((await member.request('admin/members', { q: '민진' })).response.status, 403);
+
+  // 발송 실패 기록
+  const realSend = f.mailer.send;
+  f.mailer.send = async () => { throw Object.assign(new Error('suppressed'), { code: 'E_RECIPIENT_SUPPRESSED' }); };
+  assert.equal((await guest.request('password/request', { email: 'mjin8722@naver.com' })).response.status, 503);
+  f.mailer.send = realSend;
+  const list = await admin.request('admin/members', { q: '민진' });
+  assert.equal(list.response.status, 200, JSON.stringify(list.data));
+  assert.equal(list.data.members.length, 1);
+  assert.equal(list.data.members[0].email, 'mjin8722@naver.com');
+  assert.equal(list.data.members[0].lastAuthMail.ok, false);
+  assert.equal(list.data.members[0].lastAuthMail.purpose, 'reset');
+  assert.equal(list.data.members[0].lastAuthMail.error, 'E_RECIPIENT_SUPPRESSED');
+
+  // 운영자 링크: 24시간 유효, 인증도 함께
+  const made = await admin.request('admin/reset-link', { userId: list.data.members[0].id, verify: true });
+  assert.equal(made.response.status, 200);
+  const resetToken = new URL(made.data.link).hash.split('=')[1];
+  f.advance(23 * 60 * 60 * 1000);
+  await guest.request('session');
+  const reset = await guest.request('password/reset', { token: resetToken, password: 'new12' });
+  assert.equal(reset.response.status, 200);
+  await guest.request('session');
+  const login = await guest.request('login', { email: 'mjin8722@naver.com', password: 'new12' });
+  assert.equal(login.response.status, 200);
+  assert.equal(login.data.user.emailVerified, true);
 });

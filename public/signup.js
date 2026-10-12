@@ -389,6 +389,31 @@ async function recoveryAction(event, action, form, status, input) {
 forgotForm.addEventListener('submit', event => recoveryAction(event, 'password/request', forgotForm, forgotStatus, {
   email: document.getElementById('forgot-email').value,
 }));
+// 닉네임으로 가입 이메일 찾기: 가린 주소(예: dr*****@gmail.com)만 보여 준다.
+const findForm = document.getElementById('find-form');
+if (findForm) {
+  findForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const status = document.getElementById('find-status');
+    const result = document.getElementById('find-result');
+    if (!findForm.reportValidity()) return;
+    if (!csrfToken) { try { await refreshSession(); } catch { /* 아래에서 오류 표시 */ } }
+    authStatus(status, '찾고 있습니다.');
+    result.hidden = true;
+    try {
+      const data = await authRequest('account/find', { nickname: document.getElementById('find-nickname').value });
+      authStatus(status, data.message, !data.accounts.length);
+      result.replaceChildren(...data.accounts.map(account => {
+        const li = document.createElement('li');
+        li.textContent = account.email;
+        return li;
+      }));
+      result.hidden = !data.accounts.length;
+    } catch (error) {
+      authStatus(status, error.message, true);
+    }
+  });
+}
 verifyForm.addEventListener('submit', event => recoveryAction(event, 'verify/confirm', verifyForm, verifyStatus, {
   token: verificationToken,
 }));

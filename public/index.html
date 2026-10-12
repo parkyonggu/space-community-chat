@@ -508,6 +508,16 @@
       <button class="signup-submit" type="submit" disabled>재설정 메일 요청</button>
       <button class="auth-switch" type="button" data-auth-switch="login">로그인으로 돌아가기</button>
     </form>
+    <details class="forgot-more">
+      <summary>가입한 이메일이 기억나지 않나요? — 닉네임으로 찾기</summary>
+      <form id="find-form" class="signup-form">
+        <div class="signup-field"><label for="find-nickname">닉네임</label><input id="find-nickname" required minlength="2" maxlength="25" autocomplete="nickname" placeholder="가입할 때 쓴 닉네임"></div>
+        <p id="find-status" class="signup-status" role="status"></p>
+        <ul id="find-result" class="find-result" hidden></ul>
+        <button class="signup-submit" type="submit">가입 이메일 찾기</button>
+      </form>
+    </details>
+    <p class="signup-intro forgot-help">메일이 10분 넘게 오지 않으면 <b>스팸함·프로모션함</b>을 확인해 주세요. 그래도 없으면 운영자에게 알려 주시면(<a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>) <b>재설정 링크를 카톡·문자로 바로 보내 드립니다</b>.</p>
   </dialog>
   <dialog id="verify-dialog" class="signup-dialog" aria-labelledby="verify-title">
     <div class="signup-heading"><div><span class="signup-kicker">VERIFY EMAIL</span><h2 id="verify-title">이메일 주소 인증</h2></div><button id="verify-close" class="signup-close" type="button" aria-label="이메일 인증 창 닫기">×</button></div>

@@ -268,6 +268,73 @@
     schedulePreview();
   }
 
+  // ---------- 회원 찾기 · 비밀번호 재설정 링크 ----------
+  const mailPurpose = { verify: '인증 메일', reset: '재설정 메일' };
+  function mailResult(entry) {
+    if (!entry) return '기록 없음';
+    const when = date(entry.at);
+    return `${mailPurpose[entry.purpose] || entry.purpose} ${entry.ok ? '보냄' : `실패(${entry.error || '오류'})`} · ${when}`;
+  }
+  async function searchMembers() {
+    const q = $('member-q').value.trim();
+    $('member-link').hidden = true;
+    if (q.length < 2) { setStatus('member-status', '이메일이나 닉네임을 2자 이상 입력해 주세요.', true); return; }
+    setStatus('member-status', '찾는 중입니다…');
+    try {
+      const { members } = await api('/api/auth/admin/members', { q });
+      setStatus('member-status', members.length ? `${members.length}명을 찾았습니다.` : '찾는 회원이 없습니다. 가입하지 않은 주소일 수 있습니다.', !members.length);
+      const table = document.createElement('table');
+      const head = document.createElement('tr');
+      ['이메일', '닉네임', '이메일 인증', '가입일', '최근 계정 메일', ''].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
+      table.appendChild(head);
+      members.forEach(member => {
+        const tr = document.createElement('tr');
+        const action = document.createElement('td');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = '재설정 링크 만들기';
+        button.addEventListener('click', () => makeResetLink(member, button));
+        action.appendChild(button);
+        tr.append(cell(member.email), cell(member.nickname), cell(member.emailVerified ? '완료' : '미인증'), cell(date(member.createdAt)), cell(mailResult(member.lastAuthMail)), action);
+        table.appendChild(tr);
+      });
+      $('member-list').replaceChildren(...(members.length ? [table] : []));
+    } catch (error) {
+      setStatus('member-status', error.message, true);
+    }
+  }
+  async function makeResetLink(member, button) {
+    const verify = $('member-verify').checked;
+    if (!confirm(`${member.nickname}(${member.email}) 님의 비밀번호 재설정 링크를 만들까요?${verify ? '\n이메일 인증도 함께 처리합니다.' : ''}`)) return;
+    button.disabled = true;
+    try {
+      const result = await api('/api/auth/admin/reset-link', { userId: member.id, verify });
+      $('member-link-text').value = result.link;
+      $('member-link').hidden = false;
+      $('member-link').dataset.nickname = member.nickname;
+      setStatus('member-status', result.message);
+    } catch (error) {
+      setStatus('member-status', error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+  function shareText() {
+    return `[스페이스 커뮤니티] ${$('member-link').dataset.nickname || ''}님, 아래 링크를 열어 새 비밀번호를 정해 주세요. (24시간 동안 한 번만 쓸 수 있습니다)\n${$('member-link-text').value}`;
+  }
+  if ($('member-search')) {
+    $('member-search').addEventListener('click', searchMembers);
+    $('member-q').addEventListener('keydown', event => { if (event.key === 'Enter') searchMembers(); });
+    $('member-link-copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(shareText()); setStatus('member-status', '안내 문구와 링크를 복사했습니다. 카톡·문자에 붙여 넣어 보내 주세요.'); }
+      catch { $('member-link-text').select(); setStatus('member-status', '링크를 선택했습니다. Ctrl+C로 복사해 주세요.'); }
+    });
+    $('member-link-share').addEventListener('click', async () => {
+      if (navigator.share) { try { await navigator.share({ text: shareText() }); } catch { /* 취소 */ } }
+      else $('member-link-copy').click();
+    });
+  }
+
   async function init() {
     try {
       const session = await api('/api/auth/session');
