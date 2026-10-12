@@ -296,7 +296,22 @@ export class ChatService extends DurableObject {
         guestOnly('1:1 대화는 회원만 시작할 수 있습니다. 회원가입 후 이용해 주세요.');
         this.limit(`dm:${user.id}`, 30, 60 * 60 * 1000);
         const input = await body();
-        const room = this.core.startDm(user, { code: input.code, userId: input.userId });
+        let room;
+        if (input.via === 'square' && input.userId) {
+          // 광장 채팅에서 이름을 눌러 바로 1:1: 두 사람이 지금 광장에 함께 접속해 있는지 광장 서버에 확인한다.
+          const targetId = String(input.userId);
+          let present = [];
+          try {
+            const response = await this.env.CHAT.get(this.env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/present');
+            present = (await response.json()).ids || [];
+          } catch (error) { console.error('Square presence check failed:', error); }
+          if (!present.includes(user.id) || !present.includes(targetId)) throw new ChatError(403, '광장 채팅에 지금 함께 접속한 회원과만 바로 1:1 톡을 시작할 수 있습니다.');
+          const [person] = await this.findMembers({ ids: [targetId] });
+          if (!person) throw new ChatError(404, '대화 상대를 찾을 수 없습니다.');
+          room = this.core.startDm(user, { userId: targetId, person, trusted: true });
+        } else {
+          room = this.core.startDm(user, { code: input.code, userId: input.userId });
+        }
         this.broadcast(room.members.map(member => member.id), { type: 'room', roomId: room.id });
         return json({ room });
       }

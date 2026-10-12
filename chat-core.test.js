@@ -212,3 +212,15 @@ test('대화방 이름: only the owner or a site admin can rename a group room',
   assert.throws(() => chat.update(users.admin, room.id, { resetInvite: true }), /방장 또는 운영자/);
   assert.equal(chat.update(users.alice, room.id, { name: '동창회' }).room.name, '동창회');
 });
+
+test('광장에서 함께 접속이 확인된 회원(trusted)은 같은 방이 없어도 1:1을 열고, 같은 방을 다시 쓴다', () => {
+  const core = createChatCore(memorySql(), { now: () => Date.now() });
+  const a = { id: 'a-1', nickname: '가', verified: true };
+  const b = { id: 'b-1', nickname: '나', verified: true };
+  core.ensureUser(a);
+  core.ensureUser(b);
+  assert.throws(() => core.startDm(a, { userId: b.id }), /같은 대화방/);
+  const room = core.startDm(a, { userId: b.id, person: b, trusted: true });
+  assert.equal(room.kind, 'dm');
+  assert.equal(core.startDm(b, { userId: a.id, person: a, trusted: true }).id, room.id);
+});

@@ -206,12 +206,14 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return { room: roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id), message, joined: true };
     },
 
-    startDm(user, { code: targetCode, userId: targetId } = {}) {
+    // trusted: 광장 채팅에 지금 함께 접속해 있음을 서버가 확인한 상대(person = 회원 정보). 같은 대화방이 없어도 1:1을 열 수 있다.
+    startDm(user, { code: targetCode, userId: targetId, person = null, trusted = false } = {}) {
       const me = ensureUser(user);
+      if (trusted && person?.id && !String(person.id).startsWith('guest-') && person.id !== me.id) ensureUser(person);
       const target = targetCode ? one('SELECT * FROM chat_users WHERE code = ?', String(targetCode)) : one('SELECT * FROM chat_users WHERE id = ?', String(targetId || ''));
       if (!target) throw new ChatError(404, '대화 상대를 찾을 수 없습니다. 상대가 스페이스 톡을 한 번 이상 열어야 합니다.');
       if (target.id === me.id) throw new ChatError(400, '나와의 1:1 대화는 만들 수 없습니다.');
-      if (!targetCode) {
+      if (!targetCode && !trusted) {
         // Without a personal link, a 1:1 chat can only start from someone you already share a group room with.
         const shared = one('SELECT 1 AS ok FROM chat_members a JOIN chat_members b ON a.room_id = b.room_id WHERE a.user_id = ? AND b.user_id = ?', me.id, target.id);
         if (!shared) throw new ChatError(403, '같은 대화방에 있는 회원이나 개인 링크로만 1:1 대화를 시작할 수 있습니다.');

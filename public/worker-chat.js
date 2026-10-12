@@ -427,11 +427,21 @@ function renderPresence(result) {
   list.className = 'presence-list';
   // 내 이름을 맨 앞에, 나머지는 가나다순.
   const ordered = members.includes(myName) ? [myName, ...members.filter(name => name !== myName)] : members;
+  const peopleByName = new Map((Array.isArray(result.people) ? result.people : []).map(person => [person.name, person]));
   ordered.forEach(name => {
-    const chip = document.createElement('span');
-    chip.className = 'presence-chip';
+    const person = peopleByName.get(name);
+    // 다른 회원 이름은 누르면 바로 스페이스톡 1:1 (내가 메시지를 보낼 수 있는 회원일 때)
+    const clickable = canSend && name !== myName && person?.id;
+    const chip = document.createElement(clickable ? 'button' : 'span');
+    chip.className = `presence-chip${clickable ? ' is-talk' : ''}`;
     chip.style.setProperty('--who', colorOf(name));
     chip.textContent = name === myName ? `${name}(나)` : name;
+    if (clickable) {
+      chip.type = 'button';
+      chip.title = `${name}님과 바로 1:1 톡`;
+      chip.setAttribute('aria-label', `${name}님과 스페이스톡 1:1 대화 열기`);
+      chip.addEventListener('click', () => startSquareDm(person, chip));
+    }
     list.appendChild(chip);
   });
   if (guests) {
@@ -448,8 +458,8 @@ function renderPresence(result) {
     const talk = document.createElement('button');
     talk.type = 'button';
     talk.className = 'presence-talk';
-    talk.textContent = `💬 지금 함께 있는 ${others.length}명과 스페이스톡`;
-    talk.title = '지금 광장을 보고 있는 회원들과 스페이스톡 단체 대화방을 바로 만듭니다';
+    talk.textContent = others.length > 1 ? `💬 ${others.length}명 함께 톡` : '💬 함께 톡';
+    talk.title = '지금 광장을 보고 있는 회원 여럿과 스페이스톡 단체 대화방을 만듭니다 (한 명과는 이름을 누르면 바로 1:1)';
     talk.addEventListener('click', openTalkTogether);
     parts.push(talk);
   }
@@ -534,9 +544,64 @@ async function createTalkTogether() {
     link.textContent = '스페이스톡에서 대화 시작하기 →';
     status.replaceChildren(document.createTextNode(`「${name}」 대화방을 만들고 ${chosen.map(input => input.dataset.name).join(', ')}님을 불렀습니다. `), link);
     create.hidden = true;
+    link.addEventListener('click', event => { event.preventDefault(); dialog.close?.(); openTalkPanel(room.id, name); });
   } catch (error) {
     status.textContent = error.message;
     create.disabled = false;
+  }
+}
+// 광장 화면을 떠나지 않고 스페이스톡을 여는 작은 창(휴대폰에서는 아래에서 올라오는 전체 창)
+function openTalkPanel(roomId, title = '스페이스톡') {
+  let panel = document.getElementById('talk-panel');
+  const src = `/chat#room=${encodeURIComponent(roomId)}`;
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'talk-panel';
+    panel.className = 'talk-panel';
+    panel.setAttribute('aria-label', '스페이스톡 대화');
+    const head = document.createElement('div');
+    head.className = 'tp-head';
+    const name = document.createElement('strong');
+    name.className = 'tp-title';
+    const full = document.createElement('a');
+    full.className = 'tp-full';
+    full.target = '_blank';
+    full.rel = 'noopener';
+    full.textContent = '크게 보기 ↗';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'tp-close';
+    close.setAttribute('aria-label', '스페이스톡 창 닫기');
+    close.textContent = '×';
+    close.addEventListener('click', () => { panel.hidden = true; });
+    head.append(name, full, close);
+    const frame = document.createElement('iframe');
+    frame.className = 'tp-frame';
+    frame.title = '스페이스톡 대화';
+    panel.append(head, frame);
+    document.body.appendChild(panel);
+  }
+  panel.querySelector('.tp-title').textContent = `💬 ${title}`;
+  panel.querySelector('.tp-full').href = src;
+  const frame = panel.querySelector('.tp-frame');
+  // 이미 열린 스페이스톡이면 주소의 방 번호만 바꿔 다시 불러오지 않는다.
+  try {
+    if (frame.contentWindow && frame.contentWindow.location.pathname === '/chat') frame.contentWindow.location.hash = `room=${roomId}`;
+    else frame.src = src;
+  } catch { frame.src = src; }
+  panel.hidden = false;
+}
+async function startSquareDm(person, chip) {
+  if (chip) chip.disabled = true;
+  try {
+    const { room } = await talkApi('/api/chat/dm', { userId: person.id, via: 'square' });
+    openTalkPanel(room.id, `${person.name}님과 1:1`);
+    if (chatSocket?.readyState === WebSocket.OPEN) chatSocket.send(JSON.stringify({ type: 'talk-invite', roomId: room.id, roomName: '', userIds: [person.id], dm: true }));
+  } catch (error) {
+    chatStatus.textContent = error.message;
+    chatStatus.dataset.error = 'true';
+  } finally {
+    if (chip) chip.disabled = false;
   }
 }
 function showTalkInvite(result) {
@@ -546,10 +611,18 @@ function showTalkInvite(result) {
   bar.className = 'talk-invite';
   bar.setAttribute('role', 'alert');
   const text = document.createElement('span');
-  text.textContent = `💬 ${from}님이 스페이스톡 ${roomName}대화방에 불렀어요.`;
+  text.textContent = result.dm ? `💬 ${from}님이 1:1 톡을 걸었어요.` : `💬 ${from}님이 스페이스톡 ${roomName}대화방에 불렀어요.`;
+  // 같은 사람이 다시 걸면 알림을 하나만 둔다.
+  document.querySelectorAll(`.talk-invite[data-room="${CSS.escape(result.roomId)}"]`).forEach(old => old.remove());
+  bar.dataset.room = result.roomId;
   const open = document.createElement('a');
   open.href = `/chat#room=${encodeURIComponent(result.roomId)}`;
-  open.textContent = '대화방 열기';
+  open.textContent = result.dm ? '바로 대화하기' : '대화방 열기';
+  open.addEventListener('click', event => {
+    event.preventDefault();
+    openTalkPanel(result.roomId, result.dm ? `${from}님과 1:1` : (result.roomName || '스페이스톡'));
+    bar.remove();
+  });
   const close = document.createElement('button');
   close.type = 'button';
   close.setAttribute('aria-label', '알림 닫기');

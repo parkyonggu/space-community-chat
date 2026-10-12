@@ -227,6 +227,12 @@ export class ChatRoom extends DurableObject {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === '/status') return json({ online: this.ctx.getWebSockets().length });
+    // 스페이스톡이 '광장에서 바로 1:1'을 열기 전에, 두 사람이 지금 광장에 접속해 있는지 확인하는 용도(회원 번호만)
+    if (url.pathname === '/internal/present') {
+      const ids = new Set();
+      for (const peer of this.ctx.getWebSockets()) { const info = peer.deserializeAttachment() || {}; if (info.uid && info.name) ids.add(info.uid); }
+      return json({ ids: [...ids] });
+    }
     // 공유 주소(/e/글번호) 화면에 쓰는 모임안내·초청장 원문
     if (url.pathname === '/internal/announcement') {
       const id = url.searchParams.get('id') || '';
@@ -336,7 +342,7 @@ export class ChatRoom extends DurableObject {
       for (const peer of this.ctx.getWebSockets()) {
         const info = peer.deserializeAttachment() || {};
         if (!info.uid || info.uid === window.uid || !wanted.has(info.uid)) continue;
-        try { peer.send(JSON.stringify({ type: 'talk-invite', from: window.name, roomId, roomName })); delivered += 1; } catch { /* 연결 끊김 */ }
+        try { peer.send(JSON.stringify({ type: 'talk-invite', from: window.name, roomId, roomName, dm: input.dm === true })); delivered += 1; } catch { /* 연결 끊김 */ }
       }
       socket.send(JSON.stringify({ type: 'talk-invite-sent', delivered }));
       return;
