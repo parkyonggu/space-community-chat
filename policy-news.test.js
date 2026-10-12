@@ -82,7 +82,7 @@ test('daily 스페이스 톡 briefing picks the single most important policy the
   ];
   const text = dailyBriefingText(items, now);
   const lines = text.split('\n');
-  assert.equal(lines[0], '📰 10월 8일 오늘의 정책 테마 — 🏠 부동산·주거', 'life-affecting housing news beats routine science events');
+  assert.equal(lines[0], '📰 10월 8일 아침 정책브리핑 — 🏠 부동산·주거', 'life-affecting housing news beats routine science events');
   assert.ok(text.indexOf('청년 월세') < text.indexOf('국토부 차관'), 'most important item first');
   assert.ok(text.includes('11월부터 신청'), 'subtitle shown');
   assert.ok(!text.includes('누리호') && !text.includes('어제 소식') && !text.includes('기초연금 보도') && !text.includes('다른 분야'), 'only the chosen theme');
@@ -92,5 +92,9 @@ test('daily 스페이스 톡 briefing picks the single most important policy the
   const first = pickDailyTheme(tied, now).theme.id;
   assert.notEqual(pickDailyTheme(tied, now, { previous: first }).theme.id, first, 'avoid repeating yesterday on a near tie');
   assert.equal(dailyBriefingText([], now), null);
+  // 연휴 다음 날 아침: 지난 24시간에 정책뉴스가 없으면 최근 나흘 안의 소식으로 채운다(보도 설명 자료는 빼고).
+  const holiday = [item('연휴 전 청년 월세 지원 확대', '국토교통부', { at: now - 60 * 3600e3 }), item('보도 설명', '보건복지부', { kind: 'fact', at: now - 3600e3 }), item('오래된 소식', '국토교통부', { at: now - 120 * 3600e3 })];
+  const after = dailyBriefingText(holiday, now);
+  assert.ok(after.includes('연휴 전 청년 월세') && !after.includes('오래된 소식') && !after.includes('보도 설명'));
 });
 

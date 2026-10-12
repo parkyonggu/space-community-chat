@@ -159,7 +159,9 @@ function importance(item) {
   return 1 + impact * 0.6 + (item.economy ? 0.4 : 0) - (ROUTINE.test(item.title) && impact === 0 ? 0.6 : 0);
 }
 function pickDailyTheme(items, now = Date.now(), { previous = '' } = {}) {
-  const today = items.filter(item => item.kind !== 'fact' && (!item.at || now - item.at < 24 * 60 * 60 * 1000));
+  // 아침에 보내므로 지난 24시간(전날) 소식을 쓰고, 주말·연휴 다음 날처럼 없으면 최근 나흘 안의 소식으로 채운다.
+  const within = hours => items.filter(item => item.kind !== 'fact' && (!item.at || now - item.at < hours * 60 * 60 * 1000));
+  const today = within(24).length ? within(24) : within(96);
   const groups = new Map();
   for (const item of today) {
     const theme = themeOf(item);
@@ -183,7 +185,7 @@ function dailyBriefingText(items, now = Date.now(), siteUrl = 'https://withpluce
   if (!pick) return null;
   const shown = pick.items.slice(0, 4);
   const text = [
-    `📰 ${day} 오늘의 정책 테마 — ${pick.theme.name}`,
+    `📰 ${day} 아침 정책브리핑 — ${pick.theme.name}`,
     '',
     ...shown.flatMap((item, index) => [`${index + 1}. [${item.dept}] ${item.title}`, ...(item.sub ? [`   ${item.sub.slice(0, 110)}`] : []), item.url, '']),
     `다른 정책 소식은 정책브리핑에서: ${siteUrl}/#policy-panel`,

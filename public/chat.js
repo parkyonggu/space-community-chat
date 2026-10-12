@@ -298,7 +298,7 @@
     const item = make('li', 'channel-card');
     const description = eventChannel ?
       '스페이스 커뮤니티가 보내는 모임안내·초청장을 받아 봐요. 카카오톡으로 바로 공유할 수 있고, 새 소식 알림도 받을 수 있어요.' :
-      '매일 저녁 6시, 정부 부처의 그날 정책뉴스를 골라 대화방으로 보내 드려요. 새 소식 알림도 받을 수 있어요.';
+      '매일 아침 7시 30분, 정부 부처의 전날 정책뉴스에서 가장 중요한 테마를 골라 보내 드려요. 새 소식 알림도 받을 수 있어요.';
     item.append(make('strong', '', channel.name), make('p', '', `${description}${channel.subscribers ? ` (${channel.subscribers}명 받아 보는 중)` : ''}`));
     const join = make('button', 'btn gold', '받아 보기');
     join.type = 'button';
@@ -309,7 +309,7 @@
         const { room } = await api(endpoint, { method: 'POST', body: {} });
         channel.subscribed = true;
         await loadRooms();
-        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : '구독했어요. 매일 저녁 6시에 정책브리핑이 이 방으로 옵니다.');
+        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
         location.hash = `room=${room.id}`;
       } catch (error) { toast(error.message); join.disabled = false; }
     });
@@ -536,7 +536,7 @@
     if (!state.messages.length) {
       const empty = make('div', 'system');
       const channelHint = state.room?.id === 'channel-event-announcements' ?
-        '운영자가 광장채팅에 올린 모임안내·초청장이 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' : '매일 저녁 6시에 그날의 정책브리핑이 이곳에 올라옵니다.';
+        '운영자가 광장채팅에 올린 모임안내·초청장이 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' : '매일 아침 7시 30분에 전날 정책뉴스로 만든 정책브리핑이 이곳에 올라옵니다.';
       empty.appendChild(make('span', '', state.room?.kind === 'channel' ? channelHint : state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
       nodes.push(empty);
     }
@@ -931,7 +931,7 @@
     const room = state.room;
     if (!room) return;
     openSheet(room.kind === 'dm' ? `${room.name}님과의 대화` : room.name, body => {
-      if (room.kind === 'channel') body.appendChild(make('p', '', '정부 부처가 대한민국 정책브리핑에 올린 그날의 정책뉴스를 매일 저녁 6시에 모아 보내 드리는 읽기 전용 채널입니다. 제목 아래 링크를 누르면 원문을 볼 수 있어요.'));
+      if (room.kind === 'channel') body.appendChild(make('p', '', '정부 부처가 대한민국 정책브리핑에 올린 전날 정책뉴스를 매일 아침 7시 30분에 모아 보내 드리는 읽기 전용 채널입니다. 제목 아래 링크를 누르면 원문을 볼 수 있어요.'));
       const online = new Set(room.online || []);
       if (room.kind === 'group') {
         body.appendChild(make('div', 'section-title', `참여자 ${room.memberCount}명 / 최대 ${room.maxMembers}명`));

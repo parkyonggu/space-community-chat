@@ -394,8 +394,9 @@ export class ChatRoom extends DurableObject {
   }
 }
 
-// 매일 저녁 6시(KST) 스페이스 톡 '📰 오늘의 정책브리핑' 채널에 그날 정책뉴스 요약을 올린다.
-const DAILY_BRIEFING_CRON = '0 9 * * *';
+// 매일 아침 7시 30분(KST) 스페이스 톡 '📰 오늘의 정책브리핑' 채널에 전날 정책뉴스 가운데 한 테마를 골라 올린다.
+// (UTC 22:30 = 다음 날 KST 07:30, wrangler.jsonc triggers.crons 와 같아야 한다)
+const DAILY_BRIEFING_CRON = '30 22 * * *';
 async function postDailyBriefing(env) {
   if (!env.POLICY_NEWS_KEY || !env.TALK) return;
   const now = Date.now();
