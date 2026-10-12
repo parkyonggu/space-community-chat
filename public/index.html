@@ -21,7 +21,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Nanum+Myeongjo:wght@400;700&display=swap">
   <link rel="stylesheet" href="/signup.css">
   <link rel="stylesheet" href="/portal.css">
   <script defer src="/signup.js"></script>
@@ -54,12 +54,15 @@
   <div class="nav-bar">
     <nav class="wrap section-nav" aria-label="주요 메뉴">
       <a href="#top" class="active" data-home>홈</a>
-      <a href="/chat">스페이스 톡</a>
+      <a href="/chat" class="nav-talk">💬 스페이스 톡</a>
       <a href="#chat-section" data-target="chat-section">광장 채팅<span class="nav-count" id="nav-online" hidden></span></a>
       <a href="#community-section" data-target="community-section">소통·나눔</a>
       <a href="#voice-section" data-target="voice-section">시민의 소리</a>
+      <a href="#policy-panel" class="nav-policy">📰 정책브리핑</a>
+      <a href="#issue-panel" class="nav-issue">🗞️ 오늘의 이슈</a>
+      <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
       <a href="#policy-section" data-target="policy-section">정책 제안</a>
-      <a href="#research-section" data-target="research-section">학술·이야기</a>
+      <a href="#research-section" data-target="research-section">칼럼·학술</a>
       <a href="#newsletter-section">스페이스 레터</a>
       <a href="#guide-section">이용 안내</a>
     </nav>
@@ -73,14 +76,37 @@
         <p class="lead">가까이 있든 멀리 있든, 우리는 서로의 이야기를 나눕니다. 안부와 소식, 가벼운 잡담부터 진지한 의견과 유용한 정책 제안까지 — 자유 시민 누구나 목소리를 내고 서로의 생각을 존중하는 공간입니다.</p>
         <div class="hero-actions">
           <button type="button" class="btn btn-gold" id="hero-write">지금 이야기 쓰기</button>
-          <a class="btn btn-ghost" href="#newsletter-section">스페이스 레터 구독</a>
+          <a class="btn btn-ghost" href="/chat">💬 스페이스 톡</a>
+          <a class="btn btn-ghost" href="#newsletter-section" data-letter-cta>스페이스 레터 구독</a>
         </div>
-      </div>
-      <div class="hero-side" aria-label="커뮤니티 현황">
-        <div class="stat"><span class="stat-label">오늘 올라온 글</span><span class="stat-value" id="stat-today">–</span></div>
-        <div class="stat"><span class="stat-label">이번 주 정책 제안</span><span class="stat-value" id="stat-policy">–</span></div>
-        <div class="stat"><span class="stat-label">지금 채팅 중</span><span class="stat-value" id="stat-online">–</span></div>
         <p class="hero-note">대한민국 헌법이 보장하는 국민 참여 정신을 바탕으로, 사실에 기반한 대화와 함께 만드는 변화를 지향합니다.</p>
+      </div>
+      <div class="hero-stage">
+        <figure class="hero-visual">
+          <div class="hv-layer">
+            <img src="/hero-network.jpg" width="1536" height="837" alt="휴대폰 화면 속 글과 댓글이 도시 위로 서로 이어지는 모습 — 생각이 연결되는 스페이스 커뮤니티" fetchpriority="high" decoding="async">
+            <!-- 글 → 공감 → 댓글로 이어지는 빛의 흐름 (그림 좌표 1536×837 기준) -->
+            <svg class="hv-links" viewBox="0 0 1536 837" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <path id="hv-a" d="M640 420 C 700 360, 750 380, 805 410 S 900 430, 960 415" />
+              <path id="hv-b" d="M960 415 C 1010 520, 980 600, 950 665" />
+              <path id="hv-c" d="M625 300 C 600 220, 570 180, 535 145" />
+              <path id="hv-d" d="M960 330 C 950 260, 940 210, 1005 155" />
+              <circle r="7"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#hv-a" /></animateMotion></circle>
+              <circle r="6" class="gold"><animateMotion dur="2.6s" begin="1.1s" repeatCount="indefinite"><mpath href="#hv-b" /></animateMotion></circle>
+              <circle r="6"><animateMotion dur="2.4s" begin=".6s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1"><mpath href="#hv-c" /></animateMotion></circle>
+              <circle r="6" class="gold"><animateMotion dur="2.8s" begin="1.6s" repeatCount="indefinite"><mpath href="#hv-d" /></animateMotion></circle>
+            </svg>
+            <span class="hv-pulse" style="left:52.4%;top:49%" aria-hidden="true"></span>
+            <span class="hv-pulse gold" style="left:34.8%;top:17.3%" aria-hidden="true"></span>
+            <span class="hv-pulse" style="left:61.8%;top:79.5%" aria-hidden="true"></span>
+          </div>
+          <figcaption class="hv-caption"><span class="hv-live" aria-hidden="true"></span><span id="hero-ticker">CONNECTING IDEAS · 생각이 연결되는 곳</span></figcaption>
+        </figure>
+        <div class="hero-side" aria-label="커뮤니티 현황">
+          <div class="stat"><span class="stat-label">오늘 올라온 글</span><span class="stat-value" id="stat-today">–</span></div>
+          <div class="stat"><span class="stat-label">이번 주 정책 제안</span><span class="stat-value" id="stat-policy">–</span></div>
+          <div class="stat"><span class="stat-label">지금 채팅 중</span><span class="stat-value" id="stat-online">–</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -98,7 +124,7 @@
     <ul id="ticker-items" hidden>
       <li data-tag="공지" data-href="#newsletter-section">스페이스 레터 — 매주 월요일 아침 7시, 경제·정책 브리핑을 이메일로 보내 드립니다.</li>
       <li data-tag="안내" data-href="#guide-section">글쓰기·댓글·채팅은 이메일 인증을 마친 회원만 할 수 있습니다. 읽기는 누구나 가능합니다.</li>
-      <li data-tag="안내" data-href="#research-section">학술·논문·소고·이야기 게시판은 가입한 회원만 읽고 쓸 수 있습니다.</li>
+      <li data-tag="안내" data-href="#research-section">칼럼·학술 게시판은 누구나 읽을 수 있고, 글쓰기는 가입한 회원만 할 수 있습니다.</li>
       <li data-tag="운영" data-href="#guide-section">회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김 처리됩니다.</li>
       <li data-tag="시민의 소리" data-href="#voice-section">공론화 후 주민감사·조례 청구는 행정안전부 '주민e직접'에서 정식으로 진행해 주세요.</li>
     </ul>
@@ -115,7 +141,7 @@
             <button type="button" class="chip" role="tab" data-feed="community" aria-selected="false">소통·나눔</button>
             <button type="button" class="chip" role="tab" data-feed="voice" aria-selected="false">시민의 소리</button>
             <button type="button" class="chip" role="tab" data-feed="policy" aria-selected="false">정책 제안</button>
-            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">학술·이야기<span class="lock">회원</span></button>
+            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">칼럼·학술</button>
           </div>
           <ul class="feed-list" id="feed-list" aria-live="polite">
             <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
@@ -141,6 +167,142 @@
           </section>
         </div>
 
+        <section class="panel panel-pad re-panel" id="realestate-panel" aria-labelledby="re-title">
+          <div class="panel-head"><h2 id="re-title">오늘의 부동산 동향</h2><span class="hint" id="re-range">최근 30일 실거래 신고분</span></div>
+          <div class="re-tabs" role="tablist" aria-label="부동산 종류">
+            <button type="button" class="chip" role="tab" data-re="apt" aria-selected="true">아파트</button>
+            <button type="button" class="chip" role="tab" data-re="bldg" aria-selected="false">건물</button>
+            <button type="button" class="chip" role="tab" data-re="forest" aria-selected="false">임야</button>
+            <button type="button" class="chip" role="tab" data-re="farm" aria-selected="false">농지</button>
+          </div>
+          <div id="re-body" aria-live="polite"><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source" id="re-source">출처: 국토교통부 실거래가 공개시스템(공공데이터포털) · 주요 14개 시군구 · 해제·지분 거래 제외 · 계약 후 30일 안에 신고되므로 최근 거래는 계속 늘어납니다. 투자 권유가 아닌 참고 자료입니다.</p>
+        </section>
+
+        <section class="panel panel-pad policy-panel" id="policy-panel" aria-labelledby="pb-title">
+          <div class="panel-head"><h2 id="pb-title">오늘의 정책브리핑</h2><span class="hint" id="pb-updated">정부 부처 발표 · 매일 자동 갱신</span></div>
+          <div class="re-tabs" role="tablist" aria-label="정책 분야">
+            <button type="button" class="chip" role="tab" data-pb="news" aria-selected="true">정책뉴스</button>
+            <button type="button" class="chip" role="tab" data-pb="economy" aria-selected="false">경제·금융·부동산</button>
+            <button type="button" class="chip" role="tab" data-pb="fact" aria-selected="false">사실은 이렇습니다</button>
+          </div>
+          <ul class="pb-list" id="pb-list" aria-live="polite"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+          <p class="source">출처: 대한민국 정책브리핑(www.korea.kr) 정책뉴스 · 공공누리 제1유형 · 제목을 누르면 정책브리핑 원문으로 이동합니다.</p>
+        </section>
+
+        <section class="panel panel-pad issue-panel" id="issue-panel" aria-labelledby="is-title">
+          <div class="panel-head"><h2 id="is-title">오늘의 이슈</h2><span class="hint" id="is-updated">가장 많이 보도된 주제 · 분야별 1건 자동 선별</span></div>
+          <div class="is-tools">
+            <label class="is-date">날짜 <select id="is-date" aria-label="이슈 날짜"><option value="">오늘</option></select></label>
+            <span class="is-note">기사 제목을 누르면 원문으로, <b>평론</b>을 누르면 회원 평론을 보고 쓸 수 있습니다.</span>
+          </div>
+          <ol class="is-grid" id="is-grid" aria-live="polite"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
+          <div class="is-review" id="is-review" hidden>
+            <div class="is-review-head">
+              <div><span class="is-field" id="is-review-field"></span><a id="is-review-title" target="_blank" rel="noopener"></a></div>
+              <button type="button" class="link-btn" id="is-review-close">닫기 ✕</button>
+            </div>
+            <form class="is-form" id="is-form">
+              <input id="is-form-title" maxlength="120" placeholder="평론 제목 (선택)">
+              <textarea id="is-form-text" rows="5" maxlength="10000" required placeholder="이 이슈에 대한 생각을 적어 주세요. 사실과 의견을 구분하고, 특정인을 비방하거나 확인되지 않은 내용을 단정하지 말아 주세요."></textarea>
+              <div class="is-form-row"><span class="is-form-status" id="is-form-status" aria-live="polite"></span><button type="submit" class="btn btn-primary">평론 올리기</button></div>
+            </form>
+            <p class="is-login" id="is-login" hidden>평론은 로그인한 회원만 쓸 수 있습니다. <button type="button" class="link-btn" id="is-login-btn">로그인 · 회원가입</button></p>
+            <ul class="is-reviews" id="is-reviews"></ul>
+          </div>
+          <details class="bf-admin is-admin" id="is-admin" hidden>
+            <summary>관리자: 오늘의 이슈 바꾸기</summary>
+            <form id="is-admin-form">
+              <div class="bf-row">
+                <select name="field" aria-label="분야"><option value="politics">정치</option><option value="economy">경제</option><option value="defense">국방</option><option value="world">국제</option><option value="society">사회</option><option value="culture">문화</option></select>
+                <input name="source" maxlength="30" placeholder="언론사 (비우면 주소로 표시)">
+              </div>
+              <input name="title" maxlength="200" placeholder="기사 제목">
+              <input name="link" maxlength="500" placeholder="기사 주소 (https://…)">
+              <div class="bf-row is-admin-actions">
+                <button type="submit" class="btn btn-primary" data-action="set">이 기사로 바꾸기</button>
+                <button type="button" class="btn btn-outline" data-action="auto">자동 선별로 되돌리기</button>
+                <button type="button" class="btn btn-outline" data-action="hide">이 분야 숨기기</button>
+              </div>
+              <p class="bf-status" id="is-admin-status" aria-live="polite"></p>
+            </form>
+          </details>
+          <p class="source">출처: 매일경제 헤드라인·분야별 RSS · 최근 하루(정치 3일, 국방 7일) 동안 가장 많이 보도된 주제의 기사를 분야마다 1건 자동으로 고릅니다(가벼운 화제성 기사는 뺍니다). 기사 본문은 옮기지 않고 제목과 원문 링크만 소개합니다. 낮 12시에 그날 이슈가 고정됩니다. 평론은 회원 개인의 의견입니다.</p>
+        </section>
+
+        <section class="panel panel-pad benefit-panel" id="benefit-panel" aria-labelledby="bf-title">
+          <div class="panel-head"><h2 id="bf-title">우리 동네 신청 혜택</h2><span class="hint" id="bf-updated">신청해야 받을 수 있는 혜택 · 매일 자동 갱신</span></div>
+          <p class="bf-lead">읍·면사무소나 동 행정복지센터에 <b>직접 신청해야</b> 받을 수 있는 혜택을 마감이 가까운 순서로 모았습니다. 이장님 안내를 놓치셨다면 여기서 확인하세요.</p>
+          <div class="re-tabs" role="tablist" aria-label="지역">
+            <button type="button" class="chip" role="tab" data-bf-region="yangsan" aria-selected="false">양산시</button>
+            <button type="button" class="chip" role="tab" data-bf-region="gimhae" aria-selected="false">김해시</button>
+            <button type="button" class="chip" role="tab" data-bf-region="uiryeong" aria-selected="true">의령군</button>
+          </div>
+          <div class="bf-filters" id="bf-audiences" aria-label="대상"></div>
+          <div class="bf-tools">
+            <label class="bf-town"><input type="checkbox" id="bf-town" checked> 읍·면·동 신청만</label>
+            <input type="search" id="bf-q" placeholder="찾기: 직불금, 산림, 출산…" aria-label="혜택 찾기" maxlength="40">
+            <button type="button" class="btn btn-outline bf-share" id="bf-share">📤 카톡으로 알리기</button>
+          </div>
+          <p class="bf-count" id="bf-count" aria-live="polite"></p>
+          <ul class="bf-list" id="bf-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+          <button type="button" class="btn btn-outline bf-more" id="bf-more" hidden>더 보기</button>
+          <details class="bf-admin" id="bf-admin" hidden>
+            <summary>관리자: 고시·공고 안내 직접 추가 (예: 2027년 산림사업 신청)</summary>
+            <form id="bf-form">
+              <input name="name" required maxlength="80" placeholder="제목 (예: 2027년 조림·숲가꾸기 사업 신청)">
+              <div class="bf-row">
+                <select name="region" aria-label="지역"><option value="uiryeong">의령군</option><option value="gimhae">김해시</option><option value="yangsan">양산시</option><option value="all">세 지역 모두</option></select>
+                <input name="deadlineText" maxlength="80" placeholder="신청 기간 (예: 2026.11.02 ~ 2026.11.30)">
+              </div>
+              <input name="target" maxlength="160" placeholder="대상 (예: 관내 산주, 임업인)">
+              <input name="summary" maxlength="200" placeholder="내용 한 줄 요약">
+              <div class="bf-row">
+                <input name="reception" maxlength="60" placeholder="신청처 (기본: 읍·면·동 행정복지센터)">
+                <input name="phone" maxlength="60" placeholder="문의 전화">
+              </div>
+              <input name="url" maxlength="300" placeholder="공고 원문 링크 (https://…)">
+              <button type="submit" class="btn btn-primary">안내 추가</button>
+              <span class="bf-status" id="bf-status" role="status"></span>
+            </form>
+          </details>
+          <p class="source" id="bf-source">출처: 행정안전부 「대한민국 공공서비스(혜택) 정보」(정부24 보조금24) · 공공데이터포털. 정확한 조건과 기간은 '자세히'에서 꼭 확인하세요.</p>
+        </section>
+
+        <section class="panel panel-pad fm-panel" id="farm-panel" aria-labelledby="fm-title" hidden>
+          <div class="panel-head"><h2 id="fm-title">🌾 우리 동네 농사정보</h2><span class="hint" id="fm-updated">농산물 가격 · 이번 주 농사정보</span></div>
+          <div class="fm-block" id="fm-prices-block" hidden>
+            <div class="fm-head">
+              <h3>오늘의 농산물 가격 <small id="fm-date"></small></h3>
+              <div class="re-tabs" role="tablist" aria-label="가격 종류">
+                <button type="button" class="chip" role="tab" data-fm-kind="retail" aria-selected="true">소매(장보기)</button>
+                <button type="button" class="chip" role="tab" data-fm-kind="wholesale" aria-selected="false">도매(출하)</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table class="pn-table fm-table" id="fm-table"></table></div>
+          </div>
+          <div class="fm-block" id="fm-news-block" hidden>
+            <h3>이번 주 농사정보 <small>농촌진흥청</small></h3>
+            <ul class="fm-news" id="fm-news"></ul>
+          </div>
+          <p class="pn-empty" id="fm-empty" hidden></p>
+          <div class="pn-links">
+            <a class="btn btn-outline" href="https://www.kamis.or.kr" target="_blank" rel="noopener">농산물 가격 더 보기 (KAMIS) ↗</a>
+            <a class="btn btn-outline" href="https://www.nongsaro.go.kr" target="_blank" rel="noopener">농사로 농업기술 ↗</a>
+          </div>
+          <p class="source" id="fm-source">출처: 한국농수산식품유통공사 농산물유통정보(KAMIS) 전국 평균 가격 · 농촌진흥청 농사로 Open API. 가격은 조사일 기준이며 지역·품질에 따라 다릅니다.</p>
+        </section>
+
+        <section class="panel panel-pad pn-panel" id="pension-panel" aria-labelledby="pn-title" hidden>
+          <div class="panel-head"><h2 id="pn-title">우리 동네 국민연금</h2><span class="hint">국민연금공단 통계 · 매월 갱신</span></div>
+          <div class="re-tabs" role="tablist" aria-label="지역" id="pn-regions"></div>
+          <div id="pn-body" aria-live="polite"><div class="skeleton"></div></div>
+          <div class="pn-links">
+            <a class="btn btn-outline" href="https://www.nps.or.kr" target="_blank" rel="noopener">내 예상 연금 조회 (국민연금공단) ↗</a>
+          </div>
+          <p class="source">출처: 국민연금공단 수급현황·가입현황(공공데이터포털) · 지역·연령대 평균 통계이며, 개인별 연금액은 국민연금공단에서 본인 인증 후 확인하세요.</p>
+        </section>
+
         <section class="letter-band" aria-labelledby="letter-title">
           <div class="copy">
             <div class="eyebrow">스페이스 레터 · 매주 월요일 07:00</div>
@@ -164,7 +326,15 @@
         <section class="panel panel-pad" aria-labelledby="eco-title">
           <div class="panel-head"><h2 id="eco-title">오늘의 경제 지표</h2><span class="hint" id="eco-updated"></span></div>
           <div id="eco-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비 · 투자 권유가 아닌 참고 자료입니다.</p>
+          <div class="us-market" aria-labelledby="kr-title">
+            <h3 id="kr-title">국내 증시 <small>코스피 · 코스닥 · 환율 · 금리</small></h3>
+            <div class="kr-tape" id="kr-tape" aria-live="off"></div>
+          </div>
+          <div class="us-market" aria-labelledby="us-title">
+            <h3 id="us-title">미국 증시 <small>나스닥 · S&amp;P 500 · NYSE · 다우</small></h3>
+            <div class="tradingview-widget-container" id="us-ticker"><div class="tradingview-widget-container__widget"></div></div>
+          </div>
+          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비(국내 증시는 전 거래일 종가) · 미국 증시: TradingView 제공(나스닥 100·S&amp;P 500·다우는 지수를 따라가는 CFD 시세, NYSE 종합은 지연 시세) · 투자 권유가 아닌 참고 자료입니다.</p>
         </section>
 
         <div class="ad-slot panel" data-ad="side" hidden><span class="ad-label">광고</span></div>
@@ -173,6 +343,32 @@
           <div class="panel-head"><h2 id="house-title">아파트 주간 동향</h2><span class="hint" id="house-week"></span></div>
           <div id="house-body"><div class="skeleton"></div><div class="skeleton"></div></div>
           <p class="source">출처: 한국부동산원 부동산통계정보(R-ONE) · 가격지수 전주 대비 변동률</p>
+        </section>
+
+        <section class="panel panel-pad wx-panel" id="weather-panel" aria-labelledby="wx-title">
+          <div class="panel-head"><h2 id="wx-title">오늘의 날씨</h2><span class="hint" id="wx-updated">기상청 · 매시간 갱신</span></div>
+          <div class="wx-regions" id="wx-regions" role="tablist" aria-label="지역"></div>
+          <div class="wx-body" id="wx-body" aria-live="polite"><div class="skeleton"></div></div>
+          <p class="source">출처: 기상청 단기예보(공공데이터포털)</p>
+        </section>
+
+        <section class="panel panel-pad safety-box" aria-labelledby="safety-title">
+          <div class="panel-head"><h2 id="safety-title">안전 알림</h2><span class="hint">공식 기관 바로가기</span></div>
+          <ul class="safety-links">
+            <li><a href="https://www.safekorea.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">📢</span><span><strong>재난문자 조회</strong><small>국민안전24(국민재난안전포털) · 행정안전부</small></span><span class="go" aria-hidden="true">›</span></a></li>
+            <li><a href="https://www.safe182.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">🧒</span><span><strong>실종아동 찾기 · 실종경보</strong><small>안전Dream · 경찰청</small></span><span class="go" aria-hidden="true">›</span></a></li>
+          </ul>
+          <div class="safety-calls" aria-label="긴급 신고 전화">
+            <a href="tel:112"><strong>112</strong><span>범죄 신고</span></a>
+            <a href="tel:119"><strong>119</strong><span>화재·구조·구급</span></a>
+            <a href="tel:182"><strong>182</strong><span>실종 신고</span></a>
+          </div>
+          <details class="safety-howto">
+            <summary>내 휴대폰에서 재난문자 켜는 법</summary>
+            <p><strong>갤럭시(안드로이드)</strong>: 설정 → 안전 및 긴급 → 무선 긴급 알림 → 긴급 재난 문자·안전 안내 문자 켜기 <small>(기종에 따라 '메시지 → 설정 → 긴급 알림'에 있을 수 있습니다)</small></p>
+            <p><strong>아이폰</strong>: 설정 → 알림 → 맨 아래 '정부 경보'에서 긴급 재난 문자·안전 안내 문자 켜기</p>
+            <p class="note">안전안내문자, 긴급재난문자, 실종경보문자는 정부가 지역 내 휴대폰으로 직접 보내는 문자입니다. 위 설정을 켜 두면 따로 가입하지 않아도 자동으로 받습니다.</p>
+          </details>
         </section>
 
         <section class="panel panel-pad chat-preview" aria-labelledby="chat-mini-title">
@@ -185,6 +381,7 @@
           <h2 id="sub-title">스페이스 레터 구독</h2>
           <p>매주 월요일 아침, 경제·정책 브리핑을 무료로 받아 보세요. 확인 메일의 버튼을 눌러야 구독이 완료됩니다.</p>
           <a class="btn btn-primary" style="width:100%" href="#newsletter-section" id="sub-go">구독 신청하기</a>
+          <button type="button" class="link-btn letter-mark" data-letter-mark>이미 구독하셨나요? 이 기기에도 '구독완료'로 표시</button>
         </section>
       </aside>
     </div>
@@ -201,19 +398,19 @@
         </div>
       </div>
 
-      <section id="community-section" class="board-section surface" aria-labelledby="community-title"><div class="section-head"><div><div class="eyebrow">01 · OPEN COMMUNITY</div><h2 id="community-title">소통·나눔 광장</h2></div><span class="tag">자유로운 이야기</span></div><p class="intro">안부, 일상, 취미, 고민 상담 등 우리 곁의 이야기를 나누는 공간입니다. 실명 또는 닉네임으로 참여할 수 있으며, 서로 다른 생각에도 예의를 지키는 대화를 약속합니다.</p><div class="grid"><article class="card"><h3>안부와 일상</h3><p>오늘 있었던 일, 이웃에게 전하고 싶은 소식을 편하게 나눠보세요.</p></article><article class="card"><h3>취미와 정보</h3><p>함께 즐길 수 있는 활동과 생활에 도움이 되는 정보를 공유하세요.</p></article><article class="card"><h3>고민 상담</h3><p>혼자 고민하지 않도록 경험과 응원의 말을 건네는 공간입니다.</p></article></div>
-        <div class="post-composer"><h3>새 이야기 쓰기</h3><textarea id="communityInput" placeholder="안부, 일상, 취미, 고민을 자유롭게 적어주세요." aria-label="새 이야기 내용"></textarea><div class="post-controls"><span class="label">존중하는 대화</span><button class="submitPolicy" id="communitySubmit">이야기 등록</button></div><div id="communityPosts" class="post-list"></div></div></section>
+      <section id="community-section" class="board-section surface" aria-labelledby="community-title"><div class="section-head"><div><div class="eyebrow">01 · OPEN COMMUNITY</div><h2 id="community-title">소통·나눔 광장</h2></div><span class="tag">자유로운 이야기</span></div><p class="intro">안부, 일상, 취미, 고민 상담 등 우리 곁의 이야기를 나누는 공간입니다. 실명 또는 닉네임으로 참여할 수 있으며, 서로 다른 생각에도 예의를 지키는 대화를 약속합니다.</p><div class="grid"><article class="card"><h3>안부와 일상</h3><p>오늘 있었던 일, 이웃에게 전하고 싶은 소식을 편하게 나눠보세요.</p></article><article class="card"><h3>취미와 정보</h3><p>함께 즐길 수 있는 활동과 생활에 도움이 되는 정보를 공유하세요.</p></article><article class="card"><h3>고민 상담</h3><p>혼자 고민하지 않도록 경험과 응원의 말을 건네는 공간입니다.</p></article><article class="card"><h3>시·시적인 글</h3><p>마음에 머문 장면과 생각을 시로 적어 나눠 보세요. 줄바꿈 그대로 보여 드립니다.</p></article></div>
+        <div class="post-composer"><h3>새 이야기 쓰기</h3><select id="communityType" aria-label="글 종류" style="margin-bottom:8px"><option value="">이야기·일상</option><option value="시">시·시적인 글</option></select><input id="communityTitle" class="post-title-input" maxlength="120" placeholder="제목 (선택)" aria-label="글 제목"><textarea id="communityInput" placeholder="안부, 일상, 취미, 고민을 자유롭게 적어주세요." aria-label="새 이야기 내용"></textarea><div class="post-controls"><span class="label">존중하는 대화</span><button class="submitPolicy" id="communitySubmit">이야기 등록</button></div><div class="post-controls"><strong>종류별 보기</strong><select id="communityFilter" aria-label="소통·나눔 종류 필터"><option value="all">전체</option><option value="">이야기·일상</option><option value="시">시·시적인 글</option></select></div><div id="communityPosts" class="post-list"></div></div></section>
 
       <!-- 시민의 소리에는 광고를 넣지 않습니다. 행정고발·민원 관련 민감 콘텐츠 옆 광고는 애드센스 정책상 위험합니다. -->
-      <section id="voice-section" class="board-section" aria-labelledby="voice-title"><div class="surface"><div class="section-head"><div><div class="eyebrow">02 · CIVIC VOICE</div><h2 id="voice-title">시민의 소리</h2></div><span class="tag">목소리가 힘이 되는 곳</span></div><p class="intro">우리 동네와 행정 안에서 무언가 이상하다고 느낀 적이 있으신가요? 부당한 민원 처리, 석연치 않은 정책, 제 역할을 하지 않는 의정활동을 사실에 기반해 함께 이야기하는 공간입니다.</p><div class="grid"><article class="card"><h3>민원이 불편했어요</h3><p>담당 공무원의 불친절, 처리 지연, 불투명한 답변 등</p></article><article class="card"><h3>이 정책, 이상해요</h3><p>정책·조례·사업의 절차, 예산, 형평성에 대한 문제 제기</p></article><article class="card"><h3>우리 의원님, 이러셔도 될까요</h3><p>지방의회·의원의 이해충돌과 부적절한 의정활동</p></article></div><div class="post-composer"><h3>시민의 목소리 작성</h3><select id="voiceCategory" aria-label="시민의 소리 분류"><option>민원이 불편했어요</option><option>이 정책, 이상해요</option><option>우리 의원님, 이러셔도 될까요</option></select><textarea id="voiceInput" placeholder="언제, 어디서, 누가, 무엇을, 왜, 어떻게 겪었는지 사실에 기반해 작성해주세요." aria-label="시민의 소리 내용" style="margin-top:8px"></textarea><div class="post-controls"><span class="label">개인정보는 가려주세요</span><button class="submitPolicy" id="voiceSubmit">시민의 소리 등록</button></div><div id="voicePosts" class="post-list"></div></div></div><div class="notice" style="margin-top:16px;"><strong>게시판 이용 안내</strong><br>본 게시판은 자유로운 의견 개진과 공론화를 위한 공간이며 게시물은 작성자 개인의 견해입니다. 허위사실, 명예훼손, 모욕 게시물은 관련 법령에 따라 작성자 본인이 책임질 수 있고, 신고 접수 시 임시 비공개 처리될 수 있습니다. 본 게시판은 주민감사청구·주민조례청구 등 법정 절차를 대신하지 않습니다.</div><div class="guide surface" style="margin-top:16px;"><div><h3>글쓰기 전 다섯 가지 약속</h3><ol><li><strong>육하원칙으로 작성하기</strong> - 추측보다 사실을 먼저 적어주세요.</li><li><strong>증거가 있다면 함께 올리기</strong> - 타인의 개인정보는 꼭 가려주세요.</li><li><strong>본인 인증 후 작성 권장</strong> - 신뢰도 높은 목소리가 더 큰 힘을 가집니다.</li><li><strong>상대방에게 소명 기회 주기</strong> - 댓글을 통한 답변의 길을 열어둡니다.</li><li><strong>정식 청구는 공식 채널 이용하기</strong> - 이곳은 공론화의 전 단계입니다.</li></ol></div><div><h3>주민e직접 바로가기</h3><p>공론화 후 주민감사청구·주민조례청구를 진행하려면 행정안전부 공식 채널을 이용해주세요.</p><a class="external-link" href="https://jumin.mois.go.kr" target="_blank" rel="noopener">주민e직접 방문 ↗</a></div></div></section>
+      <section id="voice-section" class="board-section" aria-labelledby="voice-title"><div class="surface"><div class="section-head"><div><div class="eyebrow">02 · CIVIC VOICE</div><h2 id="voice-title">시민의 소리</h2></div><span class="tag">목소리가 힘이 되는 곳</span></div><p class="intro">우리 동네와 행정 안에서 무언가 이상하다고 느낀 적이 있으신가요? 부당한 민원 처리, 석연치 않은 정책, 제 역할을 하지 않는 의정활동을 사실에 기반해 함께 이야기하는 공간입니다.</p><div class="grid"><article class="card"><h3>민원이 불편했어요</h3><p>담당 공무원의 불친절, 처리 지연, 불투명한 답변 등</p></article><article class="card"><h3>우리 동네 고쳐 주세요</h3><p>가로등·보도·횡단보도·배수로 등 설치나 수리가 필요한 곳(사진 첨부 가능)</p></article><article class="card"><h3>이 정책, 이상해요</h3><p>정책·조례·사업의 절차, 예산, 형평성에 대한 문제 제기</p></article><article class="card"><h3>우리 의원님, 이러셔도 될까요</h3><p>지방의회·의원의 이해충돌과 부적절한 의정활동</p></article></div><ol class="civic-flow" aria-label="시민의 소리가 시청에 닿는 길"><li><button type="button" data-civic-step="1"><b>① 올리기</b> 사진과 함께 사실대로 적어요</button></li><li><button type="button" data-civic-step="2"><b>② 📮 공식 민원으로 보내기</b> 직접 접수하거나, 글 아래 「🏛️ 커뮤니티가 대신 전달」로 운영자에게 맡겨요</button></li><li><button type="button" data-civic-step="3"><b>③ 처리 경과 적기</b> 접수번호·답변을 남기면 이웃도 진행을 봐요</button></li></ol><div id="civic-step-panel"></div><div class="post-composer"><h3>시민의 목소리 작성</h3><select id="voiceCategory" aria-label="시민의 소리 분류"><option>민원이 불편했어요</option><option>우리 동네 고쳐 주세요</option><option>이 정책, 이상해요</option><option>우리 의원님, 이러셔도 될까요</option></select><input id="voiceTitle" class="post-title-input" maxlength="120" placeholder="제목 (선택)" aria-label="시민의 소리 제목" style="margin-top:8px"><textarea id="voiceInput" placeholder="언제, 어디서, 누가, 무엇을, 왜, 어떻게 겪었는지 사실에 기반해 작성해주세요." aria-label="시민의 소리 내용" style="margin-top:8px"></textarea><div class="post-controls"><span class="label">개인정보는 가려주세요</span><button class="submitPolicy" id="voiceSubmit">시민의 소리 등록</button></div><div id="voicePosts" class="post-list"></div></div></div><div class="notice" style="margin-top:16px;"><strong>게시판 이용 안내</strong><br>본 게시판은 자유로운 의견 개진과 공론화를 위한 공간이며 게시물은 작성자 개인의 견해입니다. 허위사실, 명예훼손, 모욕 게시물은 관련 법령에 따라 작성자 본인이 책임질 수 있고, 신고 접수 시 임시 비공개 처리될 수 있습니다. 본 게시판은 주민감사청구·주민조례청구 등 법정 절차를 대신하지 않습니다.</div><div class="guide surface" style="margin-top:16px;"><div><h3>글쓰기 전 다섯 가지 약속</h3><ol><li><strong>육하원칙으로 작성하기</strong> - 추측보다 사실을 먼저 적어주세요.</li><li><strong>증거가 있다면 함께 올리기</strong> - 타인의 개인정보는 꼭 가려주세요.</li><li><strong>본인 인증 후 작성 권장</strong> - 신뢰도 높은 목소리가 더 큰 힘을 가집니다.</li><li><strong>상대방에게 소명 기회 주기</strong> - 댓글을 통한 답변의 길을 열어둡니다.</li><li><strong>정식 청구는 공식 채널 이용하기</strong> - 이곳은 공론화의 전 단계입니다.</li></ol></div><div><h3>주민e직접 바로가기</h3><p>공론화 후 주민감사청구·주민조례청구를 진행하려면 행정안전부 공식 채널을 이용해주세요.</p><a class="external-link" href="https://jumin.mois.go.kr" target="_blank" rel="noopener">주민e직접 방문 ↗</a></div></div></section>
 
       <section id="policy-section" class="board-section surface" aria-labelledby="policy-title"><div class="section-head"><div><div class="eyebrow">03 · POLICY FORUM</div><h2 id="policy-title">정책비평·제안의 장</h2></div><div class="sort-bar"><button class="sort-btn active" data-sort="latest">최신순</button><button class="sort-btn" data-sort="likes">추천순</button></div></div><p class="intro">정부·지자체 정책을 비평하고 더 나은 대안을 제시해 주세요. 부처별로 의견을 남기고, 공감하는 제안에는 추천을 눌러 주세요. 공감이 쌓인 제안은 첫 화면과 스페이스 레터에서 소개합니다.</p>
         <div id="categoryContainer"></div><div class="policy-actions"><span>공감이 많은 의견부터 함께 살펴보세요.</span><a href="#policy-title">정책 제안 기준 보기 ↑</a></div></section>
 
-      <section id="research-section" class="board-section surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">04 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2></div><span class="tag">지식과 상상 · 회원 전용</span></div><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다. 가입한 회원만 읽고 쓸 수 있습니다.</p>
-        <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select><span class="label">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" placeholder="글 제목을 입력하세요" aria-label="글 제목" style="margin-top:8px"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
+      <section id="research-section" class="board-section surface" aria-labelledby="research-title"><div class="section-head"><div><div class="eyebrow">04 · KNOWLEDGE &amp; STORIES</div><h2 id="research-title">학술·논문·소고·이야기</h2></div><span class="tag">지식과 상상</span></div><p class="intro">칼럼, 서평, 소고, 짧은 이야기, 학술지와 논문, 대법원 전원합의체 판결과 그 평론을 자유롭게 올리고 유형별로 모아 읽을 수 있는 공간입니다. 누구나 읽을 수 있고, 글은 가입한 회원이 씁니다.</p>
+        <div class="post-composer"><h3>새 글 올리기</h3><div class="post-controls"><select id="researchType" aria-label="글 유형"><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option><option>대법원 전원합의체 판결</option><option>판결 평론</option></select><span class="label" id="researchHint">출처와 인용을 존중해 주세요</span></div><input id="researchTitle" class="post-title-input" maxlength="120" placeholder="제목 (필수)" aria-label="글 제목" style="margin-top:8px"><textarea id="researchInput" placeholder="연구의 질문, 생각의 단상, 이야기의 첫 문장을 자유롭게 적어주세요." aria-label="글 내용"></textarea><div class="post-controls"><span class="label">서로의 창작과 연구를 존중하는 공간</span><button class="submitPolicy" id="researchSubmit">글 등록</button></div><div class="post-controls"><strong>콘텐츠 유형별 보기</strong><select id="researchFilter" aria-label="콘텐츠 유형 필터"><option value="all">전체</option><option>칼럼</option><option>서평</option><option>소고</option><option>짧은 이야기</option><option>학술</option><option>논문</option><option>학술지</option><option>대법원 전원합의체 판결</option><option>판결 평론</option></select></div><div id="researchPosts" class="post-list"></div></div></section>
 
-      <section id="chat-section" class="board-section surface" aria-labelledby="chat-title"><div class="section-head"><div><div class="eyebrow">LIVE ROOM</div><h2 id="chat-title">실시간 채팅</h2></div><span class="tag">지금 이야기하기</span></div><p class="intro">접속한 사람들과 바로 이야기를 나누는 공개 광장입니다. 대화는 누구나 볼 수 있고, 메시지는 로그인한 회원만 보낼 수 있습니다. 광장 대화는 서버에 기록으로 보관하지 않습니다.</p><p class="notice" style="margin:0 0 12px"><strong>카톡처럼 대화방을 만들고 싶다면?</strong> 회원끼리 단체 대화방과 1:1 대화를 나누는 <a href="/chat"><strong>스페이스 톡</strong></a>을 이용해 보세요. 대화가 저장되고 새 메시지 알림도 받을 수 있습니다.</p><div id="chatBox" class="chat-box" aria-live="polite"></div><div class="chat-input"><textarea id="chatInput" placeholder="메시지를 입력하세요. 여러 줄로 작성할 수 있습니다." aria-label="채팅 메시지" aria-describedby="chatHelp"></textarea><button id="sendBtn">전송</button></div><p id="chatHelp" class="label">Enter 줄바꿈 · Ctrl+Enter 전송</p></section>
+      <section id="chat-section" class="board-section surface" aria-labelledby="chat-title"><div class="section-head"><div><div class="eyebrow">LIVE ROOM</div><h2 id="chat-title">실시간 채팅</h2></div><span class="tag">지금 이야기하기</span></div><p class="intro">접속한 사람들과 바로 이야기를 나누는 공개 광장입니다. 대화는 누구나 볼 수 있고, 메시지는 로그인한 회원만 보낼 수 있습니다. 광장 대화는 올린 날부터 45일 동안 보관되어 나중에 들어온 사람도 볼 수 있고, 그 뒤 자동으로 삭제됩니다. 내가 보낸 메시지는 언제든 삭제할 수 있습니다.</p><p class="notice" style="margin:0 0 12px"><strong>카톡처럼 대화방을 만들고 싶다면?</strong> 회원끼리 단체 대화방과 1:1 대화를 나누는 <a href="/chat"><strong>스페이스 톡</strong></a>을 이용해 보세요. 대화가 저장되고 새 메시지 알림도 받을 수 있습니다.</p><div id="chatPresence" class="chat-presence" aria-live="polite"></div><div id="chatBox" class="chat-box" aria-live="polite"></div><div class="chat-input"><textarea id="chatInput" placeholder="메시지를 입력하세요. 여러 줄로 작성할 수 있습니다." aria-label="채팅 메시지" aria-describedby="chatHelp"></textarea><button id="sendBtn">전송</button></div><p id="chatHelp" class="label">Enter 줄바꿈 · Ctrl+Enter 전송</p></section>
     </section>
 
     <div class="shared-sections">
@@ -232,7 +429,8 @@
 
       <section id="newsletter-section" class="surface" aria-labelledby="newsletter-title">
         <div class="eyebrow">SPACE LETTER</div><h2 id="newsletter-title" style="margin:4px 0 0;font-size:clamp(22px,3vw,30px);color:var(--ink)">스페이스 레터 구독</h2>
-        <p class="intro">매주 월요일 아침 7시, 한국은행·한국부동산원 공식 통계로 정리한 경제 지표와 이번 주 정부 정책, 커뮤니티의 목소리를 이메일로 보내드립니다. 신청 후 받은 확인 메일의 <strong>구독 확인하기</strong> 버튼을 눌러야 구독이 완료됩니다.</p>
+        <p class="intro" id="letter-intro">매주 월요일 아침 7시, 한국은행·한국부동산원 공식 통계로 정리한 경제 지표와 이번 주 정부 정책, 커뮤니티의 목소리를 이메일로 보내드립니다. 신청 후 받은 확인 메일의 <strong>구독 확인하기</strong> 버튼을 눌러야 구독이 완료됩니다.</p>
+        <p class="letter-subscribed" id="letter-subscribed" hidden>✓ 스페이스 레터 구독을 완료했습니다. 매주 월요일 아침 7시에 메일로 받아 보세요.</p>
         <form id="newsletter-form" class="reader-form">
           <label for="newsletter-email">이메일 주소</label><input id="newsletter-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
           <label class="reader-consent"><input id="newsletter-consent" type="checkbox" required><span>뉴스레터 신청 관리 및 발송을 위한 이메일 수집·이용에 동의합니다. 동의는 선택이며, 미동의 시 신청할 수 없습니다. 구독 종료 또는 철회 시 즉시 삭제합니다. 발송 통계를 위해 메일 열람·링크 클릭 여부를 기록합니다.</span></label>
@@ -240,6 +438,7 @@
           <button type="submit" class="submitPolicy">구독하기</button>
         </form>
         <p id="newsletter-status" class="form-status" role="status"></p>
+        <button type="button" class="link-btn letter-mark" data-letter-mark>이미 다른 기기(PC 등)에서 구독을 마치셨나요? 이 기기에도 '구독완료'로 표시</button>
         <details class="newsletter-unsubscribe"><summary>구독 해지(동의 철회)</summary>
         <form id="unsubscribe-form" class="reader-form">
           <label for="unsubscribe-email">구독 신청한 이메일 주소</label><input id="unsubscribe-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="이메일 주소 입력">
@@ -251,7 +450,7 @@
       <section id="guide-section" class="surface" aria-labelledby="guide-title">
         <div class="eyebrow">COMMUNITY POLICY</div><h2 id="guide-title" style="margin:4px 0 14px;font-size:clamp(22px,3vw,30px);color:var(--ink)">회원과 운영 안내</h2>
         <div class="policy-columns">
-          <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>가입 후 이메일 인증 메일을 보내드립니다. 비밀번호를 잊으면 재설정 메일로 바꿀 수 있습니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>학술·논문·소고·이야기는 회원만 읽고 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
+          <div><h3>회원가입과 계정</h3><ul><li>이메일·닉네임·비밀번호로 회원가입</li><li>이용 원칙·개인정보 수집·이용 동의</li><li>로그인 상태 유지 선택 시 30일 유지</li><li>가입 후 이메일 인증 메일을 보내드립니다. 비밀번호를 잊으면 재설정 메일로 바꿀 수 있습니다.</li><li>게시판·댓글·채팅 글쓰기는 로그인(이메일 인증)한 회원만 할 수 있습니다.</li><li>칼럼·학술은 누구나 읽고, 회원만 쓸 수 있습니다.</li><li>휴대전화 본인인증은 제공하지 않습니다.</li></ul></div>
           <div><h3>개인정보 처리 원칙</h3><ul><li>이메일, 닉네임, 비밀번호 해시와 로그인 세션을 저장합니다.</li><li>비밀번호 원문은 저장하지 않습니다.</li><li>로그아웃하면 현재 세션을 폐기합니다.</li><li>스페이스 톡 대화는 그 방 참여자만 볼 수 있고, 메시지·사진은 90일 후 자동 삭제됩니다.</li><li>로그인 후 <strong>회원 탈퇴</strong> 버튼으로 계정과 개인정보를 즉시 삭제할 수 있습니다.</li><li>사이트에는 Google 애드센스 광고가 표시될 수 있으며, 광고 쿠키에 관한 내용은 개인정보처리방침에 안내합니다.</li><li>문의: <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a> · <a href="/about">사이트 소개</a> · <a href="/terms">이용약관</a> · <a href="/privacy">개인정보처리방침</a></li></ul></div>
           <div><h3>신고와 제재 · 운영 원칙</h3><ul><li>작성한 글은 글 아래 <strong>수정</strong> 버튼으로 고칠 수 있습니다(수정됨 표시). 삭제는 작성자가 직접 할 수 없으며, 부적절한 글은 신고를 통해 운영자가 처리합니다.</li><li>회원 3명 이상이 신고한 글은 운영자 검토 전까지 자동으로 숨김(임시조치) 처리됩니다.</li><li>운영자는 검토 후 글을 삭제하거나 다시 공개합니다. 24~48시간 내 1차 검토를 목표로 합니다.</li><li>1회 경고, 2회 7일 정지, 3회 30일 정지, 중대 위반은 영구 정지 및 관계기관 통보</li><li>본인 글의 삭제가 꼭 필요하면 <a href="mailto:dragon600120@gmail.com">dragon600120@gmail.com</a>으로 요청해 주세요.</li></ul></div>
         </div>
@@ -271,7 +470,7 @@
     <form id="signup-form" class="signup-form">
       <div class="signup-field"><label for="signup-email">이메일</label><input id="signup-email" type="email" required maxlength="254" autocomplete="email" placeholder="reader@example.com"></div>
       <div class="signup-field"><label for="signup-nickname">닉네임</label><input id="signup-nickname" type="text" required minlength="2" maxlength="25" autocomplete="off" placeholder="사용할 닉네임" aria-describedby="signup-nickname-help"><small id="signup-nickname-help">앞뒤 공백을 제외한 2~25자</small></div>
-      <div class="signup-field"><label for="signup-password">비밀번호</label><input id="signup-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10자 이상 입력" aria-describedby="signup-password-help"><small id="signup-password-help">10~128자 · 다른 사이트와 다른 비밀번호를 사용해 주세요.</small></div>
+      <div class="signup-field"><label for="signup-password">비밀번호</label><input id="signup-password" type="password" required minlength="5" maxlength="128" autocomplete="new-password" placeholder="5자 이상 입력" aria-describedby="signup-password-help"><small id="signup-password-help">5~128자 · 다른 사이트와 다른 비밀번호를 사용해 주세요.</small></div>
       <div class="signup-field"><label for="signup-password-confirm">비밀번호 확인</label><input id="signup-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="비밀번호를 다시 입력해 주세요"></div>
       <fieldset class="signup-consents">
         <legend>가입 동의 항목</legend>
@@ -291,7 +490,7 @@
     <p class="signup-intro">이메일과 비밀번호로 스페이스에 로그인하세요.</p>
     <form id="login-form" class="signup-form">
       <div class="signup-field"><label for="login-email">이메일</label><input id="login-email" type="email" required maxlength="254" autocomplete="username" placeholder="reader@example.com"></div>
-      <div class="signup-field"><label for="login-password">비밀번호</label><input id="login-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <div class="signup-field"><label for="login-password">비밀번호</label><input id="login-password" type="password" required minlength="5" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <label class="auth-remember"><input id="login-remember" type="checkbox"><span>로그인 상태 유지 (30일)</span></label>
       <p class="signup-footnote">공용 기기에서는 선택하지 마세요. 미선택 시 브라우저 세션 쿠키를 사용하며 최대 12시간 후 만료됩니다.</p>
       <p id="login-status" class="signup-status" role="status" aria-live="polite"></p>
@@ -319,7 +518,7 @@
     <div class="signup-heading"><div><span class="signup-kicker">NEW PASSWORD</span><h2 id="reset-title">새 비밀번호 설정</h2></div><button id="reset-close" class="signup-close" type="button" aria-label="새 비밀번호 창 닫기">×</button></div>
     <p class="signup-notice">변경 후 모든 기기의 기존 로그인이 해제됩니다. 새 비밀번호로 다시 로그인해 주세요.</p>
     <form id="reset-form" class="signup-form">
-      <div class="signup-field"><label for="reset-password">새 비밀번호</label><input id="reset-password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="10~128자 입력"></div>
+      <div class="signup-field"><label for="reset-password">새 비밀번호</label><input id="reset-password" type="password" required minlength="5" maxlength="128" autocomplete="new-password" placeholder="5~128자 입력"></div>
       <div class="signup-field"><label for="reset-password-confirm">새 비밀번호 확인</label><input id="reset-password-confirm" type="password" required maxlength="128" autocomplete="new-password" placeholder="새 비밀번호 다시 입력"></div>
       <p id="reset-status" class="signup-status" role="status"></p>
       <button class="signup-submit" type="submit" disabled>비밀번호 변경</button>
@@ -331,7 +530,7 @@
     <div class="signup-heading"><div><span class="signup-kicker">DELETE ACCOUNT</span><h2 id="delete-title">회원 탈퇴</h2></div><button id="delete-close" class="signup-close" type="button" aria-label="회원 탈퇴 창 닫기">×</button></div>
     <p class="signup-notice">탈퇴하면 이메일·닉네임·비밀번호 해시와 모든 로그인 세션이 즉시 삭제되며 되돌릴 수 없습니다. 이미 공개된 댓글은 남으므로, 삭제가 필요하면 운영자에게 요청해 주세요.</p>
     <form id="delete-form" class="signup-form">
-      <div class="signup-field"><label for="delete-password">현재 비밀번호</label><input id="delete-password" type="password" required minlength="10" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
+      <div class="signup-field"><label for="delete-password">현재 비밀번호</label><input id="delete-password" type="password" required minlength="5" maxlength="128" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <label class="auth-remember"><input id="delete-confirm" type="checkbox" required><span>계정과 개인정보가 즉시 삭제되는 것을 확인했습니다.</span></label>
       <p id="delete-status" class="signup-status" role="status"></p>
       <button class="signup-submit" type="submit" disabled>탈퇴하기</button>
@@ -352,7 +551,7 @@
         <a href="/terms">이용약관</a>
         <a href="/privacy"><strong>개인정보처리방침</strong></a>
         <a href="#guide-section">운영 원칙</a>
-        <a href="#newsletter-section">스페이스 레터 구독</a>
+        <a href="#newsletter-section" data-letter-cta>스페이스 레터 구독</a>
         <a href="/letter">지난 레터 보기</a>
       </nav>
     </div>
@@ -361,7 +560,8 @@
   <script defer src="/boards.js"></script>
   <script defer src="/reader-community.js"></script>
   <script defer src="/portal.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <script defer src="/kakao-share.js"></script>
+<script src="/socket.io/socket.io.js"></script>
   <script>
     const boardSections = ["community-section", "voice-section", "policy-section", "research-section", "chat-section"];
     const sharedSections = ["reader-section", "newsletter-section", "guide-section", "boards"];
@@ -396,5 +596,6 @@
     showLinkedSection(Boolean(window.location.hash));
 const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});
   </script>
+  <a class="talk-fab" href="/chat" aria-label="스페이스 톡 열기"><span aria-hidden="true">💬</span><span>스페이스 톡</span></a>
 </body>
 </html>
