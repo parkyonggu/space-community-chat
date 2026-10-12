@@ -70,3 +70,21 @@ test('JSON-shaped gateway errors are reported, not treated as empty data', async
   const result = await call(api, '/api/portal/pension');
   assert.match(result.body.problems[0], /등록되지 않은 서비스키/);
 });
+
+test('수급현황이 JSON으로 시간초과(05)면 XML로 다시 받아 읽는다', async () => {
+  const { createPension } = require('./pension.js');
+  const urls = [];
+  const pension = createPension({ key: 'k', fetchImpl: async url => {
+    urls.push(url);
+    if (url.includes('Sbscrb')) return { status: 403, ok: false, text: async () => '<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg><returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>' };
+    if (url.includes('dataType=JSON')) return { status: 200, ok: true, text: async () => '{"response":{"header":{"resultCode":"05","resultMsg":"SERVICETIMEOUT_ERROR"}}}' };
+    return { status: 200, ok: true, text: async () => '<response><header><resultCode>00</resultCode></header><body><items><item><totPrsnCnt>1,200</totPrsnCnt><avgFnlPrvsAmt>650000</avgFnlPrvsAmt></item></items></body></response>' };
+  } });
+  const result = await pension.load('gimhae');
+  assert.equal(result.recipients.length, 3);
+  assert.equal(result.recipients[0].count, 1200);
+  assert.equal(result.recipients[0].monthly, 650000);
+  assert.equal(result.subscribers.length, 0);
+  // 가입현황 인증키 오류는 형식을 바꿔 다시 시도하지 않는다.
+  assert.equal(urls.filter(url => url.includes('Sbscrb')).length, 1);
+});

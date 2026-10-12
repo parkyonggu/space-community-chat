@@ -20,22 +20,29 @@ const num = value => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-async function call(fetchImpl, key, url, params) {
-  const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
-  const query = Object.entries({ ...params, pageNo: '1', numOfRows: '10', dataType: 'JSON' })
-    .filter(([, value]) => value !== undefined && value !== '').map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
-  const response = await fetchImpl(`${url}?serviceKey=${serviceKey}&${query}`, { headers: { Accept: 'application/json' } });
-  const text = await response.text();
-  let data;
-  try { data = JSON.parse(text); } catch {
-    const auth = /<returnAuthMsg>([^<]*)<\/returnAuthMsg>/.exec(text) || /<resultMsg>([^<]*)<\/resultMsg>/.exec(text);
-    throw new Error(auth ? auth[1] : `HTTP ${response.status} ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)}`);
-  }
+// XML 응답 읽기: <item>…</item> 안의 <태그>값</태그>를 객체로 바꾼다.
+const decode = text => String(text || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').trim();
+const tag = (text, name) => { const found = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(text); return found ? decode(found[1]) : undefined; };
+function parseXml(text, status) {
+  const auth = tag(text, 'returnAuthMsg') || tag(text, 'errMsg');
+  if (/<OpenAPI_ServiceResponse>/.test(text)) throw new Error(`${auth || '응답 오류'}${tag(text, 'returnReasonCode') ? ` (${tag(text, 'returnReasonCode')})` : ''}`);
+  const code = tag(text, 'resultCode');
+  if (code === undefined) throw new Error(`HTTP ${status} ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)}`);
+  if (code === '03') return [];
+  if (code && !/^0+$/.test(code)) throw new Error(`${tag(text, 'resultMsg') || '응답 오류'} (${code})`);
+  return [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, body]) => {
+    const item = {};
+    for (const [, name, value] of body.matchAll(/<([A-Za-z][\w]*)>([\s\S]*?)<\/\1>/g)) item[name] = decode(value);
+    return item;
+  });
+}
+function parseJson(data, status, ok) {
   // 인증 오류는 JSON으로도 OpenAPI_ServiceResponse 모양으로 온다.
   const gateway = data.OpenAPI_ServiceResponse?.cmmMsgHeader;
-  if (gateway) throw new Error(gateway.returnAuthMsg || gateway.errMsg || `HTTP ${response.status}`);
+  if (gateway) throw new Error(`${gateway.returnAuthMsg || gateway.errMsg || `HTTP ${status}`}${gateway.returnReasonCode ? ` (${gateway.returnReasonCode})` : ''}`);
   const root = data.response || data;
-  if (!root.header && !response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!root.header && !ok) throw new Error(`HTTP ${status}`);
   const code = String(root.header?.resultCode ?? '');
   if (code === '03') return [];
   if (code && !/^0+$/.test(code)) throw new Error(`${root.header?.resultMsg || '응답 오류'} (${code})`);
@@ -43,14 +50,54 @@ async function call(fetchImpl, key, url, params) {
   return Array.isArray(items) ? items : items ? [items] : [];
 }
 
-// 점검용: 응답 머리말(결과 코드)과 본문을 그대로 돌려준다.
-async function callRaw(fetchImpl, key, url, params) {
+// format: 'JSON'(dataType=JSON) | 'XML'(dataType 생략 = 기본 XML). scheme: 'https' | 'http'
+function buildUrl(key, url, params, { format = 'JSON', scheme = 'https' } = {}) {
   const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
-  const query = Object.entries({ ...params, pageNo: '1', numOfRows: '10', dataType: 'JSON' })
-    .map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
-  const response = await fetchImpl(`${url}?serviceKey=${serviceKey}&${query}`, { headers: { Accept: 'application/json' } });
+  const extra = format === 'JSON' ? { dataType: 'JSON' } : format === 'xml' ? { dataType: 'XML' } : {};
+  const query = Object.entries({ ...params, pageNo: '1', numOfRows: '10', ...extra })
+    .filter(([, value]) => value !== undefined && value !== '').map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
+  return `${scheme === 'http' ? url.replace(/^https:/, 'http:') : url}?serviceKey=${serviceKey}&${query}`;
+}
+async function callOnce(fetchImpl, key, url, params, mode) {
+  const response = await fetchImpl(buildUrl(key, url, params, mode), { headers: { Accept: mode.format === 'JSON' ? 'application/json' : 'application/xml' } });
   const text = await response.text();
-  try { return { status: response.status, data: JSON.parse(text) }; } catch { return { status: response.status, text: text.slice(0, 400) }; }
+  if (/^\s*[{[]/.test(text)) return parseJson(JSON.parse(text), response.status, response.ok);
+  return parseXml(text, response.status);
+}
+
+// 공단 쪽 시험은 기본(XML)으로 하므로, JSON이 시간초과(05)·실패하면 XML → http 순으로 다시 시도하고 되는 방식을 기억한다.
+const MODES = [{ format: 'JSON', scheme: 'https' }, { format: 'XML', scheme: 'https' }, { format: 'XML', scheme: 'http' }];
+const workingMode = new Map();
+const failedAt = new Map(); // 같은 형식이 막 실패했으면 잠시(5분) 건너뛰어 요청 수를 아낀다.
+const FAIL_SKIP = 5 * 60 * 1000;
+async function call(fetchImpl, key, url, params) {
+  const base = url.split('/').slice(0, -1).join('/');
+  const ordered = workingMode.has(base) ? [workingMode.get(base), ...MODES.filter(mode => mode !== workingMode.get(base))] : MODES;
+  const fresh = ordered.filter(mode => !(Date.now() - (failedAt.get(`${base}|${mode.format}|${mode.scheme}`) || 0) < FAIL_SKIP));
+  const modes = fresh.length ? fresh : [ordered[0]];
+  let lastError;
+  for (const mode of modes) {
+    try {
+      const items = await callOnce(fetchImpl, key, url, params, mode);
+      workingMode.set(base, mode);
+      failedAt.delete(`${base}|${mode.format}|${mode.scheme}`);
+      return items;
+    } catch (error) {
+      lastError = error;
+      // 인증키 문제는 형식을 바꿔도 같으므로 바로 알린다.
+      if (/SERVICE_KEY|등록되지 않은|\((20|30|31)\)/.test(error.message)) throw error;
+      failedAt.set(`${base}|${mode.format}|${mode.scheme}`, Date.now());
+    }
+  }
+  throw lastError;
+}
+
+// 점검용: 응답 머리말(결과 코드)과 본문을 그대로 돌려준다.
+async function callRaw(fetchImpl, key, url, params, mode) {
+  const response = await fetchImpl(buildUrl(key, url, params, mode), { headers: { Accept: mode.format === 'JSON' ? 'application/json' : 'application/xml' } });
+  const text = await response.text();
+  const used = { format: mode.format, scheme: mode.scheme };
+  try { return { status: response.status, used, data: JSON.parse(text) }; } catch { return { status: response.status, used, text: text.slice(0, 1500) }; }
 }
 
 const RAW_PARAMS = ['ldongAddrMgplDgCd', 'ldongAddrMgplSgguCd', 'ldongAddrMgplSgguEmdCd', 'crtrAge', 'jnngpAge', 'sexDvcd', 'payClssCd', 'jnngBrkdJnngpClssCd'];
@@ -108,15 +155,19 @@ function createPension({ key = '', fetchImpl = fetch } = {}) {
   async function raw(params) {
     const op = params.get('op');
     const operation = { recipt: `${RECIPT}/getReciptSttusInfoSearchV2`, reciptAge: `${RECIPT}/getReciptAgeInfoSearchV2`,
+      reciptMax: `${RECIPT}/getReciptMaxValueInfoSearchV2`,
       sbscrb: `${SBSCRB}/getSbscrbSttusInfoSearchV2`, sbscrbAge: `${SBSCRB}/getSbscrbAgeInfoSearchV2` }[op] || `${RECIPT}/getReciptSttusInfoSearchV2`;
     const query = {};
     for (const name of RAW_PARAMS) {
       const value = params.get(name);
       if (value !== null && /^[0-9A-Za-z]{0,10}$/.test(value)) query[name] = value;
     }
-    return callRaw(fetchImpl, key, operation, query);
+    // dataType=JSON(기본) · XML(dataType 생략, 공단 기본값) · XMLPARAM(dataType=XML을 명시) / scheme=https(기본)·http
+    const format = { XML: 'XML', XMLPARAM: 'xml' }[String(params.get('dataType') || '').toUpperCase()] || 'JSON';
+    const scheme = params.get('scheme') === 'http' ? 'http' : 'https';
+    return callRaw(fetchImpl, key, operation, query, { format, scheme });
   }
   return { load, raw, regions: REGIONS };
 }
 
-module.exports = { createPension, REGIONS };
+module.exports = { createPension, REGIONS, parseXml, buildUrl };
