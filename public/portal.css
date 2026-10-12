@@ -786,3 +786,5 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .fm-news a:hover { text-decoration:underline; }
 .fm-news .fm-date { flex:none; color:var(--muted); font-size:12.5px; }
 .table-wrap { overflow-x:auto; }
+
+.fm-table .fm-kind{color:var(--muted,#6b7280);font-size:.82em;font-weight:400}
