@@ -11,6 +11,8 @@ const DEFAULT_SBSCRB = 'https://apis.data.go.kr/B552015/NpsSbscrbInfoProvdServic
 function serviceBase(value, fallback) {
   const text = String(value || '').trim().split('?')[0].replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s/]+\/\S+$/.test(text)) return fallback;
+  // 공공데이터포털 화면 주소(www.data.go.kr/…do)는 API 주소가 아니므로 쓰지 않는다.
+  if (/^https?:\/\/(www\.)?data\.go\.kr\//i.test(text) || /\.do(\/|$)/i.test(text)) return fallback;
   return text.replace(/\/(get[A-Za-z0-9]+)$/, '');
 }
 

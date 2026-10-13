@@ -143,6 +143,7 @@ function arrange(items, now) {
 // 정부24 혜택 API 주소: 운영자가 공공데이터포털에서 확인한 주소를 넣을 수 있다(물음표 뒤 값은 버린다).
 function benefitBase(value) {
   const text = String(value || '').trim().split('?')[0].replace(/\/+$/, '');
+  if (/^https?:\/\/(www\.)?data\.go\.kr\//i.test(text) || /\.do(\/|$)/i.test(text)) return BASE; // 포털 화면 주소는 API가 아님
   return /^https?:\/\/[^\s/]+\/\S+$/.test(text) ? text : BASE;
 }
 
@@ -166,7 +167,16 @@ function createLocalBenefits({ key = '', fetchImpl = fetch, now = Date.now, url 
       item => String(item.서비스분야 || '').includes('농림') && isCentral(item), base);
     return items.map(item => compact(item, now())).filter(item => item.townOffice);
   }
-  return { region, province, national, endpoint: base };
+  // 점검용: 첫 쪽 원자료를 그대로(앞부분만) 보여 준다. 인증키는 응답에 넣지 않는다.
+  async function raw() {
+    if (!key) return { error: '인증키가 없습니다.' };
+    const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
+    const decoded = (() => { try { return decodeURIComponent(key); } catch { return key; } })();
+    const response = await fetchImpl(`${base}?page=1&perPage=3&pageNo=1&numOfRows=3&returnType=JSON&serviceKey=${serviceKey}`,
+      { headers: { Accept: 'application/json', Authorization: `Infuser ${decoded}` } });
+    return { status: response.status, endpoint: base, text: (await response.text()).slice(0, 4000) };
+  }
+  return { region, province, national, raw, endpoint: base };
 }
 
 // 관리자가 직접 넣는 안내(고시·공고 등)를 검사·정리한다.

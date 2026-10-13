@@ -167,6 +167,11 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   async function handleBenefits(request, send, pathname) {
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`benefits:${ip}`, 120, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    if (pathname === '/api/portal/benefits/raw') {
+      if (rateLimit && !rateLimit(`benefits-raw:${ip}`, 10, 60000, now())) { send(429, { error: '요청이 많습니다.' }); return; }
+      try { send(200, await benefits.raw()); } catch (error) { send(502, { error: error.message }); }
+      return;
+    }
     if (pathname === '/api/portal/benefits/manual') {
       if (request.method !== 'POST') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
       const auth = authenticate ? await authenticate(request, { csrf: true }) : { error: { status: 403, message: '관리자만 쓸 수 있습니다.' } };
@@ -382,7 +387,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=60' : 'no-store', 'X-Content-Type-Options': 'nosniff' });
       response.end(payload);
     };
-    if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual') { await handleBenefits(request, send, pathname); return; }
+    if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual' || pathname === '/api/portal/benefits/raw') { await handleBenefits(request, send, pathname); return; }
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
     if (pathname === '/api/portal/pension' || pathname === '/api/portal/pension/raw') { await handlePension(request, send, pathname); return; }
