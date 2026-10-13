@@ -1,7 +1,7 @@
 ﻿# 스페이스 커뮤니티 · 국민연금 통계 올리기
 # 국민연금공단 API는 해외(클라우드) 서버의 요청을 받지 않으므로, 이 PC(국내)가 자료를 받아 사이트에 올립니다.
 #
-#  처음 한 번:   powershell -ExecutionPolicy Bypass -File pension-upload.ps1 -Setup
+#  처음 한 번:   powershell -ExecutionPolicy Bypass -File pension-upload.ps1 -Setup   (메모장이 열리면 두 인증키를 붙여 넣고 저장 → 한 번 더 실행)
 #  자동 실행 등록: powershell -ExecutionPolicy Bypass -File pension-upload.ps1 -Install   (매주 월요일 09:00, 꺼져 있었으면 켜질 때)
 #  지금 바로 올리기: powershell -ExecutionPolicy Bypass -File pension-upload.ps1
 param([switch]$Setup, [switch]$Install)
@@ -15,22 +15,32 @@ function Unprotect([string]$saved) {
   $secure = ConvertTo-SecureString $saved
   [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
 }
-function FromClipboard([string]$what) {
-  Read-Host "$what 을(를) 복사(Ctrl+C)한 뒤 여기서 Enter 를 누르세요" | Out-Null
-  $value = (Get-Clipboard | Out-String).Trim()
-  if ($value.Length -lt 10) { throw "$what 이(가) 복사되지 않았습니다. 다시 실행해 주세요." }
-  return $value
-}
+$keyFile = Join-Path ([Environment]::GetFolderPath('Desktop')) 'pension-keys.txt'
 
 if ($Setup -or -not (Test-Path $conf)) {
   Write-Host '== 처음 설정 ==' -ForegroundColor Cyan
-  $recipt = FromClipboard '수급현황 인증키(Decoding)'
-  $sbscrb = FromClipboard '가입현황 인증키(Decoding)'
+  # 인증키는 PowerShell 창이 아니라 '메모장'에 붙여 넣습니다(창에 붙여 넣으면 명령으로 실행돼 오류가 납니다).
+  $lines = @()
+  if (Test-Path $keyFile) { $lines = @(Get-Content $keyFile -Encoding UTF8 | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^#' }) }
+  if ($lines.Count -lt 2 -or $lines[0].Length -lt 20 -or $lines[1].Length -lt 20) {
+    Set-Content -Encoding UTF8 $keyFile "# 1번째 줄에 수급현황 인증키, 2번째 줄에 가입현황 인증키를 붙여 넣고 저장(Ctrl+S)한 뒤 메모장을 닫으세요.`r`n# (이 # 줄들은 그대로 두어도 됩니다)`r`n"
+    Start-Process notepad.exe $keyFile
+    Write-Host ''
+    Write-Host '메모장이 열렸습니다.' -ForegroundColor Yellow
+    Write-Host ' 1) 메모장 맨 아래 빈 줄에 [수급현황 인증키]를 붙여 넣고 Enter'
+    Write-Host ' 2) 다음 줄에 [가입현황 인증키]를 붙여 넣기'
+    Write-Host ' 3) Ctrl+S 로 저장하고 메모장 닫기'
+    Write-Host ' 4) 이 창에서 같은 명령을 한 번 더 실행 (키보드 위쪽 화살표 ↑ 를 누른 뒤 Enter)'
+    return
+  }
+  $recipt = $lines[0]
+  $sbscrb = $lines[1]
   $token = -join ((48..57) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
   @{ recipt = (Protect $recipt); sbscrb = (Protect $sbscrb); token = (Protect $token) } | ConvertTo-Json | Set-Content -Encoding UTF8 $conf
+  Remove-Item $keyFile -Force   # 메모장 파일은 지운다(키는 위에서 암호화해 저장)
   Set-Clipboard -Value $token
   Write-Host ''
-  Write-Host '인증키를 이 PC에 암호화해 저장했습니다.' -ForegroundColor Green
+  Write-Host '인증키를 이 PC에 암호화해 저장했고, 메모장 파일은 지웠습니다.' -ForegroundColor Green
   Write-Host '업로드 암호를 만들어 클립보드에 복사해 두었습니다.' -ForegroundColor Yellow
   Write-Host '프로젝트 폴더에서 아래 명령을 "직접 타이핑"해 실행하고(복사하면 클립보드의 암호가 지워집니다), 값을 물으면 Ctrl+V 로 붙여 넣으세요:' -ForegroundColor Yellow
   Write-Host '   npx wrangler secret put PENSION_UPLOAD_TOKEN'
