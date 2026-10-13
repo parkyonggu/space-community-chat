@@ -1129,17 +1129,18 @@
     if (region.recipients.length) {
       const block = make('div', 'pn-block');
       const h = make('h3', '', '연금 받는 분');
-      h.appendChild(make('small', '', '연령대별 · 노령·장애·유족 전체'));
-      block.append(h, pnTable(['연령대', '받는 분', '월 평균 연금', '평균 받은 기간'],
-        region.recipients.map(row => [[`${row.age}대`], [people(row.count)], [manwon(row.monthly), 'money'], [period(row.months)]])));
+      h.appendChild(make('small', '', '나이별 · 노령·장애·유족 전체'));
+      // 공단 자료의 나이(crtrAge)는 '그 나이 한 살'이다(60 → 만 60세). 평균 수급기간 값은 의미가 분명하지 않아 싣지 않는다.
+      block.append(h, pnTable(['나이', '받는 분', '월 평균 연금'],
+        region.recipients.map(row => [[`만 ${row.age}세`], [people(row.count)], [manwon(row.monthly), 'money']])));
       blocks.push(block);
     }
     if (region.subscribers.length) {
       const block = make('div', 'pn-block');
       const h = make('h3', '', '연금 내는 분 (가입자)');
-      h.appendChild(make('small', '', '연령대별'));
-      block.append(h, pnTable(['연령대', '가입자', '예상 연금(월 평균)', '평균 가입기간'],
-        region.subscribers.map(row => [[`${row.age}대`], [people(row.count)], [manwon(row.expected), 'money'], [period(row.months)]])));
+      h.appendChild(make('small', '', '나이별'));
+      block.append(h, pnTable(['나이', '가입자', '예상 연금(월 평균)', '평균 가입기간'],
+        region.subscribers.map(row => [[`만 ${row.age}세`], [people(row.count)], [manwon(row.expected), 'money'], [period(row.months)]])));
       blocks.push(block);
     }
     $('pn-body').replaceChildren(...(blocks.length ? blocks : [make('p', 'pn-empty', '이 지역 자료가 아직 없습니다.')]));
