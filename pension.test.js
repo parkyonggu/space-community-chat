@@ -120,6 +120,17 @@ test('국내 PC가 받을 주소 목록을 주고, 올린 원자료로 화면 �
     api(request, response, '/api/portal/pension/upload');
   });
   assert.equal((await post('wrong-token', { results })).status, 403);
+  // 수급현황 인증키의 SHA-256 증명으로도 올릴 수 있다
+  const keyed = createPortalApi({ pensionKeys: { recipt: 'RECIPT-KEY-123' }, fetchImpl: async () => { throw new Error('no direct'); } });
+  const proof = require('node:crypto').createHash('sha256').update('RECIPT-KEY-123').digest('hex');
+  const proofPost = (value) => new Promise(resolve => {
+    const data = Buffer.from(JSON.stringify({ results }));
+    const request = { method: 'POST', url: '/api/portal/pension/upload', headers: { 'x-upload-proof': value }, socket: { remoteAddress: '2.2.2.2' }, async *[Symbol.asyncIterator]() { yield data; } };
+    const response = { writeHead(code) { this.code = code; }, end(text) { resolve({ status: this.code, body: JSON.parse(text) }); } };
+    keyed(request, response, '/api/portal/pension/upload');
+  });
+  assert.equal((await proofPost('0'.repeat(64))).status, 403);
+  assert.equal((await proofPost(proof)).status, 200);
   const saved = await post('secret-token-1', { results });
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
   assert.equal(saved.body.regions, 3);

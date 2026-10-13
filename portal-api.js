@@ -7,6 +7,7 @@ const { recentPolicyNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
 const { createPension, pensionPlan, uploadedRegions } = require('./pension');
+const { createHash } = require('node:crypto');
 const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
 
@@ -266,8 +267,14 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     }
     // 국내 PC가 받은 원자료를 올린다(운영자 업로드 암호 필요)
     if (pathname === '/api/portal/pension/upload' && request.method === 'POST') {
+      // 올리는 PC 확인: ① 업로드 암호(PENSION_UPLOAD_TOKEN) 또는 ② 사이트에 넣어 둔 수급현황 인증키의 SHA-256 값(키 자체는 보내지 않음)
       const given = String(request.headers['x-upload-token'] || '');
-      if (!pensionUploadToken || given.length < 8 || given !== pensionUploadToken) { send(403, { error: '업로드 암호가 맞지 않습니다.' }); return; }
+      const proof = String(request.headers['x-upload-proof'] || '').toLowerCase();
+      const siteKey = String(pensionKeys.recipt || pensionKey || '').trim();
+      const keyProof = siteKey ? createHash('sha256').update(siteKey).digest('hex') : '';
+      const tokenOk = pensionUploadToken && given.length >= 8 && given === pensionUploadToken;
+      const proofOk = keyProof && proof.length === 64 && proof === keyProof;
+      if (!tokenOk && !proofOk) { send(403, { error: '올리는 PC를 확인하지 못했습니다. 사이트에 넣은 수급현황 인증키와 PC에 저장한 키가 같은지 확인해 주세요.' }); return; }
       try {
         const input = await readBody(request, 400 * 1024);
         const regions = await uploadedRegions(input.results, pensionOptions);

@@ -410,10 +410,9 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 - 수급현황·가입현황 인증키가 따로 나온 경우: `npx wrangler secret put PENSION_RECIPT_KEY`(수급현황), `npx wrangler secret put PENSION_SBSCRB_KEY`(가입현황). 넣은 쪽은 이 키를, 넣지 않은 쪽은 `PENSION_API_KEY`를 씁니다.
 - 주소(선택): `npx wrangler secret put PENSION_RECIPT_URL`(수급현황), `npx wrangler secret put PENSION_SBSCRB_URL`(가입현황) — 공공데이터포털의 End Point. 기능 이름(…/getReciptSttusInfoSearchV2)까지 붙여 넣어도 서비스 주소만 씁니다. 확인: `/api/portal/pension/raw?op=recipt&ldongAddrMgplDgCd=48&crtrAge=60` 응답의 `used.endpoint`.
 - **해외 서버 차단 대응**: 국민연금공단은 Cloudflare 같은 해외 클라우드에서 오는 요청에 05(서비스 연결실패)를 냅니다. 그래서 운영자 PC(국내)가 `tools/pension-upload.ps1`로 매주 자료를 받아 사이트에 올립니다.
-  1. `powershell -ExecutionPolicy Bypass -File tools\pension-upload.ps1 -Setup` — 수급·가입 인증키를 클립보드로 받아 PC에 암호화 저장, 업로드 암호 생성
-  2. `npx wrangler secret put PENSION_UPLOAD_TOKEN` — 1에서 만든 업로드 암호
-  3. `powershell -ExecutionPolicy Bypass -File tools\pension-upload.ps1` — 지금 올리기(성공하면 "…국민연금 통계를 저장했습니다")
-  4. `powershell -ExecutionPolicy Bypass -File tools\pension-upload.ps1 -Install` — 매주 월요일 09:00 자동(꺼져 있었으면 켜질 때)
+  1. `powershell -ExecutionPolicy Bypass -File .\tools\pension-upload.ps1 -Setup` — 입력 창 두 번(수급·가입 인증키 붙여넣기) → PC에 암호화 저장, 매주 월요일 09:00 자동 실행 등록, 바로 한 번 올리기
+  2. 이후 수동으로 올릴 때: `powershell -ExecutionPolicy Bypass -File .\tools\pension-upload.ps1`
+  - 올리는 PC 확인은 수급현황 인증키의 SHA-256 값으로 합니다(사이트의 `PENSION_RECIPT_KEY`와 같은 키여야 함). `PENSION_UPLOAD_TOKEN`을 넣어 둔 경우 그 암호도 받습니다.
   - 올린 자료는 62일 동안 쓰고, 그 뒤에는 직접 호출로 돌아갑니다. 받을 주소 목록: `/api/portal/pension/plan`.
 - 양산시(48330)·김해시(48250)·의령군(48720) 연령대별(수급 60·70·80대, 가입 20~50대) 통계를 하루 한 번 받습니다(`/api/portal/pension`).
 - 점검용: `/api/portal/pension/raw?op=recipt|sbscrb&age=60&sggu=48720` 로 원자료 한 건을 볼 수 있습니다(공개 통계).
