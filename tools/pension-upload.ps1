@@ -20,21 +20,27 @@ $keyFile = Join-Path ([Environment]::GetFolderPath('Desktop')) 'pension-keys.txt
 if ($Setup -or -not (Test-Path $conf)) {
   Write-Host '== 처음 설정 ==' -ForegroundColor Cyan
   # 인증키는 PowerShell 창이 아니라 '메모장'에 붙여 넣습니다(창에 붙여 넣으면 명령으로 실행돼 오류가 납니다).
-  $lines = @()
-  if (Test-Path $keyFile) { $lines = @(Get-Content $keyFile -Encoding UTF8 | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^#' }) }
-  if ($lines.Count -lt 2 -or $lines[0].Length -lt 20 -or $lines[1].Length -lt 20) {
-    Set-Content -Encoding UTF8 $keyFile "# 1번째 줄에 수급현황 인증키, 2번째 줄에 가입현황 인증키를 붙여 넣고 저장(Ctrl+S)한 뒤 메모장을 닫으세요.`r`n# (이 # 줄들은 그대로 두어도 됩니다)`r`n"
+  # 메모장 파일 어디에 붙여 넣었든, 인증키처럼 생긴 긴 글자(영문·숫자 30자 이상)를 순서대로 두 개 찾는다.
+  $found = @()
+  if (Test-Path $keyFile) {
+    $text = Get-Content $keyFile -Raw -Encoding UTF8
+    if ($text) { $found = @([regex]::Matches($text, '[A-Za-z0-9%+/=]{30,}') | ForEach-Object { $_.Value }) }
+  } else {
+    Set-Content -Encoding UTF8 $keyFile ''
+  }
+  Write-Host "메모장 파일: $keyFile  (찾은 인증키 $($found.Count)개)"
+  if ($found.Count -lt 2) {
     Start-Process notepad.exe $keyFile
     Write-Host ''
     Write-Host '메모장이 열렸습니다.' -ForegroundColor Yellow
-    Write-Host ' 1) 메모장 맨 아래 빈 줄에 [수급현황 인증키]를 붙여 넣고 Enter'
-    Write-Host ' 2) 다음 줄에 [가입현황 인증키]를 붙여 넣기'
+    Write-Host ' 1) 첫 줄에 [수급현황 인증키]를 붙여 넣고 Enter'
+    Write-Host ' 2) 둘째 줄에 [가입현황 인증키]를 붙여 넣기'
     Write-Host ' 3) Ctrl+S 로 저장하고 메모장 닫기'
     Write-Host ' 4) 이 창에서 같은 명령을 한 번 더 실행 (키보드 위쪽 화살표 ↑ 를 누른 뒤 Enter)'
     return
   }
-  $recipt = $lines[0]
-  $sbscrb = $lines[1]
+  $recipt = $found[0]
+  $sbscrb = $found[1]
   $token = -join ((48..57) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
   @{ recipt = (Protect $recipt); sbscrb = (Protect $sbscrb); token = (Protect $token) } | ConvertTo-Json | Set-Content -Encoding UTF8 $conf
   Remove-Item $keyFile -Force   # 메모장 파일은 지운다(키는 위에서 암호화해 저장)
