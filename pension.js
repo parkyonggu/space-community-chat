@@ -110,7 +110,10 @@ async function callRaw(fetchImpl, key, url, params, mode) {
 
 const RAW_PARAMS = ['ldongAddrMgplDgCd', 'ldongAddrMgplSgguCd', 'ldongAddrMgplSgguEmdCd', 'crtrAge', 'jnngpAge', 'sexDvcd', 'payClssCd', 'jnngBrkdJnngpClssCd'];
 
-function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl = '' } = {}) {
+// 수급현황·가입현황 인증키가 따로 나온 경우 각각 넣을 수 있다(없으면 공통 key를 쓴다).
+function createPension({ key = '', reciptKey = '', sbscrbKey = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl = '' } = {}) {
+  const RKEY = reciptKey || key;
+  const SKEY = sbscrbKey || key;
   const RECIPT = serviceBase(reciptUrl, DEFAULT_RECIPT);
   const SBSCRB = serviceBase(sbscrbUrl, DEFAULT_SBSCRB);
   // 시군구 코드를 5자리(48720)로 받는지 3자리(720)로 받는지 설명서에 없어, 자료가 나오는 쪽을 골라 기억한다.
@@ -128,7 +131,7 @@ function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl 
   async function recipients(region) {
     const rows = [];
     for (const age of RECIPT_AGES) {
-      const all = await firstWithData(region, async sggu => (await call(fetchImpl, key, `${RECIPT}/getReciptSttusInfoSearchV2`,
+      const all = await firstWithData(region, async sggu => (await call(fetchImpl, RKEY, `${RECIPT}/getReciptSttusInfoSearchV2`,
         { ldongAddrMgplDgCd: region.sido, ldongAddrMgplSgguCd: sggu, crtrAge: age, payClssCd: '00' }))[0]);
       if (!all) continue;
       rows.push({ age: Number(age), count: num(all.totPrsnCnt), monthly: num(all.avgFnlPrvsAmt), months: num(all.avgPrvsPrdMcnt),
@@ -140,7 +143,7 @@ function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl 
   async function subscribers(region) {
     const rows = [];
     for (const age of SBSCRB_AGES) {
-      const all = await firstWithData(region, async sggu => (await call(fetchImpl, key, `${SBSCRB}/getSbscrbSttusInfoSearchV2`,
+      const all = await firstWithData(region, async sggu => (await call(fetchImpl, SKEY, `${SBSCRB}/getSbscrbSttusInfoSearchV2`,
         { ldongAddrMgplDgCd: region.sido, ldongAddrMgplSgguCd: sggu, jnngpAge: age }))[0]);
       if (!all) continue;
       rows.push({ age: Number(age), count: num(all.jnngBrkdSgmntPrsnCnt), expected: num(all.avgAntcPnsAmt),
@@ -150,9 +153,9 @@ function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl 
   }
   async function load(regionId) {
     const region = REGIONS.find(entry => entry.id === regionId);
-    if (!region || !key) return null;
-    // 한쪽 API가 막혀도(예: 가입현황 미승인) 다른 쪽 자료만으로 보여 준다.
-    const [reciptResult, sbscrbResult] = await Promise.allSettled([recipients(region), subscribers(region)]);
+    if (!region || !(RKEY || SKEY)) return null;
+    // 한쪽 API가 막혀도(예: 가입현황 미승인) 다른 쪽 자료만으로 보여 준다. 키가 없는 쪽은 부르지 않는다.
+    const [reciptResult, sbscrbResult] = await Promise.allSettled([RKEY ? recipients(region) : [], SKEY ? subscribers(region) : []]);
     const recipt = reciptResult.status === 'fulfilled' ? reciptResult.value : [];
     const sbscrb = sbscrbResult.status === 'fulfilled' ? sbscrbResult.value : [];
     if (!recipt.length && !sbscrb.length) {
@@ -175,9 +178,12 @@ function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl 
     // dataType=JSON(기본) · XML(dataType 생략, 공단 기본값) · XMLPARAM(dataType=XML을 명시) / scheme=https(기본)·http
     const format = { XML: 'XML', XMLPARAM: 'xml' }[String(params.get('dataType') || '').toUpperCase()] || 'JSON';
     const scheme = params.get('scheme') === 'http' ? 'http' : 'https';
-    return callRaw(fetchImpl, key, operation, query, { format, scheme });
+    const result = await callRaw(fetchImpl, operation.startsWith(SBSCRB) ? SKEY : RKEY, operation, query, { format, scheme });
+    // 어느 인증키를 썼는지(값은 숨기고 종류만) 함께 보여 준다.
+    result.used.key = operation.startsWith(SBSCRB) ? (sbscrbKey ? 'PENSION_SBSCRB_KEY' : 'PENSION_API_KEY') : (reciptKey ? 'PENSION_RECIPT_KEY' : 'PENSION_API_KEY');
+    return result;
   }
-  return { load, raw, regions: REGIONS, endpoints: { recipt: RECIPT, sbscrb: SBSCRB } };
+  return { load, raw, regions: REGIONS, endpoints: { recipt: RECIPT, sbscrb: SBSCRB }, ready: Boolean(RKEY || SKEY) };
 }
 
 module.exports = { createPension, REGIONS, parseXml, buildUrl, serviceBase };

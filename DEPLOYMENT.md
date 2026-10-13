@@ -407,6 +407,7 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 
 - 자료: 국민연금공단 수급현황 V2(15010381)·가입현황 V2(15005710), 공공데이터포털 · 이용허락범위 제한 없음.
 - 인증키: `npx wrangler secret put PENSION_API_KEY`. 넣지 않으면 `POLICY_NEWS_KEY`를 함께 씁니다.
+- 수급현황·가입현황 인증키가 따로 나온 경우: `npx wrangler secret put PENSION_RECIPT_KEY`(수급현황), `npx wrangler secret put PENSION_SBSCRB_KEY`(가입현황). 넣은 쪽은 이 키를, 넣지 않은 쪽은 `PENSION_API_KEY`를 씁니다.
 - 주소(선택): `npx wrangler secret put PENSION_RECIPT_URL`(수급현황), `npx wrangler secret put PENSION_SBSCRB_URL`(가입현황) — 공공데이터포털의 End Point. 기능 이름(…/getReciptSttusInfoSearchV2)까지 붙여 넣어도 서비스 주소만 씁니다. 확인: `/api/portal/pension/raw?op=recipt&ldongAddrMgplDgCd=48&crtrAge=60` 응답의 `used.endpoint`.
 - 양산시(48330)·김해시(48250)·의령군(48720) 연령대별(수급 60·70·80대, 가입 20~50대) 통계를 하루 한 번 받습니다(`/api/portal/pension`).
 - 점검용: `/api/portal/pension/raw?op=recipt|sbscrb&age=60&sggu=48720` 로 원자료 한 건을 볼 수 있습니다(공개 통계).

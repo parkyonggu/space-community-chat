@@ -40,7 +40,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionUrls = {}, farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -49,7 +49,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const benefits = localBenefits.createLocalBenefits({ key: benefitKey, url: benefitUrl, fetchImpl: (...args) => fetchImpl(...args), now });
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
-  const pension = createPension({ key: pensionKey, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
+  const pension = createPension({ key: pensionKey, reciptKey: pensionKeys.recipt, sbscrbKey: pensionKeys.sbscrb, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
   const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
   async function loadIndicators() {
@@ -243,7 +243,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`pension:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
-    if (!pensionKey) { send(200, { connected: false, regions: [] }); return; }
+    if (!pension.ready) { send(200, { connected: false, regions: [] }); return; }
     const params = new URL(request.url, 'http://localhost').searchParams;
     if (pathname === '/api/portal/pension/raw') {
       try { send(200, await pension.raw(params)); }

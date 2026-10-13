@@ -88,3 +88,18 @@ test('수급현황이 JSON으로 시간초과(05)면 XML로 다시 받아 읽는
   // 가입현황 인증키 오류는 형식을 바꿔 다시 시도하지 않는다.
   assert.equal(urls.filter(url => url.includes('Sbscrb')).length, 1);
 });
+
+test('수급현황·가입현황 인증키를 따로 넣으면 각 API에 맞는 키를 쓴다', async () => {
+  const { createPension } = require('./pension.js');
+  const seen = [];
+  const pension = createPension({ reciptKey: 'RK', sbscrbKey: 'SK', fetchImpl: async url => {
+    seen.push(url);
+    return { status: 200, ok: true, text: async () => '<response><header><resultCode>00</resultCode></header><body><items><item><totPrsnCnt>5</totPrsnCnt><jnngBrkdSgmntPrsnCnt>7</jnngBrkdSgmntPrsnCnt></item></items></body></response>' };
+  } });
+  assert.equal(pension.ready, true);
+  await pension.load('yangsan');
+  assert.ok(seen.filter(url => url.includes('Recipt')).every(url => url.includes('serviceKey=RK')));
+  assert.ok(seen.filter(url => url.includes('Sbscrb')).every(url => url.includes('serviceKey=SK')));
+  const raw = await pension.raw(new URLSearchParams('op=sbscrb&ldongAddrMgplDgCd=48&jnngpAge=40'));
+  assert.equal(raw.used.key, 'PENSION_SBSCRB_KEY');
+});
