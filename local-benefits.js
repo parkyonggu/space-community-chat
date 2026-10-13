@@ -105,13 +105,15 @@ function errorText(status, text) {
 }
 
 // cond 필터로 좁혀 받는다. 혹시 필터가 무시돼도 keep()으로 한 번 더 거른다.
-async function fetchFiltered(fetchImpl, key, cond, keep) {
+async function fetchFiltered(fetchImpl, key, cond, keep, base = BASE) {
   const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
   const items = [];
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const query = Object.entries(cond).map(([field, value]) => `&${encodeURIComponent(`cond[${field}]`)}=${encodeURIComponent(value)}`).join('');
-    const url = `${BASE}?page=${page}&perPage=${PER_PAGE}&returnType=JSON&serviceKey=${serviceKey}${query}`;
-    const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
+    const url = `${base}?page=${page}&perPage=${PER_PAGE}&returnType=JSON&serviceKey=${serviceKey}${query}`;
+    // odcloud는 주소의 serviceKey 외에 'Authorization: Infuser 인증키' 머리글도 받는다(둘 중 하나만 맞아도 통과).
+    const decoded = (() => { try { return decodeURIComponent(key); } catch { return key; } })();
+    const response = await fetchImpl(url, { headers: { Accept: 'application/json', Authorization: `Infuser ${decoded}` } });
     const text = await response.text();
     if (!response.ok) throw new Error(errorText(response.status, text));
     let data;
@@ -138,26 +140,33 @@ function arrange(items, now) {
     });
 }
 
-function createLocalBenefits({ key = '', fetchImpl = fetch, now = Date.now } = {}) {
+// 정부24 혜택 API 주소: 운영자가 공공데이터포털에서 확인한 주소를 넣을 수 있다(물음표 뒤 값은 버린다).
+function benefitBase(value) {
+  const text = String(value || '').trim().split('?')[0].replace(/\/+$/, '');
+  return /^https?:\/\/[^\s/]+\/\S+$/.test(text) ? text : BASE;
+}
+
+function createLocalBenefits({ key = '', fetchImpl = fetch, now = Date.now, url = '' } = {}) {
+  const base = benefitBase(url);
   async function region(regionId) {
     const spec = REGIONS.find(entry => entry.id === regionId);
     if (!spec || !key) return null;
-    const items = await fetchFiltered(fetchImpl, key, { '소관기관명::LIKE': spec.name }, item => String(item.소관기관명 || '').includes(spec.name));
+    const items = await fetchFiltered(fetchImpl, key, { '소관기관명::LIKE': spec.name }, item => String(item.소관기관명 || '').includes(spec.name), base);
     return items.map(item => compact(item, now()));
   }
   async function province() {
     if (!key) return null;
-    const items = await fetchFiltered(fetchImpl, key, { '소관기관명::EQ': PROVINCE }, item => isProvinceOnly(item.소관기관명));
+    const items = await fetchFiltered(fetchImpl, key, { '소관기관명::EQ': PROVINCE }, item => isProvinceOnly(item.소관기관명), base);
     return items.map(item => compact(item, now()));
   }
   // 중앙부처 농림축산어업 혜택 중 읍·면·동에서 접수하는 것.
   async function national() {
     if (!key) return null;
     const items = await fetchFiltered(fetchImpl, key, { '서비스분야::LIKE': '농림축산어업' },
-      item => String(item.서비스분야 || '').includes('농림') && isCentral(item));
+      item => String(item.서비스분야 || '').includes('농림') && isCentral(item), base);
     return items.map(item => compact(item, now())).filter(item => item.townOffice);
   }
-  return { region, province, national };
+  return { region, province, national, endpoint: base };
 }
 
 // 관리자가 직접 넣는 안내(고시·공고 등)를 검사·정리한다.

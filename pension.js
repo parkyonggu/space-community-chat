@@ -3,8 +3,16 @@
 // - 가입현황 V2 (15005710): 법정동·연령·성별·가입종별 가입자 수, 평균 예상연금액, 평균 가입개월
 // 통계는 매월 초 갱신되므로 하루 한 번만 새로 받는다.
 
-const RECIPT = 'https://apis.data.go.kr/B552015/NpsReciptInfoProvdServiceV2';
-const SBSCRB = 'https://apis.data.go.kr/B552015/NpsSbscrbInfoProvdServiceV2';
+const DEFAULT_RECIPT = 'https://apis.data.go.kr/B552015/NpsReciptInfoProvdServiceV2';
+const DEFAULT_SBSCRB = 'https://apis.data.go.kr/B552015/NpsSbscrbInfoProvdServiceV2';
+
+// 운영자가 공공데이터포털에서 확인한 서비스 주소(End Point)를 넣을 수 있게 한다.
+// 기능 이름까지 붙여 넣어도(…/getReciptSttusInfoSearchV2) 서비스 주소만 남기고, 물음표 뒤 값(인증키 등)은 버린다.
+function serviceBase(value, fallback) {
+  const text = String(value || '').trim().split('?')[0].replace(/\/+$/, '');
+  if (!/^https?:\/\/[^\s/]+\/\S+$/.test(text)) return fallback;
+  return text.replace(/\/(get[A-Za-z0-9]+)$/, '');
+}
 
 // 법정동 코드: 시도 2자리 + 시군구 5자리
 const REGIONS = [
@@ -96,13 +104,15 @@ async function call(fetchImpl, key, url, params) {
 async function callRaw(fetchImpl, key, url, params, mode) {
   const response = await fetchImpl(buildUrl(key, url, params, mode), { headers: { Accept: mode.format === 'JSON' ? 'application/json' : 'application/xml' } });
   const text = await response.text();
-  const used = { format: mode.format, scheme: mode.scheme };
+  const used = { format: mode.format, scheme: mode.scheme, endpoint: url };
   try { return { status: response.status, used, data: JSON.parse(text) }; } catch { return { status: response.status, used, text: text.slice(0, 1500) }; }
 }
 
 const RAW_PARAMS = ['ldongAddrMgplDgCd', 'ldongAddrMgplSgguCd', 'ldongAddrMgplSgguEmdCd', 'crtrAge', 'jnngpAge', 'sexDvcd', 'payClssCd', 'jnngBrkdJnngpClssCd'];
 
-function createPension({ key = '', fetchImpl = fetch } = {}) {
+function createPension({ key = '', fetchImpl = fetch, reciptUrl = '', sbscrbUrl = '' } = {}) {
+  const RECIPT = serviceBase(reciptUrl, DEFAULT_RECIPT);
+  const SBSCRB = serviceBase(sbscrbUrl, DEFAULT_SBSCRB);
   // 시군구 코드를 5자리(48720)로 받는지 3자리(720)로 받는지 설명서에 없어, 자료가 나오는 쪽을 골라 기억한다.
   const sgguStyle = new Map();
   const sgguOf = (region, style) => (style === 'short' ? region.sggu.slice(2) : region.sggu);
@@ -167,7 +177,7 @@ function createPension({ key = '', fetchImpl = fetch } = {}) {
     const scheme = params.get('scheme') === 'http' ? 'http' : 'https';
     return callRaw(fetchImpl, key, operation, query, { format, scheme });
   }
-  return { load, raw, regions: REGIONS };
+  return { load, raw, regions: REGIONS, endpoints: { recipt: RECIPT, sbscrb: SBSCRB } };
 }
 
-module.exports = { createPension, REGIONS, parseXml, buildUrl };
+module.exports = { createPension, REGIONS, parseXml, buildUrl, serviceBase };

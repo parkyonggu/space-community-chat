@@ -384,6 +384,7 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 
 - 자료: 행정안전부 「대한민국 공공서비스(혜택) 정보」(공공데이터포털 15113968, 정부24 보조금24), `api.odcloud.kr/api/gov24/v3/serviceList`.
 - 인증키: `npx wrangler secret put GOV_BENEFIT_KEY`. 넣지 않으면 `POLICY_NEWS_KEY`를 함께 씁니다(공공데이터포털 일반 인증키는 계정마다 하나).
+- 주소(선택): `npx wrangler secret put GOV_BENEFIT_URL` — 공공데이터포털에서 확인한 요청 주소(예: `https://api.odcloud.kr/api/gov24/v3/serviceList`). 넣지 않으면 이 기본 주소를 씁니다. 물음표(?) 뒤는 버립니다.
 - 첫 화면 「우리 동네 신청 혜택」(`#benefit-panel`): 양산시·김해시·의령군과 경상남도 혜택, 읍·면·동에서 접수하는 중앙부처 농림축산어업 혜택을 마감 순으로 보여 줍니다. 12시간마다 새로 받습니다.
 - `/?동네=의령#benefit-panel` 주소로 지역을 골라 열 수 있고, '카톡으로 알리기'가 이 주소를 공유합니다.
 - 고시·공고로만 알리는 사업(예: 다음 해 산림사업 신청)은 관리자 계정으로 로그인하면 상자 아래 '관리자' 칸에서 직접 추가·삭제할 수 있습니다(`POST /api/portal/benefits/manual`).
@@ -406,6 +407,7 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 
 - 자료: 국민연금공단 수급현황 V2(15010381)·가입현황 V2(15005710), 공공데이터포털 · 이용허락범위 제한 없음.
 - 인증키: `npx wrangler secret put PENSION_API_KEY`. 넣지 않으면 `POLICY_NEWS_KEY`를 함께 씁니다.
+- 주소(선택): `npx wrangler secret put PENSION_RECIPT_URL`(수급현황), `npx wrangler secret put PENSION_SBSCRB_URL`(가입현황) — 공공데이터포털의 End Point. 기능 이름(…/getReciptSttusInfoSearchV2)까지 붙여 넣어도 서비스 주소만 씁니다. 확인: `/api/portal/pension/raw?op=recipt&ldongAddrMgplDgCd=48&crtrAge=60` 응답의 `used.endpoint`.
 - 양산시(48330)·김해시(48250)·의령군(48720) 연령대별(수급 60·70·80대, 가입 20~50대) 통계를 하루 한 번 받습니다(`/api/portal/pension`).
 - 점검용: `/api/portal/pension/raw?op=recipt|sbscrb&age=60&sggu=48720` 로 원자료 한 건을 볼 수 있습니다(공개 통계).
 

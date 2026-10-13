@@ -136,9 +136,9 @@ export class CommunityService extends DurableObject {
     this.portal = portal.createPortalApi({
       ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', rateLimit,
       // 공공데이터포털 일반 인증키는 계정마다 하나라서, 따로 넣지 않았으면 정책브리핑 키를 함께 쓴다.
-      benefitKey: env.GOV_BENEFIT_KEY || env.POLICY_NEWS_KEY || '', authenticate: this.auth.authenticate,
+      benefitKey: env.GOV_BENEFIT_KEY || env.POLICY_NEWS_KEY || '', benefitUrl: env.GOV_BENEFIT_URL || '', authenticate: this.auth.authenticate,
       weatherKey: env.WEATHER_API_KEY || env.POLICY_NEWS_KEY || '',
-      pensionKey: env.PENSION_API_KEY || env.POLICY_NEWS_KEY || '',
+      pensionKey: env.PENSION_API_KEY || env.POLICY_NEWS_KEY || '', pensionUrls: { recipt: env.PENSION_RECIPT_URL || '', sbscrb: env.PENSION_SBSCRB_URL || '' },
       farmKeys: { kamisKey: env.KAMIS_CERT_KEY || '', kamisId: env.KAMIS_CERT_ID || '', nongsaroKey: env.NONGSARO_API_KEY || '' },
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },

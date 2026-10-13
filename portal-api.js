@@ -40,16 +40,16 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', weatherKey = '', pensionKey = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionUrls = {}, farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
   const key = ecosKey || 'sample';
   const realEstate = createRealEstate({ key: molitKey, keys: molitKeys, fetchImpl: (...args) => fetchImpl(...args), store, now });
-  const benefits = localBenefits.createLocalBenefits({ key: benefitKey, fetchImpl: (...args) => fetchImpl(...args), now });
+  const benefits = localBenefits.createLocalBenefits({ key: benefitKey, url: benefitUrl, fetchImpl: (...args) => fetchImpl(...args), now });
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
-  const pension = createPension({ key: pensionKey, fetchImpl: (...args) => fetchImpl(...args) });
+  const pension = createPension({ key: pensionKey, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
   const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
   async function loadIndicators() {
