@@ -6,7 +6,7 @@ const { createRealEstate } = require('./realestate');
 const { recentPolicyNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
-const { createPension } = require('./pension');
+const { createPension, pensionPlan, uploadedRegions } = require('./pension');
 const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
 
@@ -40,7 +40,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -244,20 +244,58 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   }
 
   // ---------- 우리 동네 국민연금 (국민연금공단 수급·가입 현황) ----------
+  const pensionOptions = { key: pensionKey, reciptKey: pensionKeys.recipt, sbscrbKey: pensionKeys.sbscrb, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb };
+  const UPLOAD_FRESH = 62 * 24 * 60 * 60 * 1000; // 매월 올리므로 두 달까지는 올린 자료를 쓴다
+  async function readBody(request, limit) {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of request) {
+      size += chunk.length;
+      if (size > limit) throw Object.assign(new Error('올린 자료가 너무 큽니다.'), { status: 413 });
+      chunks.push(Buffer.from(chunk));
+    }
+    try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { throw Object.assign(new Error('요청 형식을 확인해 주세요.'), { status: 400 }); }
+  }
   async function handlePension(request, send, pathname) {
-    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`pension:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
-    if (!pension.ready) { send(200, { connected: false, regions: [] }); return; }
+    // 국내 PC가 받을 주소 목록(인증키 없음)
+    if (pathname === '/api/portal/pension/plan' && request.method === 'GET') {
+      send(200, { requests: await pensionPlan(pensionOptions) });
+      return;
+    }
+    // 국내 PC가 받은 원자료를 올린다(운영자 업로드 암호 필요)
+    if (pathname === '/api/portal/pension/upload' && request.method === 'POST') {
+      const given = String(request.headers['x-upload-token'] || '');
+      if (!pensionUploadToken || given.length < 8 || given !== pensionUploadToken) { send(403, { error: '업로드 암호가 맞지 않습니다.' }); return; }
+      try {
+        const input = await readBody(request, 400 * 1024);
+        const regions = await uploadedRegions(input.results, pensionOptions);
+        if (!regions.length) { send(422, { error: '올린 자료에서 읽을 수 있는 통계가 없습니다. 인증키와 응답을 확인해 주세요.' }); return; }
+        await store.set('portal:pension-upload', { regions, at: now() });
+        send(200, { ok: true, regions: regions.length, message: `${regions.map(region => region.name).join('·')} 국민연금 통계를 저장했습니다.` });
+      } catch (error) { send(error.status || 400, { error: error.message }); }
+      return;
+    }
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const uploaded = await store.get('portal:pension-upload');
+    const freshUpload = uploaded && now() - uploaded.at < UPLOAD_FRESH ? uploaded : null;
+    if (!pension.ready && !freshUpload) { send(200, { connected: false, regions: [] }); return; }
     const params = new URL(request.url, 'http://localhost').searchParams;
     if (pathname === '/api/portal/pension/raw') {
       try { send(200, await pension.raw(params)); }
       catch (error) { send(200, { error: error.message }); }
       return;
     }
+    const names = pension.regions.map(({ id, name }) => ({ id, name }));
+    if (freshUpload) {
+      send(200, { connected: true, regions: freshUpload.regions, names, problems: [], uploadedAt: new Date(freshUpload.at).toISOString(),
+        source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
+      return;
+    }
     const regions = await Promise.all(pension.regions.map(region => cached(`pension-${region.id}`, 24 * 60 * 60 * 1000, () => pension.load(region.id))));
     const problems = [...new Set(pension.regions.map(region => lastErrors.get(`pension-${region.id}`)).filter(Boolean))].slice(0, 2);
-    send(200, { connected: true, regions: regions.filter(Boolean), names: pension.regions.map(({ id, name }) => ({ id, name })), problems,
+    send(200, { connected: true, regions: regions.filter(Boolean), names, problems,
       source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
   }
 
@@ -390,7 +428,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual' || pathname === '/api/portal/benefits/raw') { await handleBenefits(request, send, pathname); return; }
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
-    if (pathname === '/api/portal/pension' || pathname === '/api/portal/pension/raw') { await handlePension(request, send, pathname); return; }
+    if (pathname === '/api/portal/pension' || pathname.startsWith('/api/portal/pension/')) { await handlePension(request, send, pathname); return; }
     if (pathname === '/api/portal/farm' || pathname === '/api/portal/farm/raw') { await handleFarm(request, send, pathname); return; }
     if (pathname !== '/api/portal') { send(404, { error: '요청한 기능이 없습니다.' }); return; }
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }

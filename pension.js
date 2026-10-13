@@ -188,4 +188,47 @@ function createPension({ key = '', reciptKey = '', sbscrbKey = '', fetchImpl = f
   return { load, raw, regions: REGIONS, endpoints: { recipt: RECIPT, sbscrb: SBSCRB }, ready: Boolean(RKEY || SKEY) };
 }
 
-module.exports = { createPension, REGIONS, parseXml, buildUrl, serviceBase };
+// ---------- 국내 PC에서 받아 올리기 ----------
+// 국민연금공단은 해외(클라우드) 서버에서 오는 요청을 받지 않는다. 그래서 운영자 PC(국내)가 매월 한 번
+// 아래 '받을 주소 목록(plan)'대로 받아 사이트에 올리면(uploadedRegions), 사이트는 그 자료로 화면을 만든다.
+// 주소 비교용: 인증키·형식 값은 빼고 나머지 값을 정렬해 하나의 글자로 만든다.
+function requestId(url) {
+  try {
+    const parsed = new URL(url);
+    ['serviceKey', 'dataType', 'returnType'].forEach(name => parsed.searchParams.delete(name));
+    const query = [...parsed.searchParams].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('&');
+    return `${parsed.host}${parsed.pathname}?${query}`;
+  } catch { return ''; }
+}
+const EMPTY = '<response><header><resultCode>03</resultCode></header></response>';
+async function pensionPlan(options = {}) {
+  const seen = new Map();
+  const recorder = createPension({ ...options, key: options.key || 'plan', fetchImpl: async url => {
+    const plain = new URL(url);
+    plain.protocol = 'https:';
+    ['serviceKey', 'dataType'].forEach(name => plain.searchParams.delete(name));
+    if (!seen.has(requestId(url))) seen.set(requestId(url), { url: plain.href, op: /Sbscrb/.test(url) ? 'sbscrb' : 'recipt' });
+    return { status: 200, ok: true, text: async () => EMPTY };
+  } });
+  for (const region of REGIONS) await recorder.load(region.id).catch(() => null);
+  return [...seen.values()];
+}
+async function uploadedRegions(results, options = {}) {
+  const answers = new Map();
+  for (const entry of Array.isArray(results) ? results : []) {
+    const id = requestId(entry?.url || '');
+    if (id && typeof entry.xml === 'string' && entry.xml.length < 20000) answers.set(id, entry.xml);
+  }
+  const replay = createPension({ ...options, key: options.key || 'upload', fetchImpl: async url => {
+    const text = answers.get(requestId(url)) || EMPTY;
+    return { status: 200, ok: true, text: async () => (/^\s*</.test(text) ? text : EMPTY) };
+  } });
+  const regions = [];
+  for (const region of REGIONS) {
+    const data = await replay.load(region.id).catch(() => null);
+    if (data && (data.recipients.length || data.subscribers.length)) regions.push(data);
+  }
+  return regions;
+}
+
+module.exports = { createPension, REGIONS, parseXml, buildUrl, serviceBase, pensionPlan, uploadedRegions, requestId };

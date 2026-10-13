@@ -103,3 +103,30 @@ test('수급현황·가입현황 인증키를 따로 넣으면 각 API에 맞는
   const raw = await pension.raw(new URLSearchParams('op=sbscrb&ldongAddrMgplDgCd=48&jnngpAge=40'));
   assert.equal(raw.used.key, 'PENSION_SBSCRB_KEY');
 });
+
+test('국내 PC가 받을 주소 목록을 주고, 올린 원자료로 화면 자료를 만든다(업로드 암호 필요, 해외 호출 안 함)', async () => {
+  let outbound = 0;
+  const api = createPortalApi({ pensionUploadToken: 'secret-token-1', fetchImpl: async () => { outbound += 1; throw new Error('no direct'); } });
+  const plan = await call(api, '/api/portal/pension/plan');
+  assert.equal(plan.status, 200);
+  assert.ok(plan.body.requests.length >= 21);
+  assert.ok(plan.body.requests.every(entry => !entry.url.includes('serviceKey')));
+  const xml = age => `<?xml version='1.0' encoding='UTF-8'?><response><header><resultCode>00</resultCode><resultMsg>NORMAL_CODE</resultMsg></header><body><items><item><avgFnlPrvsAmt>629669</avgFnlPrvsAmt><avgPrvsPrdMcnt>1</avgPrvsPrdMcnt><totPrsnCnt>${age}</totPrsnCnt></item></items></body></response>`;
+  const results = plan.body.requests.map(entry => ({ url: `${entry.url}&serviceKey=KEY`, xml: entry.op === 'recipt' && /SgguCd=\d{5}/.test(entry.url) ? xml(Number(new URL(entry.url).searchParams.get('crtrAge'))) : '' }));
+  const post = (token, body) => new Promise(resolve => {
+    const data = Buffer.from(JSON.stringify(body));
+    const request = { method: 'POST', url: '/api/portal/pension/upload', headers: { 'x-upload-token': token }, socket: { remoteAddress: '1.1.1.1' }, async *[Symbol.asyncIterator]() { yield data; } };
+    const response = { writeHead(code) { this.code = code; }, end(text) { resolve({ status: this.code, body: JSON.parse(text) }); } };
+    api(request, response, '/api/portal/pension/upload');
+  });
+  assert.equal((await post('wrong-token', { results })).status, 403);
+  const saved = await post('secret-token-1', { results });
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.equal(saved.body.regions, 3);
+  const page = await call(api, '/api/portal/pension');
+  assert.equal(page.body.connected, true);
+  assert.equal(page.body.regions.length, 3);
+  assert.equal(page.body.regions[0].recipients[0].count, 60);
+  assert.equal(page.body.regions[0].recipients[0].monthly, 629669);
+  assert.equal(outbound, 0);
+});
