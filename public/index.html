@@ -60,6 +60,7 @@
       <a href="#voice-section" data-target="voice-section">시민의 소리</a>
       <a href="#policy-panel" class="nav-policy">📰 정책브리핑</a>
       <a href="#issue-panel" class="nav-issue">🗞️ 오늘의 이슈</a>
+      <a href="#eco-panel" class="nav-eco">📈 경제지표</a>
       <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
       <a href="#policy-section" data-target="policy-section">정책 제안</a>
       <a href="#research-section" data-target="research-section">칼럼·학술</a>
@@ -138,7 +139,7 @@
           <a href="#pension-panel"><span aria-hidden="true">👵</span><b>국민연금</b><small>통계·계산·기초연금</small></a>
           <a href="#finance-panel"><span aria-hidden="true">💰</span><b>금융정보</b><small>예금·적금·연금저축</small></a>
           <a href="#farm-panel"><span aria-hidden="true">🌾</span><b>농사정보</b><small>농산물 시세</small></a>
-          <a href="#realestate-panel"><span aria-hidden="true">🏠</span><b>부동산 동향</b><small>최근 실거래</small></a>
+          <a href="#eco-panel"><span aria-hidden="true">📈</span><b>경제지표</b><small>금리·환율·증시·부동산</small></a>
           <a href="#newsletter-section"><span aria-hidden="true">✉️</span><b>스페이스 레터</b><small>매주 월요일 브리핑</small></a>
         </nav>
 
@@ -178,15 +179,47 @@
           </section>
         </div>
 
-        <nav class="local-tabs" data-view-of="local" aria-label="우리 동네 정보 선택">
+        <nav class="local-tabs sub-tabs" data-view-of="economy" aria-label="경제지표 항목 선택">
+          <a href="#eco-panel">📊 항목별 최신 발표</a>
+          <a href="#house-panel">🏢 아파트 주간동향</a>
+          <a href="#realestate-panel">🏠 부동산 동향</a>
+          <a href="#market-panel">📈 국내·미국 증시</a>
+        </nav>
+
+        <section data-view-of="economy" class="panel panel-pad" aria-labelledby="eco-title" id="eco-panel">
+          <div class="panel-head"><h2 id="eco-title">오늘의 경제 지표</h2><span class="hint" id="eco-updated"></span></div>
+          <div id="eco-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비 · 항목마다 발표 주기(일·월·분기)가 달라 가장 최근 발표값을 보여 드립니다.</p>
+        </section>
+
+        <section data-view-of="economy" class="panel panel-pad" aria-labelledby="house-title" id="house-panel">
+          <div class="panel-head"><h2 id="house-title">아파트 주간 동향</h2><span class="hint" id="house-week"></span></div>
+          <div id="house-body"><div class="skeleton"></div><div class="skeleton"></div></div>
+          <p class="source">출처: 한국부동산원 부동산통계정보(R-ONE) · 가격지수 전주 대비 변동률</p>
+        </section>
+
+        <section data-view-of="economy" class="panel panel-pad" aria-labelledby="mk-title" id="market-panel">
+          <div class="panel-head"><h2 id="mk-title">국내 · 미국 증시</h2><span class="hint">국내 전 거래일 종가 · 미국 실시간 시세</span></div>
+          <div class="us-market" aria-labelledby="kr-title">
+            <h3 id="kr-title">국내 증시 <small>코스피 · 코스닥 · 환율 · 금리</small></h3>
+            <div class="kr-tape" id="kr-tape" aria-live="off"></div>
+          </div>
+          <div class="us-market" aria-labelledby="us-title">
+            <h3 id="us-title">미국 증시 <small>나스닥 · S&amp;P 500 · NYSE · 다우</small></h3>
+            <div class="tradingview-widget-container" id="us-ticker"><div class="tradingview-widget-container__widget"></div></div>
+          </div>
+          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비(국내 증시는 전 거래일 종가) · 미국 증시: TradingView 제공(나스닥 100·S&amp;P 500·다우는 지수를 따라가는 CFD 시세, NYSE 종합은 지연 시세) · 투자 권유가 아닌 참고 자료입니다.</p>
+
+        </section>
+
+        <nav class="local-tabs sub-tabs" data-view-of="local" aria-label="우리 동네 정보 선택">
           <a href="#benefit-panel">🎁 혜택</a>
           <a href="#pension-panel">👵 국민연금</a>
           <a href="#finance-panel">💰 금융정보</a>
           <a href="#farm-panel">🌾 농사정보</a>
-          <a href="#realestate-panel">🏠 부동산</a>
         </nav>
 
-        <section data-view-of="local" class="panel panel-pad re-panel" id="realestate-panel" aria-labelledby="re-title">
+        <section data-view-of="economy" class="panel panel-pad re-panel" id="realestate-panel" aria-labelledby="re-title">
           <div class="panel-head"><h2 id="re-title">오늘의 부동산 동향</h2><span class="hint" id="re-range">최근 30일 실거래 신고분</span></div>
           <div class="re-tabs" role="tablist" aria-label="부동산 종류">
             <button type="button" class="chip" role="tab" data-re="apt" aria-selected="true">아파트</button>
@@ -363,27 +396,21 @@
           </div>
         </section>
 
-        <section class="panel panel-pad" aria-labelledby="eco-title">
-          <div class="panel-head"><h2 id="eco-title">오늘의 경제 지표</h2><span class="hint" id="eco-updated"></span></div>
-          <div id="eco-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-          <div class="us-market" aria-labelledby="kr-title">
-            <h3 id="kr-title">국내 증시 <small>코스피 · 코스닥 · 환율 · 금리</small></h3>
-            <div class="kr-tape" id="kr-tape" aria-live="off"></div>
-          </div>
-          <div class="us-market" aria-labelledby="us-title">
-            <h3 id="us-title">미국 증시 <small>나스닥 · S&amp;P 500 · NYSE · 다우</small></h3>
-            <div class="tradingview-widget-container" id="us-ticker"><div class="tradingview-widget-container__widget"></div></div>
-          </div>
-          <p class="source">출처: 한국은행 경제통계시스템(ECOS) · 전 거래일 대비(국내 증시는 전 거래일 종가) · 미국 증시: TradingView 제공(나스닥 100·S&amp;P 500·다우는 지수를 따라가는 CFD 시세, NYSE 종합은 지연 시세) · 투자 권유가 아닌 참고 자료입니다.</p>
+        <section class="panel panel-pad eco-mini" data-view-of="home" aria-labelledby="eco-mini-title">
+          <div class="panel-head"><h2 id="eco-mini-title"><a href="#eco-panel">오늘의 경제지표 ›</a></h2><span class="hint" id="eco-mini-updated">눌러서 자세히 보기</span></div>
+          <div class="kr-tape" id="kr-tape-home" aria-live="off"></div>
+          <div class="eco-mini-grid" id="eco-mini-grid"></div>
+          <nav class="eco-mini-links" aria-label="경제지표 바로가기">
+            <a href="#eco-panel"><span aria-hidden="true">📊</span>항목별 최신 발표</a>
+            <a href="#house-panel"><span aria-hidden="true">🏢</span>아파트 주간동향</a>
+            <a href="#realestate-panel"><span aria-hidden="true">🏠</span>부동산 동향</a>
+            <a href="#market-panel"><span aria-hidden="true">📈</span>국내·미국 증시</a>
+          </nav>
         </section>
+
 
         <div class="ad-slot panel" data-ad="side" hidden><span class="ad-label">광고</span></div>
 
-        <section class="panel panel-pad" aria-labelledby="house-title" id="house-panel">
-          <div class="panel-head"><h2 id="house-title">아파트 주간 동향</h2><span class="hint" id="house-week"></span></div>
-          <div id="house-body"><div class="skeleton"></div><div class="skeleton"></div></div>
-          <p class="source">출처: 한국부동산원 부동산통계정보(R-ONE) · 가격지수 전주 대비 변동률</p>
-        </section>
 
         <section class="panel panel-pad wx-panel" id="weather-panel" aria-labelledby="wx-title">
           <div class="panel-head"><h2 id="wx-title">오늘의 날씨</h2><span class="hint" id="wx-updated">기상청 · 매시간 갱신</span></div>
@@ -615,29 +642,30 @@
   <script>
     // 화면 나누기: 위쪽 메뉴를 누르면 그 항목 화면만 보여 준다 (홈 / 게시판 / 정책브리핑 / 오늘의 이슈 / 우리동네 / 스페이스 레터 / 이용 안내)
     const boardSections = ["community-section", "voice-section", "policy-section", "research-section", "chat-section"];
-    const view = { name: "home", local: "benefit-panel", board: "community-section" };
+    const view = { name: "home", sub: { local: "benefit-panel", economy: "eco-panel" }, board: "community-section" };
+    const hasSubs = name => Boolean(document.querySelector(`.sub-tabs[data-view-of="${name}"]`));
     function hostOf(element) { return element && element.closest ? element.closest("[data-view-of]") : null; }
     function viewOfId(id) {
       if (!id || id === "top") return "home";
       const host = hostOf(document.getElementById(id));
       return host ? host.dataset.viewOf : null;
     }
-    function localPanels() { return [...document.querySelectorAll('.panel[data-view-of="local"]')]; }
     function applyView() {
       document.body.dataset.view = view.name;
       document.querySelectorAll("[data-view-of]").forEach(element => {
         let on = element.dataset.viewOf === view.name;
-        if (on && view.name === "local" && element.classList.contains("panel")) on = element.id === view.local;
+        if (on && element.classList.contains("panel") && hasSubs(view.name)) on = element.id === view.sub[view.name];
         element.classList.toggle("view-off", !on);
       });
       boardSections.forEach(id => document.getElementById(id).classList.toggle("tab-visible", id === view.board));
       document.querySelectorAll(".board-tabs [data-target]").forEach(element => element.classList.toggle("active", element.dataset.target === view.board));
-      document.querySelectorAll(".local-tabs a").forEach(link => {
+      document.querySelectorAll(".sub-tabs a").forEach(link => {
         const id = link.getAttribute("href").slice(1);
         const off = document.getElementById(id)?.hidden === true;
         if (link.hidden !== off) link.hidden = off;
-        link.classList.toggle("active", id === view.local);
-        if (id === view.local) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+        const current = id === view.sub[link.closest(".sub-tabs").dataset.viewOf];
+        link.classList.toggle("active", current);
+        if (current) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
       });
       updateNav();
     }
@@ -654,21 +682,22 @@
     // 한 화면으로 옮긴다. 화면이 바뀌면 맨 위로, 화면 안의 특정 글로 가는 경우는 그 글로 스크롤한다.
     function go(id, scroll = true) {
       const element = id && id !== "top" ? document.getElementById(id) : null;
-      const before = `${view.name}|${view.local}|${view.board}`;
+      const key = () => `${view.name}|${view.sub[view.name] || ""}|${view.board}`;
+      const before = key();
       if (!id || id === "top") view.name = "home";
       else if (element) {
         const host = hostOf(element);
         if (host) view.name = host.dataset.viewOf;
-        if (view.name === "local") {
-          const panel = element.closest('.panel[data-view-of="local"]');
-          if (panel) view.local = panel.id;
+        if (hasSubs(view.name)) {
+          const panel = element.closest(`.panel[data-view-of="${view.name}"]`);
+          if (panel) view.sub[view.name] = panel.id;
         }
         const board = element.closest(".board-section");
         if (board) view.board = board.id;
       }
       applyView();
       if (!scroll) return;
-      const changed = before !== `${view.name}|${view.local}|${view.board}`;
+      const changed = before !== key();
       const isScreen = !element || element === hostOf(element) || boardSections.includes(id) || id === "boards";
       if (changed || isScreen) window.scrollTo({ top: 0, behavior: "instant" });
       if (element && !isScreen) requestAnimationFrame(() => originalScroll.call(element, { behavior: "smooth", block: "start" }));

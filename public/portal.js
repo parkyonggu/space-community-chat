@@ -109,8 +109,15 @@
       feedList.replaceChildren(make('li', 'feed-empty', state.search ? `‘${state.search}’에 맞는 글이 없습니다.` : '아직 올라온 글이 없습니다. 첫 이야기를 남겨 주세요!'));
       return;
     }
-    feedList.replaceChildren(...items.map(post => {
+    // 새로 올라온 글은 잠깐 빛나게, 탭을 바꿨을 때는 위에서부터 차례로 나타나게 한다
+    const seen = feedList.dataset.ids ? new Set(feedList.dataset.ids.split(',')) : null;
+    const sameTab = feedList.dataset.tab === `${state.feed}|${state.search}`;
+    feedList.dataset.ids = items.map(post => post.id).join(',');
+    feedList.dataset.tab = `${state.feed}|${state.search}`;
+    feedList.replaceChildren(...items.map((post, index) => {
       const item = make('li', 'feed-item');
+      if (!sameTab) { item.classList.add('enter'); item.style.setProperty('--i', index); }
+      else if (seen && !seen.has(String(post.id))) item.classList.add('fresh');
       // 공개 글은 진짜 링크(/post/번호)로: 검색엔진이 따라가고, 새 탭으로 열 수도 있다. 보통 클릭은 지금처럼 게시판에서 연다.
       const linkable = Boolean(post.no);
       const button = make(linkable ? 'a' : 'button', 'feed-link');
@@ -320,15 +327,37 @@
   function showNotice(index) {
     noticeIndex = (index + notices.length) % notices.length;
     const notice = notices[noticeIndex];
-    $('ticker-tag').textContent = notice.tag;
-    const link = make('a', '', notice.text);
+    const tag = $('ticker-tag');
+    tag.textContent = notice.tag;
+    tag.dataset.kind = { 공지: 'notice', 안내: 'guide', '시민의 소리': 'voice', 운영: 'ops' }[notice.tag] || 'notice';
+    const link = make('a', 'ticker-link');
     link.href = notice.href;
+    link.append(make('span', 'ticker-msg', notice.text), make('span', 'ticker-go', '자세히 ›'));
     const box = $('ticker-text');
     box.classList.remove('swap');
     void box.offsetWidth;
     box.classList.add('swap');
     box.replaceChildren(link);
-    $('ticker-pos').textContent = `${noticeIndex + 1} / ${notices.length}`;
+    // 몇 번째 공지인지 점으로 보여 주고, 점을 누르면 그 공지로 간다
+    const pos = $('ticker-pos');
+    if (pos.children.length !== notices.length) {
+      pos.replaceChildren(...notices.map((item, index) => {
+        const dot = make('button', 'ticker-dot');
+        dot.type = 'button';
+        dot.setAttribute('aria-label', `${index + 1}번째 공지: ${item.tag}`);
+        dot.addEventListener('click', () => { showNotice(index); startTicker(); });
+        return dot;
+      }));
+    }
+    [...pos.children].forEach((dot, index) => {
+      dot.classList.toggle('on', index === noticeIndex);
+      if (index === noticeIndex) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
+    });
+    // 다음 공지까지 남은 시간을 아래 막대로 보여 준다
+    const ticker = $('ticker');
+    ticker.classList.remove('run');
+    void ticker.offsetWidth;
+    ticker.classList.add('run');
   }
   function startTicker() {
     clearInterval(noticeTimer);
@@ -340,10 +369,12 @@
     $('ticker-next').addEventListener('click', () => { showNotice(noticeIndex + 1); startTicker(); });
     $('ticker-prev').addEventListener('click', () => { showNotice(noticeIndex - 1); startTicker(); });
     const ticker = $('ticker');
-    ticker.addEventListener('mouseenter', () => clearInterval(noticeTimer));
-    ticker.addEventListener('mouseleave', startTicker);
-    ticker.addEventListener('focusin', () => clearInterval(noticeTimer));
-    ticker.addEventListener('focusout', startTicker);
+    const pause = () => { clearInterval(noticeTimer); ticker.classList.add('paused'); };
+    const resume = () => { ticker.classList.remove('paused'); showNotice(noticeIndex); startTicker(); };
+    ticker.addEventListener('mouseenter', pause);
+    ticker.addEventListener('mouseleave', resume);
+    ticker.addEventListener('focusin', pause);
+    ticker.addEventListener('focusout', () => setTimeout(() => { if (!ticker.contains(document.activeElement) && !ticker.matches(':hover')) resume(); }, 0));
   }
 
   // ---------- indicators, housing, chat head count ----------
@@ -396,10 +427,9 @@
     }));
   }
   // 국내 증시: 같은 지표를 옆으로 흐르는 띠로 보여 준다(전 거래일 종가).
-  function renderKrTape(data) {
-    const tape = $('kr-tape');
+  function renderKrTape(data, tapeId = 'kr-tape', wanted = ['kospi', 'kosdaq', 'usdkrw', 'ktb3y']) {
+    const tape = $(tapeId);
     if (!tape) return;
-    const wanted = ['kospi', 'kosdaq', 'usdkrw', 'ktb3y'];
     const items = (data?.items || []).filter(item => wanted.includes(item.id) && item.value !== null && item.value !== undefined);
     if (!items.length) { if (!tape.dataset.sig) tape.replaceChildren(make('span', 'feed-empty', '국내 증시 자료를 불러오는 중입니다.')); return; }
     const sig = items.map(item => `${item.id}:${item.value}:${item.date}`).join('|');
@@ -421,6 +451,25 @@
       track.appendChild(node);
     });
     tape.replaceChildren(track);
+  }
+  // 홈 오른쪽 '오늘의 경제지표' 요약: 흐르는 띠 + 핵심 4칸(누르면 경제지표 화면으로)
+  function renderEcoMini(data) {
+    renderKrTape(data, 'kr-tape-home', ['kospi', 'kosdaq', 'usdkrw', 'ktb3y', 'base', 'dubai', 'gold']);
+    const grid = $('eco-mini-grid');
+    if (!grid) return;
+    const items = data?.items || [];
+    const pick = ['kospi', 'usdkrw', 'base', 'ktb3y'].map(id => items.find(item => item.id === id)).filter(item => item && item.value !== null && item.value !== undefined);
+    if (!pick.length) { if (!grid.children.length) grid.replaceChildren(make('p', 'feed-empty', '지표를 불러오는 중입니다.')); return; }
+    $('eco-mini-updated').textContent = data.today ? `${dateLabel(data.today)} 기준 · 눌러서 자세히` : '눌러서 자세히 보기';
+    grid.replaceChildren(...pick.map(item => {
+      const tile = make('a', 'eco-tile');
+      tile.href = item.id === 'kospi' ? '#market-panel' : '#eco-panel';
+      const delta = deltaOf(item);
+      tile.append(make('span', 'n', item.name),
+        make('span', 'v', `${number(item.value, item.digits)}${item.unit === '%' ? '%' : item.unit === '원' ? '원' : ''}`),
+        make('span', `c ${delta.cls}`, delta.text || '변동 없음'));
+      return tile;
+    }));
   }
   function renderHousing(data) {
     const body = $('house-body');
@@ -1848,6 +1897,7 @@
       const data = await response.json();
       renderIndicators(data.indicators);
       renderKrTape(data.indicators);
+      renderEcoMini(data.indicators);
       renderHousing(data.housing);
       renderRealEstate(data.realestate);
       renderPolicy(data.policy);
