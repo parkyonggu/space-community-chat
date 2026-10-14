@@ -847,3 +847,4 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-how summary { cursor:pointer; font-weight:700; color:var(--ink); font-size:14px; }
 .pn-field { min-width:0; }
 .pn-field input, .pn-field select { width:100%; box-sizing:border-box; min-width:0; }
+.pn-calc-warn { margin:6px 0; font-size:13.5px; color:#9a3412; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:8px 10px; }

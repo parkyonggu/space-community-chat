@@ -1114,7 +1114,7 @@
     ['출산 크레딧 확대', '첫째 아이부터 가입기간 12개월을 인정하고, 50개월 상한을 없앴습니다.'],
     ['군복무 크레딧 확대', '인정 기간이 최대 6개월에서 12개월로 늘었습니다.'],
     ['저소득 지역가입자 보험료 지원', '월 소득 80만 원 미만 지역가입자는 보험료의 50%를 지원받습니다(납부 재개자 12개월 제한 폐지).'],
-    ['일하는 수급자 감액 완화', '일하면서 국민연금을 받는 분도 일정 소득 미만이면 깎지 않고 전액 받을 수 있게 기준이 완화되었습니다.'],
+    ['일하는 수급자 감액 완화', '2026년 6월 17일부터 연금 받으면서 버는 월 소득이 519만 3,511원 미만이면 깎지 않고 전액 받습니다(종전 319만 원).'],
     ['연금액 2.1% 인상', '2026년 1월분부터 물가 상승률(2.1%)만큼 올랐습니다. 산정 기준 A값은 3,193,511원입니다.'],
     ['보험료 기준소득 상·하한', '2026년 7월 ~ 2027년 6월: 상한 659만 원, 하한 41만 원.'],
   ];
@@ -1154,15 +1154,17 @@
       form.appendChild(box);
       return input;
     };
-    const income = field('월 평균 소득(세전, 만 원)', { type: 'number', min: 0, max: 5000, step: 10, value: pn.calc?.income ?? 300, inputMode: 'numeric' });
+    const income = field('보험료 내는 동안 월 평균 소득(세전, 만 원)', { type: 'number', min: 0, max: 5000, step: 10, value: pn.calc?.income ?? 300, inputMode: 'numeric' });
     const years = field('국민연금 가입 기간(예상, 년)', { type: 'number', min: 0, max: 45, step: 1, value: pn.calc?.years ?? 20, inputMode: 'numeric' });
     const birth = field('태어난 해(선택)', { type: 'number', min: 1940, max: 2010, step: 1, value: pn.calc?.birth ?? '', placeholder: '예: 1968', inputMode: 'numeric' });
+    const later = field('연금 받을 때도 일한다면 월 소득(근로·사업, 만 원)', { type: 'number', min: 0, max: 5000, step: 10, value: pn.calc?.later ?? 0, inputMode: 'numeric' });
     const out = make('div', 'pn-calc-out');
     const update = () => {
       const incomeWon = Math.max(0, Number(income.value) || 0) * 10000;
       const y = Math.max(0, Math.min(45, Number(years.value) || 0));
       const by = Number(birth.value) || 0;
-      pn.calc = { income: income.value, years: years.value, birth: birth.value };
+      pn.calc = { income: income.value, years: years.value, birth: birth.value, later: later.value };
+      const laterWon = Math.max(0, Number(later.value) || 0) * 10000;
       const { b, monthly } = pnEstimate(incomeWon, y);
       pn.lastPension = monthly ? { monthly, b } : null;
       const start = pnStartAge(by >= 1940 && by <= 2010 ? by : 0);
@@ -1172,6 +1174,13 @@
         const big = make('p', 'pn-calc-big');
         big.append(start ? `만 ${start}세부터 매달 받는 국민연금 약 ` : '매달 받는 국민연금(예상) 약 ', make('strong', '', `${manwon(monthly)}`));
         lines.push(big);
+      }
+      // 연금 받을 때의 소득: 2026년 6월 17일부터 월 519만 3,511원(A값 + 200만 원) 미만이면 감액 없음
+      if (monthly !== null) {
+        const cut = PN_A + 2000000;
+        if (laterWon <= 0) lines.push(make('p', 'pn-calc-note', '연금 받을 때 따로 버는 소득이 없으면 위 금액을 그대로 받습니다.'));
+        else if (laterWon < cut) lines.push(make('p', 'pn-calc-note', `연금 받을 때 월 소득 ${manwon(laterWon)}: 월 ${Math.round(cut / 10000).toLocaleString('ko-KR')}만 원 미만이라 깎이지 않고 전액 받습니다(2026년 6월부터).`));
+        else lines.push(make('p', 'pn-calc-warn', `연금 받을 때 월 소득 ${manwon(laterWon)}: 월 ${Math.round(cut / 10000).toLocaleString('ko-KR')}만 원 이상이라, 받기 시작한 뒤 최대 5년 동안 연금 일부가 깎일 수 있습니다(최대 절반까지). 깎이는 금액은 소득에 따라 달라 국민연금공단(☎1355)에서 확인하세요.`));
       }
       const fee = make('p', 'pn-calc-note');
       fee.textContent = `지금 내는 보험료(9.5%): 월 ${Math.round(b * 0.095).toLocaleString('ko-KR')}원 · 직장가입자 본인 몫(4.75%) 월 ${Math.round(b * 0.0475).toLocaleString('ko-KR')}원`;
@@ -1185,10 +1194,10 @@
       }
       out.replaceChildren(...lines);
     };
-    [income, years, birth].forEach(input => input.addEventListener('input', update));
+    [income, years, birth, later].forEach(input => input.addEventListener('input', update));
     update();
     const caution = make('p', 'pn-calc-caution', '간이 계산입니다. 모든 가입 기간을 2026년 산식(지급률 1.29, A값 3,193,511원)으로 보고, 소득은 지금 화폐가치로 계산했습니다. 2025년 이전 가입 기간은 지급률이 더 높아 실제 연금이 이보다 많을 수 있고, 부양가족연금·크레딧·물가 조정은 빠졌습니다. 정확한 금액은 아래 「정확한 내 연금 조회」에서 본인 인증 후 확인하세요.');
-    const title = make('p', 'pn-calc-title', '🧮 나이 들어 매달 받는 국민연금은 얼마일까? 아래 세 칸만 넣어 보세요.');
+    const title = make('p', 'pn-calc-title', '🧮 나이 들어 매달 받는 국민연금은 얼마일까? 보험료 낼 때의 소득과 가입 기간을 넣어 보세요.');
     wrap.append(title, form, out, caution);
     return wrap;
   }
