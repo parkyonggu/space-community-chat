@@ -1114,7 +1114,7 @@
     ['출산 크레딧 확대', '첫째 아이부터 가입기간 12개월을 인정하고, 50개월 상한을 없앴습니다.'],
     ['군복무 크레딧 확대', '인정 기간이 최대 6개월에서 12개월로 늘었습니다.'],
     ['저소득 지역가입자 보험료 지원', '월 소득 80만 원 미만 지역가입자는 보험료의 50%를 지원받습니다(납부 재개자 12개월 제한 폐지).'],
-    ['일하는 수급자 감액 완화', '일정 소득 미만이면 노령연금을 깎지 않고 전액 받을 수 있게 기준이 완화되었습니다.'],
+    ['일하는 수급자 감액 완화', '일하면서 국민연금을 받는 분도 일정 소득 미만이면 깎지 않고 전액 받을 수 있게 기준이 완화되었습니다.'],
     ['연금액 2.1% 인상', '2026년 1월분부터 물가 상승률(2.1%)만큼 올랐습니다. 산정 기준 A값은 3,193,511원입니다.'],
     ['보험료 기준소득 상·하한', '2026년 7월 ~ 2027년 6월: 상한 659만 원, 하한 41만 원.'],
   ];
@@ -1164,25 +1164,153 @@
       const by = Number(birth.value) || 0;
       pn.calc = { income: income.value, years: years.value, birth: birth.value };
       const { b, monthly } = pnEstimate(incomeWon, y);
+      pn.lastPension = monthly ? { monthly, b } : null;
       const start = pnStartAge(by >= 1940 && by <= 2010 ? by : 0);
       const lines = [];
       if (monthly === null) lines.push(make('p', 'pn-calc-big', '가입 기간이 10년 미만이면 매달 받는 연금 대신 낸 보험료를 돌려받습니다(반환일시금).'));
       else {
         const big = make('p', 'pn-calc-big');
-        big.append(start ? `만 ${start}세부터 매달 받는 노령연금 약 ` : '매달 받는 노령연금(예상) 약 ', make('strong', '', `${manwon(monthly)}`));
+        big.append(start ? `만 ${start}세부터 매달 받는 국민연금 약 ` : '매달 받는 국민연금(예상) 약 ', make('strong', '', `${manwon(monthly)}`));
         lines.push(big);
       }
       const fee = make('p', 'pn-calc-note');
       fee.textContent = `지금 내는 보험료(9.5%): 월 ${Math.round(b * 0.095).toLocaleString('ko-KR')}원 · 직장가입자 본인 몫(4.75%) 월 ${Math.round(b * 0.0475).toLocaleString('ko-KR')}원`;
       lines.push(fee);
       lines.push(make('p', 'pn-calc-note', start ? `${by}년생은 만 ${start}세부터 받습니다(1969년 이후 출생은 만 65세). 일찍 받으면 줄고, 늦춰 받으면 늘어납니다.` : '태어난 해를 넣으면 몇 살부터 받는지도 알려 드립니다(1969년 이후 출생은 만 65세부터).'));
+      if (monthly) {
+        const next = make('button', 'pn-next', '👵 이 국민연금으로 기초연금 계산하기 →');
+        next.type = 'button';
+        next.addEventListener('click', () => { pn.basic = { ...(pn.basic || {}), pension: Math.round(monthly / 10000), agrant: '' }; pn.view = 'basic'; renderPension(); });
+        lines.push(next);
+      }
       out.replaceChildren(...lines);
     };
     [income, years, birth].forEach(input => input.addEventListener('input', update));
     update();
     const caution = make('p', 'pn-calc-caution', '간이 계산입니다. 모든 가입 기간을 2026년 산식(지급률 1.29, A값 3,193,511원)으로 보고, 소득은 지금 화폐가치로 계산했습니다. 2025년 이전 가입 기간은 지급률이 더 높아 실제 연금이 이보다 많을 수 있고, 부양가족연금·크레딧·물가 조정은 빠졌습니다. 정확한 금액은 아래 「정확한 내 연금 조회」에서 본인 인증 후 확인하세요.');
-    const title = make('p', 'pn-calc-title', '👵 나이 들어 매달 받는 국민연금(노령연금)은 얼마일까? 아래 세 칸만 넣어 보세요.');
+    const title = make('p', 'pn-calc-title', '🧮 나이 들어 매달 받는 국민연금은 얼마일까? 아래 세 칸만 넣어 보세요.');
     wrap.append(title, form, out, caution);
+    return wrap;
+  }
+  // ---------- 기초연금 간이 계산 (2026년 기준, 소득인정액·국민연금 연계감액·부부감액·소득역전방지감액) ----------
+  const BP = { base: 349700, single: 2470000, couple: 3952000, workDeduct: 1160000, finDeduct: 20000000,
+    homeDeduct: { metro: 135000000, city: 85000000, rural: 72500000 } };
+  function basicPensionEstimate(input) {
+    const won = value => Math.max(0, Number(value) || 0) * 10000;
+    const couple = input.household !== 'single';
+    const both = input.household === 'both';
+    const work = won(input.work);
+    const pension = won(input.pension);
+    const other = won(input.other);
+    // 소득평가액: 근로소득은 116만 원 빼고 70%만, 국민연금 등 공적연금·기타 소득은 그대로
+    const workCounted = Math.max(0, work - BP.workDeduct) * 0.7;
+    const incomeEval = workCounted + pension + other;
+    // 재산의 소득환산액: [(일반재산-기본공제) + (금융재산-2천만 원) - 부채] × 4% ÷ 12
+    const property = Math.max(0, won(input.home) - (BP.homeDeduct[input.area] || BP.homeDeduct.city))
+      + Math.max(0, won(input.finance) - BP.finDeduct) - won(input.debt);
+    const propertyEval = Math.max(0, property) * 0.04 / 12;
+    const recognized = Math.round(incomeEval + propertyEval);
+    const limit = couple ? BP.couple : BP.single;
+    const result = { recognized, limit, workCounted, propertyEval: Math.round(propertyEval), eligible: recognized <= limit, notes: [] };
+    if (!result.eligible) return result;
+    // 국민연금 연계감액: ① 기준연금액 - 2/3×A급여 + 부가연금액(기준연금액의 1/2), ② 기준연금액×250% - 국민연금액 중 큰 금액(기준연금액의 50%~100%)
+    let each = BP.base;
+    if (pension > 0) {
+      const aGrant = input.agrant !== '' && input.agrant != null ? won(input.agrant) : pension / 2;
+      const one = BP.base - (2 / 3) * aGrant + BP.base / 2;
+      const two = BP.base * 2.5 - pension;
+      each = Math.min(BP.base, Math.max(BP.base / 2, Math.max(one, two)));
+      if (each < BP.base) {
+        result.notes.push(`국민연금이 월 ${Math.round(BP.base * 1.5).toLocaleString('ko-KR')}원(기준연금액의 150%)을 넘어 연계감액 적용`);
+        if (input.agrant === '' || input.agrant == null) result.notes.push('A급여를 몰라 국민연금의 절반으로 어림했습니다(공단에서 A급여를 확인해 넣으면 더 정확합니다)');
+      }
+    }
+    // 부부가 둘 다 받으면 각각 20% 감액
+    if (both) { each *= 0.8; result.notes.push('부부가 함께 받아 각각 20% 감액'); }
+    let household = both ? each * 2 : each;
+    // 소득역전방지 감액: 소득인정액 + 기초연금이 선정기준액을 넘으면 넘는 만큼 감액
+    if (recognized + household > limit) {
+      household = Math.max(0, limit - recognized);
+      each = both ? household / 2 : household;
+      result.notes.push('소득인정액과 기초연금 합이 선정기준액을 넘어 그만큼 감액(소득역전방지)');
+    }
+    result.each = Math.floor(each / 10) * 10;
+    result.household = Math.floor(household / 10) * 10;
+    result.pension = pension;
+    return result;
+  }
+  function basicPensionCalc() {
+    const wrap = make('div', 'pn-calc');
+    const defaults = { household: 'single', area: pn.region === 'uiryeong' ? 'rural' : 'city', work: 0, pension: pn.lastPension ? Math.round(pn.lastPension.monthly / 10000) : 0, other: 0, home: 0, finance: 0, debt: 0, agrant: '' };
+    const state = pn.basic = { ...defaults, ...(pn.basic || {}) };
+    const title = make('p', 'pn-calc-title', '👵 만 65세 이상이 받는 기초연금은 얼마일까? 국민연금·소득·재산에 따라 줄어드는 금액까지 계산합니다.');
+    const form = make('div', 'pn-calc-form');
+    const select = (label, key, options) => {
+      const box = make('label', 'pn-field');
+      box.appendChild(make('span', '', label));
+      const el = make('select');
+      options.forEach(([value, text]) => { const o = make('option', '', text); o.value = value; el.appendChild(o); });
+      el.value = state[key];
+      el.addEventListener('change', () => { state[key] = el.value; update(); });
+      box.appendChild(el);
+      form.appendChild(box);
+    };
+    const number = (label, key, hint = '') => {
+      const box = make('label', 'pn-field');
+      box.appendChild(make('span', '', label));
+      const el = make('input');
+      Object.assign(el, { type: 'number', min: 0, step: 1, inputMode: 'numeric', value: state[key], placeholder: hint });
+      el.addEventListener('input', () => { state[key] = el.value; update(); });
+      box.appendChild(el);
+      form.appendChild(box);
+    };
+    select('가구', 'household', [['single', '혼자 삶(단독)'], ['both', '부부 둘 다 65세 이상'], ['one', '부부 중 한 명만']]);
+    select('사는 곳', 'area', [['city', '도의 시 (양산·김해 등)'], ['rural', '도의 군 (의령 등)'], ['metro', '서울·광역시']]);
+    number('국민연금 월 수령액(만 원)', 'pension');
+    number('월 근로소득(만 원, 부부 합산)', 'work');
+    number('기타 월 소득(만 원: 임대·이자·다른 연금 등)', 'other');
+    number('집·땅 등 재산(공시가격, 만 원)', 'home');
+    number('예금·적금 등 금융재산(만 원)', 'finance');
+    number('빚(대출·전세보증금 등, 만 원)', 'debt');
+    number('A급여(만 원, 모르면 비워 두세요)', 'agrant', '모르면 비움');
+    const out = make('div', 'pn-calc-out');
+    const update = () => {
+      const r = basicPensionEstimate(state);
+      const lines = [];
+      lines.push(make('p', 'pn-calc-note', `소득인정액 약 ${manwon(r.recognized)} · 선정기준액 ${manwon(r.limit)} ${state.household === 'single' ? '(단독)' : '(부부)'}`));
+      if (!r.eligible) {
+        lines.push(make('p', 'pn-calc-big', '소득인정액이 선정기준액보다 많아 기초연금 대상이 아닐 가능성이 높습니다.'));
+      } else {
+        const big = make('p', 'pn-calc-big');
+        big.append(state.household === 'both' ? '기초연금 예상 1인당 약 ' : '기초연금 예상 월 약 ', make('strong', '', manwon(r.each)));
+        if (state.household === 'both') big.append(` (부부 합계 ${manwon(r.household)})`);
+        lines.push(big);
+        if (r.pension) lines.push(make('p', 'pn-calc-note', `국민연금 ${manwon(r.pension)} + 기초연금 ${manwon(r.household)} = 매달 약 ${manwon(r.pension + r.household)}`));
+        r.notes.forEach(note => lines.push(make('p', 'pn-calc-note', `· ${note}`)));
+      }
+      out.replaceChildren(...lines);
+    };
+    update();
+    const how = make('details', 'pn-how');
+    how.appendChild(make('summary', '', '계산 방법 보기'));
+    [
+      '① 소득인정액 = 소득평가액 + 재산의 소득환산액',
+      '· 소득평가액 = (근로소득 − 116만 원) × 70% + 국민연금 등 공적연금 + 기타 소득',
+      '· 재산 환산 = [(집·땅 − 기본공제) + (금융재산 − 2,000만 원) − 빚] × 4% ÷ 12 (기본공제: 서울·광역시 1억 3,500만, 도의 시 8,500만, 도의 군 7,250만 원)',
+      '② 선정기준액(2026): 단독 247만 원, 부부 395.2만 원 이하면 대상',
+      '③ 기준연금액 월 34만 9,700원에서 시작',
+      '④ 국민연금 연계감액: 국민연금이 52만 4,550원(기준연금액의 150%)을 넘고 A급여가 26만 2,275원을 넘으면 [기준연금액 − ⅔×A급여 + 17만 4,850원]과 [기준연금액×250% − 국민연금] 중 큰 금액. 최소 17만 4,850원(절반)은 보장',
+      '⑤ 부부가 함께 받으면 각각 20% 감액',
+      '⑥ 소득인정액 + 기초연금이 선정기준액을 넘으면 넘는 만큼 감액(소득역전방지)',
+    ].forEach(text => how.appendChild(make('p', 'pn-calc-note', text)));
+    const caution = make('p', 'pn-calc-caution', '간이 계산입니다. 자동차·회원권, 자녀 집 무료 거주, 부부 각자의 근로소득 공제 등은 단순화했고, 실제 금액은 신청 후 조사로 정해집니다. 정확한 판정은 주소지 행정복지센터(읍·면사무소) 또는 국민연금공단(☎1355)·복지로(☎129)에 문의하세요.');
+    const links = make('div', 'pn-links');
+    [['복지로 기초연금 모의계산 ↗', 'https://www.bokjiro.go.kr'], ['국민연금공단 기초연금 안내 ↗', 'https://www.nps.or.kr']].forEach(([text, href]) => {
+      const a = make('a', 'btn btn-outline', text);
+      a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      links.appendChild(a);
+    });
+    wrap.append(title, form, out, how, caution, links);
     return wrap;
   }
   function pensionPolicy() {
@@ -1238,6 +1366,7 @@
     if (pn.view === 'policy') { $('pn-body').replaceChildren(pensionPolicy()); return; }
     if (pn.view === 'news') { $('pn-body').replaceChildren(pensionNewsView(data)); return; }
     if (pn.view === 'calc') { $('pn-body').replaceChildren(pensionCalc()); return; }
+    if (pn.view === 'basic') { $('pn-body').replaceChildren(basicPensionCalc()); return; }
     const names = data.names || [];
     $('pn-regions').replaceChildren(...names.map(entry => {
       const chip = make('button', 'chip', entry.name);

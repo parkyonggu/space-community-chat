@@ -830,7 +830,7 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-news a { font-weight:700; color:var(--ink); }
 .pn-news-sub { display:block; color:var(--text); font-size:13.5px; margin-top:2px; }
 .pn-news-meta { display:block; color:var(--muted); font-size:12.5px; margin-top:2px; }
-.pn-calc-form { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin:6px 0 12px; }
+.pn-calc-form { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px; margin:6px 0 12px; }
 .pn-field { display:grid; gap:4px; font-size:13px; color:var(--muted); }
 .pn-field input { padding:9px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:16px; color:var(--ink); }
 .pn-calc-out { background:#f1f6ff; border:1px solid #d6e4ff; border-radius:12px; padding:12px 14px; }
@@ -840,3 +840,10 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-calc-caution { margin:10px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; }
 .pn-calc-caution a { color:var(--muted); text-decoration:underline; }
 .pn-calc-title { margin:2px 0 8px; font-weight:800; color:var(--ink); font-size:15px; }
+
+.pn-next { margin-top:8px; padding:8px 14px; border-radius:10px; border:1px solid #1958e8; background:#fff; color:#1958e8; font:inherit; font-weight:800; cursor:pointer; }
+.pn-field select { padding:9px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:15px; color:var(--ink); background:#fff; }
+.pn-how { margin:10px 0 0; }
+.pn-how summary { cursor:pointer; font-weight:700; color:var(--ink); font-size:14px; }
+.pn-field { min-width:0; }
+.pn-field input, .pn-field select { width:100%; box-sizing:border-box; min-width:0; }
