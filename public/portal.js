@@ -1169,19 +1169,20 @@
       if (monthly === null) lines.push(make('p', 'pn-calc-big', '가입 기간이 10년 미만이면 매달 받는 연금 대신 낸 보험료를 돌려받습니다(반환일시금).'));
       else {
         const big = make('p', 'pn-calc-big');
-        big.append('예상 월 연금 약 ', make('strong', '', `${manwon(monthly)}`));
+        big.append(start ? `만 ${start}세부터 매달 받는 노령연금 약 ` : '매달 받는 노령연금(예상) 약 ', make('strong', '', `${manwon(monthly)}`));
         lines.push(big);
       }
       const fee = make('p', 'pn-calc-note');
       fee.textContent = `지금 내는 보험료(9.5%): 월 ${Math.round(b * 0.095).toLocaleString('ko-KR')}원 · 직장가입자 본인 몫(4.75%) 월 ${Math.round(b * 0.0475).toLocaleString('ko-KR')}원`;
       lines.push(fee);
-      if (start) lines.push(make('p', 'pn-calc-note', `${by}년생은 만 ${start}세부터 노령연금을 받습니다(조기·연기 수령은 공단에서 상담).`));
+      lines.push(make('p', 'pn-calc-note', start ? `${by}년생은 만 ${start}세부터 받습니다(1969년 이후 출생은 만 65세). 일찍 받으면 줄고, 늦춰 받으면 늘어납니다.` : '태어난 해를 넣으면 몇 살부터 받는지도 알려 드립니다(1969년 이후 출생은 만 65세부터).'));
       out.replaceChildren(...lines);
     };
     [income, years, birth].forEach(input => input.addEventListener('input', update));
     update();
     const caution = make('p', 'pn-calc-caution', '간이 계산입니다. 모든 가입 기간을 2026년 산식(지급률 1.29, A값 3,193,511원)으로 보고, 소득은 지금 화폐가치로 계산했습니다. 2025년 이전 가입 기간은 지급률이 더 높아 실제 연금이 이보다 많을 수 있고, 부양가족연금·크레딧·물가 조정은 빠졌습니다. 정확한 금액은 아래 「정확한 내 연금 조회」에서 본인 인증 후 확인하세요.');
-    wrap.append(form, out, caution);
+    const title = make('p', 'pn-calc-title', '👵 나이 들어 매달 받는 국민연금(노령연금)은 얼마일까? 아래 세 칸만 넣어 보세요.');
+    wrap.append(title, form, out, caution);
     return wrap;
   }
   function pensionPolicy() {
