@@ -1892,7 +1892,7 @@
   function renderOnline(count) {
     state.online = count;
     const known = Number.isFinite(count);
-    $('chat-online').textContent = known ? `${count}명 접속` : '접속 확인 중';
+    if ($('chat-online')) $('chat-online').textContent = known ? `${count}명 접속` : '접속 확인 중';
     const badge = $('nav-online');
     badge.hidden = !known || count < 1;
     badge.textContent = known ? String(count) : '';
@@ -1926,6 +1926,7 @@
   function renderChatPreview() {
     const messages = [...chatBox.querySelectorAll('.chat-message')].slice(-3);
     const list = $('chat-lines');
+    if (!list) return; // 홈에서 채팅 미리보기를 뺀 뒤에도 오류 없이
     if (!messages.length) {
       list.replaceChildren(make('li', 'empty', '새 대화가 오면 여기에 바로 보입니다. 대화는 누구나 볼 수 있고, 메시지는 회원만 보낼 수 있습니다.'));
       return;
