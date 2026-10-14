@@ -1561,7 +1561,14 @@
     if (fi.sort === 'base') list = [...list].sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
     list = list.slice(0, 20);
     if (!list.length) return make('p', 'pn-empty', '보여 드릴 상품이 없습니다.');
+    const wrap = make('div');
+    const groupText = fi.group === 'all' ? '은행·저축은행 전체' : fi.group;
+    wrap.appendChild(make('p', 'fi-sortnote', fi.sort === 'base'
+      ? `${groupText} · 기본금리(우대 조건 없이 누구나 받는 금리)가 높은 순 ${list.length}개`
+      : `${groupText} · 최고금리(우대 조건을 모두 채웠을 때 금리)가 높은 순 ${list.length}개`));
+    if (fi.group !== '은행' && fi.sort === 'max') wrap.appendChild(make('p', 'fi-meta', '저축은행은 대부분 우대 조건이 없어 기본금리와 최고금리가 같습니다. 순서 차이는 주로 「은행」을 골랐을 때 크게 보입니다.'));
     const ol = make('ol', 'fi-list');
+    wrap.appendChild(ol);
     list.forEach(row => {
       const li = make('li', 'fi-item');
       const head = make('div', 'fi-head');
@@ -1569,7 +1576,8 @@
       if (row.joinDeny && row.joinDeny !== '제한 없음') head.appendChild(make('span', 'fi-badge warn', row.joinDeny));
       const name = make('p', 'fi-name', row.name);
       const rate = make('p', 'fi-rate');
-      rate.append(`${row.term}개월 · 기본 `, make('strong', '', pct(row.rate)), ' · 최고 ', make('strong', 'hi', pct(row.maxRate)));
+      const baseFirst = fi.sort === 'base';
+      rate.append(`${row.term}개월 · 기본 `, make('strong', baseFirst ? 'hi' : '', pct(row.rate)), ' · 최고 ', make('strong', baseFirst ? '' : 'hi', pct(row.maxRate)));
       if (row.rateType) rate.append(` (${row.rateType}${row.reserveType ? `·${row.reserveType}` : ''})`);
       li.append(head, name, rate);
       const meta = [row.joinWay && `가입: ${row.joinWay}`, row.member && `대상: ${row.member}`, row.maxLimit ? `한도 ${Number(row.maxLimit).toLocaleString('ko-KR')}원` : ''].filter(Boolean).join(' · ');
@@ -1581,7 +1589,7 @@
       }
       ol.appendChild(li);
     });
-    return ol;
+    return wrap;
   }
   function fiAnnuityList(rows) {
     if (!rows.length) return make('p', 'pn-empty', '보여 드릴 상품이 없습니다.');
