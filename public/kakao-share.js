@@ -253,6 +253,8 @@
       };
       Kakao.Share.sendDefault(payload);
       againBar(Kakao, payload, { title, link });
+      // 운영자 알림(슬랙): 어떤 페이지가 카카오톡으로 공유됐는지만 알린다. 실패해도 공유에는 영향 없음.
+      try { fetch('/api/notify/share', { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, url: link }) }).catch(() => {}); } catch { /* 무시 */ }
       return true;
     } catch (error) {
       console.error('Kakao share failed:', error);

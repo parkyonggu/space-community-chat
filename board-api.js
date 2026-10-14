@@ -49,7 +49,7 @@ function createMemoryImageStore() {
   };
 }
 
-function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200, images = createMemoryImageStore(), notify = async () => {}, siteUrl = 'https://withpluces.com' } = {}) {
+function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200, images = createMemoryImageStore(), notify = async () => {}, onPost = () => {}, siteUrl = 'https://withpluces.com' } = {}) {
   if (typeof authenticate !== 'function') throw new Error('Board API requires an authenticate function');
   const filePath = path.join(dataDirectory, 'board.json');
   let writes = Promise.resolve();
@@ -339,6 +339,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           store.posts.push(post);
         });
         if (attached.length) await images.attach(attached, post.id);
+        try { onPost({ board: post.board, title: post.title, text: post.text, authorName: post.authorName, no: post.no }); } catch (error) { console.error('Post notify failed:', error.message); }
         send(response, 201, { post: view(post, { likes: [], reports: [] }, user), message: '글이 등록되었습니다.' });
         return;
       }

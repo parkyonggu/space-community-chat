@@ -9,6 +9,7 @@ import portal from '../portal-api.js';
 import policyNews from '../policy-news.js';
 import postPage from '../post-page.js';
 import androidApp from '../android-app.js';
+import slackNotify from '../slack-notify.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -82,6 +83,14 @@ export class CommunityService extends DurableObject {
       },
     } : undefined;
     const adminEmails = (env.ADMIN_EMAILS || '').split(',');
+    // 운영자 슬랙 알림(SLACK_WEBHOOK_URL이 있을 때만). 응답을 늦추지 않도록 뒤에서 보낸다.
+    this.slack = slackNotify.createSlackNotifier({ webhookUrl: env.SLACK_WEBHOOK_URL || '', siteUrl: env.SITE_URL || 'https://withpluces.com' });
+    this.later = task => {
+      if (!this.slack.ready) return;
+      const job = Promise.resolve().then(task).catch(error => console.error('Slack notify failed:', error.message));
+      if (typeof state.waitUntil === 'function') state.waitUntil(job);
+    };
+    this.rateLimit = rateLimit;
     this.auth = auth.createAuthApi('/private', {
       siteUrl: env.SITE_URL,
       mailer,
@@ -92,11 +101,13 @@ export class CommunityService extends DurableObject {
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,
+      onRegistered: user => this.later(() => this.slack.signup(user)),
     });
     const requireVerifiedEmail = Boolean(mailer);
     this.community = community.createCommunityApi('/private', {
       storage: new SqlStore(state, 'community', ['comments', 'subscribers']), rateLimit,
       authenticate: this.auth.authenticate, requireVerifiedEmail,
+      onComment: comment => this.later(() => this.slack.comment(comment)),
     });
     // 게시글 사진: 글 데이터와 따로 SQLite에 보관한다(사진 한 장당 1.5MB 이하).
     sql.exec('CREATE TABLE IF NOT EXISTS board_images (id TEXT PRIMARY KEY, type TEXT NOT NULL, data BLOB NOT NULL, user_id TEXT, post_id TEXT, created_at INTEGER NOT NULL)');
@@ -113,6 +124,7 @@ export class CommunityService extends DurableObject {
     this.board = board.createBoardApi('/private', {
       storage: new SqlStore(state, 'board', ['posts', 'likes', 'reports']), rateLimit,
       authenticate: this.auth.authenticate, requireVerifiedEmail, images: boardImages, siteUrl: env.SITE_URL || 'https://withpluces.com',
+      onPost: post => this.later(() => this.slack.post(post)),
       notify: async (userId, { subject, text }) => {
         const to = mailer ? await this.auth.emailOf(userId) : null;
         if (to) await mailer.send({ to, subject, text });
@@ -204,6 +216,17 @@ export class CommunityService extends DurableObject {
       const csrfOk = headers['x-csrf-token'] ? !(await this.auth.authenticate(source, { csrf: true })).error : false;
       return json({ name: canSend ? user.nickname : null, signedIn: Boolean(user), csrfOk,
         user: user ? { id: user.id, nickname: user.nickname, verified: canSend, admin: Boolean(user.admin) } : null });
+    }
+    // 카카오톡 공유를 눌렀다는 신호: 운영자 슬랙에만 알린다(한 주소에서 1시간 20번까지)
+    if (pathname === '/api/notify/share') {
+      if (request.method !== 'POST') return json({ error: '지원하지 않는 요청 방식입니다.' }, 405);
+      if (!this.slack.ready) return json({ ok: true });
+      const allowed = await this.rateLimit(`share-notify:${source.socket.remoteAddress}`, 20, 60 * 60 * 1000, Date.now());
+      if (!allowed) return json({ ok: true });
+      let input = {};
+      try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { input = {}; }
+      this.later(() => this.slack.share({ title: String(input.title || '').slice(0, 200), url: String(input.url || '').slice(0, 500) }));
+      return json({ ok: true });
     }
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
@@ -451,7 +474,8 @@ export default {
       const url = new URL(request.url);
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
-          url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/')) {
+          url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/') || url.pathname === '/api/notify/share') {
+        if (url.pathname === '/api/notify/share' && request.headers.get('Origin') !== env.SITE_URL) return json({ ok: true });
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
       if (url.pathname === '/ws/talk' || url.pathname === '/api/chat' || url.pathname.startsWith('/api/chat/')) {

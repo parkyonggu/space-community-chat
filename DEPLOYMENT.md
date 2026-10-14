@@ -442,6 +442,13 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 - 「🙋 저도 겪어요」(공감) 수가 전달 문안에 함께 들어간다.
 
 
+## 운영자 슬랙 알림 (SLACK_WEBHOOK_URL)
+
+- 새 회원가입 · 새 댓글(독자 소통) · 새 글 · 스페이스 톡 새 대화방/초대 링크 입장 · 카카오톡 공유를 운영자 슬랙 채널로 알린다.
+- 슬랙 앱(Incoming Webhooks)에서 받은 `https://hooks.slack.com/services/…` 주소를 넣는다: `npx wrangler secret put SLACK_WEBHOOK_URL`
+- 주소가 없으면 알림을 보내지 않는다. 알림 실패는 가입·글쓰기에 영향을 주지 않는다(뒤에서 보냄).
+- 이메일은 가려서(앞 2글자) 보내고, 댓글·글은 앞부분만 보낸다. 카카오톡 공유 알림은 우리 사이트 주소일 때만, 한 IP에서 1시간 20번까지.
+
 ## 우리 동네 금융정보 (FINLIFE_API_KEY, FSS_PENSION_KEY)
 
 - `FINLIFE_API_KEY`: 금감원 「금융상품 한눈에」(finlife.fss.or.kr) 개인 인증키 — 정기예금·적금 금리순.

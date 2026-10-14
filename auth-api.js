@@ -35,7 +35,7 @@ function publicUser(user) {
 }
 
 function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now = Date.now, mailer, storage, rateLimit, maxDerivations = 4,
-  adminEmails = [], onAccountDeleted } = {}) {
+  adminEmails = [], onAccountDeleted, onRegistered = () => {} } = {}) {
   const admins = new Set(adminEmails.map(email => email.trim().toLowerCase()).filter(Boolean));
   const isAdmin = user => Boolean(user.emailVerifiedAt) && admins.has(user.email);
   const userView = user => ({ ...publicUser(user), admin: isAdmin(user) });
@@ -457,6 +457,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
       setCookie(response, ctx, created.value, remember);
       let verificationError;
       if (pathname === '/api/auth/register') {
+        try { onRegistered({ nickname: user.nickname, email: user.email }); } catch (error) { console.error('Register notify failed:', error.message); }
         try {
           await issueMail(user, 'verify');
         } catch (error) {

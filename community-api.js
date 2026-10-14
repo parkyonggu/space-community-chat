@@ -9,7 +9,7 @@ class ApiError extends Error {
   }
 }
 
-function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false } = {}) {
+function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, onComment = () => {} } = {}) {
   const filePath = path.join(dataDirectory, 'community.json');
   let pendingWrite = Promise.resolve();
   const requestWindows = new Map();
@@ -115,6 +115,7 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
         await updateStore(store => {
           store.comments.unshift(comment);
         });
+        try { onComment({ name, text }); } catch (error) { console.error('Comment notify failed:', error.message); }
         sendJson(response, 201, { comment: { id: comment.id, name, text, createdAt: comment.createdAt } });
       } else {
         throw new ApiError(404, '요청한 기능이 없습니다.');

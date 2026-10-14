@@ -3,6 +3,7 @@ import { DurableObject } from 'cloudflare:workers';
 import chatCore from '../chat-core.js';
 import announcement from '../announcement.js';
 import { loadVapid, sendPush } from './web-push.js';
+import slackNotify from '../slack-notify.js';
 
 const { createChatCore, ChatError, RETENTION_DAYS, MAX_ROOM_MEMBERS } = chatCore;
 const DAY = 24 * 60 * 60 * 1000;
@@ -23,6 +24,12 @@ export class ChatService extends DurableObject {
       EVENT_SENDER, EVENT_CHANNEL, '광장채팅 운영자', '스페이스톡');
     this.limits = new Map();
     this.lastPush = new Map();
+    // 운영자 슬랙 알림: 새 대화방·초대 링크 입장 (SLACK_WEBHOOK_URL이 있을 때만)
+    this.slack = slackNotify.createSlackNotifier({ webhookUrl: env.SLACK_WEBHOOK_URL || '', siteUrl: env.SITE_URL || 'https://withpluces.com' });
+    this.later = task => {
+      if (!this.slack.ready) return;
+      ctx.waitUntil(Promise.resolve().then(task).catch(error => console.error('Slack notify failed:', error.message)));
+    };
     ctx.blockConcurrencyWhile(async () => {
       if (!(await ctx.storage.getAlarm())) await ctx.storage.setAlarm(Date.now() + DAY);
     });
@@ -140,6 +147,7 @@ export class ChatService extends DurableObject {
         this.core.ensureUser(guest);
         const result = this.core.join(guest, input.code);
         if (result.message) this.announce(result.room.id, result.room.members.map(member => member.id), result.message);
+        if (result.message) this.later(() => this.slack.talkJoin(guest, result.room, { guest: true }));
         const secure = new URL(request.url).protocol === 'https:' || !/^(localhost|127\.)/.test(new URL(request.url).hostname);
         return json({ room: result.room }, 201, { 'Set-Cookie': `space_talk_guest=${token}; Path=/; Max-Age=${180 * 24 * 3600}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}` });
       }
@@ -184,6 +192,7 @@ export class ChatService extends DurableObject {
           guestOnly('대화방 만들기는 회원만 할 수 있습니다. 회원가입 후 이용해 주세요.');
           this.limit(`create:${user.id}`, 10, 60 * 60 * 1000);
           const result = this.core.createGroup(user, await body());
+          this.later(() => this.slack.talkRoom(user, result.room));
           // 같은 계정으로 켜 둔 다른 기기(PC·휴대폰)에도 새 대화방이 바로 보이게 한다.
           this.broadcast([user.id], { type: 'room', roomId: result.room.id });
           return json({ room: result.room }, 201);
@@ -290,6 +299,7 @@ export class ChatService extends DurableObject {
         this.limit(`join:${user.id}`, 30, 60 * 60 * 1000);
         const result = this.core.join(user, (await body()).code);
         if (result.message) this.announce(result.room.id, result.room.members.map(member => member.id), result.message);
+        if (result.message) this.later(() => this.slack.talkJoin(user, result.room));
         return json({ room: result.room });
       }
       if (first === 'dm' && method === 'POST') {
