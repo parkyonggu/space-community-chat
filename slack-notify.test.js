@@ -38,3 +38,8 @@ test('새 글은 게시판 이름과 글 주소를, 공유는 우리 사이트 �
   assert.equal(sent.length, 2);
   assert.equal(maskEmail('ab@x.kr'), 'ab*@x.kr');
 });
+
+test('붙여 넣을 때 섞인 앞뒤 빈칸·줄바꿈·따옴표는 떼고 쓴다', () => {
+  assert.equal(createSlackNotifier({ webhookUrl: `  ${WEBHOOK}\n` }).ready, true);
+  assert.equal(createSlackNotifier({ webhookUrl: `"${WEBHOOK}"` }).ready, true);
+});

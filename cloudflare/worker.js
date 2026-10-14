@@ -220,13 +220,14 @@ export class CommunityService extends DurableObject {
     // 카카오톡 공유를 눌렀다는 신호: 운영자 슬랙에만 알린다(한 주소에서 1시간 20번까지)
     if (pathname === '/api/notify/share') {
       if (request.method !== 'POST') return json({ error: '지원하지 않는 요청 방식입니다.' }, 405);
-      if (!this.slack.ready) return json({ ok: true });
+      // configured: 슬랙 주소가 제대로 들어 있는지(주소 자체는 알려 주지 않는다)
+      if (!this.slack.ready) return json({ ok: true, configured: false });
       const allowed = await this.rateLimit(`share-notify:${source.socket.remoteAddress}`, 20, 60 * 60 * 1000, Date.now());
       if (!allowed) return json({ ok: true });
       let input = {};
       try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { input = {}; }
       this.later(() => this.slack.share({ title: String(input.title || '').slice(0, 200), url: String(input.url || '').slice(0, 500) }));
-      return json({ ok: true });
+      return json({ ok: true, configured: true });
     }
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :

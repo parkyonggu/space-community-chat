@@ -17,7 +17,9 @@ function maskEmail(email) {
 }
 const isWebhook = url => /^https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9/_-]+$/.test(String(url || ''));
 
-function createSlackNotifier({ webhookUrl = '', siteUrl = 'https://withpluces.com', fetchImpl = (...args) => fetch(...args) } = {}) {
+function createSlackNotifier({ webhookUrl: rawUrl = '', siteUrl = 'https://withpluces.com', fetchImpl = (...args) => fetch(...args) } = {}) {
+  // 붙여 넣을 때 앞뒤에 섞여 들어간 빈칸·줄바꿈·따옴표는 떼어 낸다
+  const webhookUrl = String(rawUrl || '').trim().replace(/^["']|["']$/g, '').trim();
   const ready = isWebhook(webhookUrl);
   const site = String(siteUrl || 'https://withpluces.com').replace(/\/+$/, '');
   async function send(text) {
