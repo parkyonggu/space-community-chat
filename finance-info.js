@@ -44,17 +44,16 @@ function createFinanceInfo({ key = '', fetchImpl = fetch } = {}) {
     throw lastError;
   }
   async function collect(service, groups) {
-    const base = [];
-    const options = [];
-    for (const group of groups) {
-      for (let page = 1; page <= MAX_PAGES; page += 1) {
-        const result = await call(service, group, page);
-        base.push(...result.base.map(item => ({ ...item, group })));
-        options.push(...result.options);
-        if (page >= result.maxPage) break;
-      }
-    }
-    return { base, options };
+    // 그룹별로 동시에, 첫 쪽을 받은 뒤 나머지 쪽도 동시에 받아 처음 불러오는 시간을 줄인다
+    const parts = await Promise.all(groups.map(async group => {
+      const first = await call(service, group, 1);
+      const pages = [];
+      for (let page = 2; page <= Math.min(first.maxPage, MAX_PAGES); page += 1) pages.push(page);
+      const rest = await Promise.all(pages.map(page => call(service, group, page)));
+      return [first, ...rest].map(result => ({ ...result, base: result.base.map(item => ({ ...item, group })) }));
+    }));
+    const flat = parts.flat();
+    return { base: flat.flatMap(result => result.base), options: flat.flatMap(result => result.options) };
   }
 
   // 정기예금·적금: 12개월 금리(없으면 가장 가까운 기간)로 정렬
@@ -119,7 +118,7 @@ function createFinanceInfo({ key = '', fetchImpl = fetch } = {}) {
         joinWay: clip(item.join_way, 60),
         month: String(item.dcls_month || ''),
       }))
-      .filter(row => row.avgRate !== null || row.disclosedRate !== null)
+      .filter(row => (row.pensionKind || row.productType) && (row.avgRate !== null || row.disclosedRate !== null))
       .sort((a, b) => (b.avgRate ?? b.disclosedRate ?? 0) - (a.avgRate ?? a.disclosedRate ?? 0))
       .slice(0, 30);
   }

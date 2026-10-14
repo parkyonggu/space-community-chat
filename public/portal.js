@@ -1661,17 +1661,39 @@
     wrap.append(form, out);
     return wrap;
   }
+  // 금감원 연금저축 Open API가 연금저축 목록을 주지 않을 때: 세액공제 안내 + 금감원 비교 화면 연결
+  function fiAnnuityGuide() {
+    const box = make('div', 'fi-guide');
+    box.appendChild(make('p', 'fi-name', '연금저축은 「낼 때 세금을 돌려받는」 노후 저축입니다'));
+    const ul = make('ul', 'fi-guide-list');
+    [
+      '1년에 낸 돈 중 600만 원까지(퇴직연금 IRP와 합쳐 900만 원까지) 세액공제를 받습니다.',
+      '공제율: 총급여 5,500만 원(종합소득 4,500만 원) 이하 16.5%, 그 위는 13.2% — 600만 원을 내면 79만~99만 원을 돌려받습니다.',
+      '55세 이후 10년 넘게 나눠 받으면 연금소득세 5.5%(70세 미만)·4.4%(70~79세)·3.3%(80세 이상)만 냅니다.',
+      '중간에 깨면 공제받은 부분과 이익에 16.5%(기타소득세)를 냅니다.',
+      '연금저축보험은 공시이율·최저보증이율, 연금저축펀드는 수익률이 오르내리고 원금 손실이 날 수 있습니다.',
+    ].forEach(text => ul.appendChild(make('li', '', text)));
+    box.appendChild(ul);
+    box.appendChild(make('p', 'fi-meta', '금융감독원 공개 자료(Open API)에서 지금 연금저축 상품 목록을 받을 수 없어, 회사별 수익률·공시이율은 아래 금감원 비교 화면에서 확인해 주세요.'));
+    const link = make('a', 'fi-link', '금감원 「금융상품 한눈에」 열기 ↗ (연금 → 연금저축)');
+    link.href = 'https://finlife.fss.or.kr/';
+    link.target = '_blank'; link.rel = 'noopener';
+    box.appendChild(link);
+    return box;
+  }
   function renderFinance() {
     const panel = $('finance-panel');
     if (!panel) return;
     const data = fi.data || {};
-    if (!data.connected && fi.view !== 'tax') fi.view = 'tax';
+    if (data.connected === false && fi.view !== 'tax') fi.view = 'tax';
     panel.querySelectorAll('[data-fi-view]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.fiView === fi.view)));
     fiFilterBar();
     const body = $('fi-body');
     if (fi.view === 'tax') { body.replaceChildren(fiTaxView()); return; }
+    if (!fi.data) { body.replaceChildren(make('p', 'pn-empty', '금융감독원에서 금리 자료를 받아 오는 중입니다… (처음 한 번은 10~20초 걸릴 수 있습니다)')); return; }
     if (!data.connected) { body.replaceChildren(make('p', 'pn-empty', '금리 자료를 연결하는 중입니다.')); return; }
     const rows = fi.view === 'deposit' ? data.deposits : fi.view === 'saving' ? data.savings : data.annuities;
+    if (fi.view === 'annuity' && !rows?.length) { body.replaceChildren(fiAnnuityGuide()); return; }
     if (!rows?.length && data.problems?.length) { body.replaceChildren(make('p', 'pn-empty', '금융감독원 자료를 잠시 받지 못했습니다. 잠시 뒤 다시 확인해 주세요.')); return; }
     body.replaceChildren(fi.view === 'annuity' ? fiAnnuityList(rows || []) : fiSavingsList(rows || [], fi.view));
   }
