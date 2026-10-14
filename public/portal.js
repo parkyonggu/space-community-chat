@@ -1537,7 +1537,7 @@
   }
 
   // ---------- 우리 동네 금융정보 (금융감독원 금융상품 한눈에) ----------
-  const fi = { data: null, view: 'deposit', group: 'all', sort: 'max', sector: 'all' };
+  const fi = { data: null, view: 'deposit', group: 'all', sort: 'max', sector: 'all', psort: 'avg3' };
   const pct = value => (value == null ? '–' : `${Number(value).toFixed(2)}%`);
   function fiFilterBar() {
     const bar = $('fi-filter');
@@ -1549,8 +1549,15 @@
       return button;
     };
     if (fi.view === 'annuity') {
-      bar.replaceChildren(...[['all', '전체'], ...FI_SECTORS.map(name => [name, name])]
-        .map(([id, label]) => chip(label, fi.sector === id, () => { fi.sector = id; renderFinance(); })));
+      const parts = [['all', '전체'], ...FI_SECTORS.map(name => [name, name])]
+        .map(([id, label]) => chip(label, fi.sector === id, () => { fi.sector = id; renderFinance(); }));
+      if (fi.data?.pensionSavings?.companies?.length) {
+        parts.push(make('span', 'fi-sep', '·'),
+          chip('3년 평균 수익률순', fi.psort === 'avg3', () => { fi.psort = 'avg3'; renderFinance(); }),
+          chip('1년 수익률순', fi.psort === 'year1', () => { fi.psort = 'year1'; renderFinance(); }),
+          chip('수수료 낮은순', fi.psort === 'fee', () => { fi.psort = 'fee'; renderFinance(); }));
+      }
+      bar.replaceChildren(...parts);
       return;
     }
     if (fi.view === 'tax' || !fi.data?.connected) { bar.replaceChildren(); return; }
@@ -1724,12 +1731,61 @@
       info.points.forEach(text => ul.appendChild(make('li', '', text)));
       box.appendChild(ul);
     }
-    if (!hasData) box.appendChild(make('p', 'fi-meta', '금융감독원 공개 자료(Open API)가 지금 연금저축 상품 목록 대신 다른 자료를 보내고 있어 회사별 금리·수익률은 아직 보여 드리지 못합니다. 자료가 정상으로 돌아오면 이 칸에 자동으로 나옵니다. 그전에는 아래 금감원 화면에서 확인해 주세요.'));
+    if (!hasData) box.appendChild(make('p', 'fi-meta', '회사별 수익률·수수료율 비교는 금융감독원 통합연금포털 자료를 연결하는 중입니다. 연결되면 이 칸에 회사 순위가 나옵니다. 그전에는 아래 금감원 화면에서 확인해 주세요.'));
     const link = make('a', 'fi-link', '금감원 「금융상품 한눈에」 열기 ↗ (연금 → 연금저축)');
     link.href = 'https://finlife.fss.or.kr/';
     link.target = '_blank'; link.rel = 'noopener';
     box.appendChild(link);
     return box;
+  }
+  // 통합연금포털 회사별 수익률·수수료율 + 원리금보장 연금저축보험 공시이율
+  const fiYear1 = row => row.earnRate1 ?? row.earnRate;
+  function fiPensionCompanies(ps, sector) {
+    const wrap = make('div', 'fi-ps');
+    const sortKey = fi.psort === 'fee' ? row => -(row.fee3 ?? row.feeRate1 ?? 99) : fi.psort === 'year1' ? row => fiYear1(row) ?? -99 : row => row.avg3 ?? -99;
+    const sectors = sector === 'all' ? FI_SECTORS : [sector];
+    const label = fi.psort === 'fee' ? '3년 평균 수수료율이 낮은 순' : fi.psort === 'year1' ? '최근 1년 수익률이 높은 순' : '최근 3년 연평균 수익률이 높은 순';
+    wrap.appendChild(make('p', 'fi-sortnote', `회사별 연금저축 ${label}${ps.basis ? ` (${ps.basis} 공시)` : ''}`));
+    sectors.forEach(name => {
+      const rows = ps.companies.filter(row => row.sector === name).sort((a, b) => sortKey(b) - sortKey(a));
+      if (!rows.length) return;
+      const shown = sector === 'all' ? rows.slice(0, 3) : rows.slice(0, 15);
+      if (sector === 'all') wrap.appendChild(make('p', 'fi-name', `${name} 상위 3곳 (${FI_SECTOR_INFO[name].product})`));
+      const ol = make('ol', 'fi-list');
+      shown.forEach(row => {
+        const li = make('li', 'fi-item');
+        const head = make('div', 'fi-head');
+        head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.sector));
+        const rate = make('p', 'fi-rate');
+        rate.append('3년 평균 ', make('strong', fi.psort === 'avg3' ? 'hi' : '', pct(row.avg3)),
+          ' · 1년 ', make('strong', fi.psort === 'year1' ? 'hi' : '', pct(fiYear1(row))),
+          ' · 수수료 ', make('strong', fi.psort === 'fee' ? 'hi' : '', pct(row.fee3 ?? row.feeRate1)));
+        li.append(head, rate);
+        const meta = [row.avg5 != null && `5년 평균 ${pct(row.avg5)}`, row.avg10 != null && `10년 평균 ${pct(row.avg10)}`, row.reserve ? `적립금 ${Math.round(row.reserve / 1e8).toLocaleString('ko-KR')}억 원` : ''].filter(Boolean).join(' · ');
+        if (meta) li.appendChild(make('p', 'fi-meta', meta));
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+    });
+    const guar = ps.guaranteed.filter(row => sectors.includes(row.sector)).sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
+    if (guar.length) {
+      wrap.appendChild(make('p', 'fi-sortnote', '지금 판매 중인 원리금보장 연금저축보험 — 공시이율 높은 순'));
+      const ol = make('ol', 'fi-list');
+      guar.slice(0, sector === 'all' ? 5 : 15).forEach(row => {
+        const li = make('li', 'fi-item');
+        const head = make('div', 'fi-head');
+        head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.sector));
+        const rate = make('p', 'fi-rate');
+        rate.append('공시이율 ', make('strong', 'hi', pct(row.rate)), ` · 최저보증 ${pct(row.guaranteed)}`);
+        li.append(head, make('p', 'fi-name', row.product), rate);
+        if (row.online) li.appendChild(make('p', 'fi-meta', `온라인 가입 수수료: ${row.online.replace(/\|/g, ' / ')}`));
+        ol.appendChild(li);
+      });
+      wrap.appendChild(ol);
+    }
+    wrap.appendChild(make('p', 'pn-calc-note', '수익률은 회사가 운용한 연금저축 전체의 과거 실적이며 앞으로의 수익을 보장하지 않습니다. 수수료가 낮을수록 오래 넣을 때 유리합니다. 특정 회사 가입을 권하는 것이 아닙니다.'));
+    wrap.appendChild(make('p', 'fi-meta', '출처: 통합연금포털(금융감독원) 콘텐츠'));
+    return wrap;
   }
   function renderFinance() {
     const panel = $('finance-panel');
@@ -1740,6 +1796,12 @@
     fiFilterBar();
     const body = $('fi-body');
     if (fi.view === 'tax') { body.replaceChildren(fiTaxView()); return; }
+    if (fi.view === 'annuity' && data.pensionSavings?.companies?.length) {
+      const details = make('details', 'fi-more');
+      details.append(make('summary', '', fi.sector === 'all' ? '연금저축 세액공제·종류 안내 보기' : `${fi.sector} 연금저축 특징 보기`), fiAnnuityGuide(fi.sector, true));
+      body.replaceChildren(fiPensionCompanies(data.pensionSavings, fi.sector), details);
+      return;
+    }
     if (fi.view === 'annuity' && data.connected === false) { body.replaceChildren(fiAnnuityGuide(fi.sector, false)); return; }
     if (!fi.data) { body.replaceChildren(make('p', 'pn-empty', '금융감독원에서 금리 자료를 받아 오는 중입니다… (처음 한 번은 10~20초 걸릴 수 있습니다)')); return; }
     if (!data.connected) { body.replaceChildren(make('p', 'pn-empty', '금리 자료를 연결하는 중입니다.')); return; }

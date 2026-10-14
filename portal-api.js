@@ -8,6 +8,7 @@ const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
 const { createPension, pensionPlan, uploadedRegions } = require('./pension');
 const { createFinanceInfo } = require('./finance-info');
+const { createPensionSavings } = require('./pension-savings');
 const { createHash } = require('node:crypto');
 const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
@@ -42,7 +43,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', financeKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', financeKey = '', pensionSavingsKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -52,6 +53,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
   const finance = createFinanceInfo({ key: financeKey, fetchImpl: (...args) => fetchImpl(...args) });
+  const pensionSavings = createPensionSavings({ key: pensionSavingsKey, fetchImpl: (...args) => fetchImpl(...args) });
   const pension = createPension({ key: pensionKey, reciptKey: pensionKeys.recipt, sbscrbKey: pensionKeys.sbscrb, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
   const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
@@ -315,21 +317,31 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';
     if (rateLimit && !rateLimit(`finance:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
-    if (!finance.ready) { send(200, { connected: false }); return; }
     const params = new URL(request.url, 'http://localhost').searchParams;
+    if (pathname === '/api/portal/finance/raw' && params.get('source') === 'pension') {
+      if (!pensionSavings.ready) { send(200, { error: 'FSS_PENSION_KEY가 아직 없습니다.' }); return; }
+      const pick = {};
+      for (const name of ['year', 'quarter', 'areaCode', 'channelCode']) if (/^\d{1,4}$/.test(params.get(name) || '')) pick[name] = params.get(name);
+      try { send(200, await pensionSavings.raw(params.get('api') || undefined, pick)); }
+      catch (error) { send(200, { error: error.message }); }
+      return;
+    }
+    if (!finance.ready && !pensionSavings.ready) { send(200, { connected: false }); return; }
     if (pathname === '/api/portal/finance/raw') {
       try { send(200, await finance.raw(params.get('service') || undefined, params.get('group') || undefined, params.get('page') || undefined)); }
       catch (error) { send(200, { error: error.message }); }
       return;
     }
     const TTL = 12 * 60 * 60 * 1000;
-    const [deposits, savings, annuities] = await Promise.all([
-      cached('finance-deposits', TTL, finance.deposits),
-      cached('finance-savings', TTL, finance.savings),
-      cached('finance-annuities-v2', TTL, finance.annuities),
+    const [deposits, savings, annuities, pension] = await Promise.all([
+      finance.ready ? cached('finance-deposits', TTL, finance.deposits) : null,
+      finance.ready ? cached('finance-savings', TTL, finance.savings) : null,
+      finance.ready ? cached('finance-annuities-v2', TTL, finance.annuities) : null,
+      pensionSavings.ready ? cached('finance-pension-savings', 24 * 60 * 60 * 1000, pensionSavings.load) : null,
     ]);
-    const problems = [...new Set(['finance-deposits', 'finance-savings', 'finance-annuities-v2'].map(name => lastErrors.get(name)).filter(Boolean))];
-    send(200, { connected: true, deposits: deposits || [], savings: savings || [], annuities: annuities || [], problems,
+    const problems = [...new Set(['finance-deposits', 'finance-savings', 'finance-annuities-v2', 'finance-pension-savings'].map(name => lastErrors.get(name)).filter(Boolean))];
+    send(200, { connected: finance.ready, deposits: deposits || [], savings: savings || [], annuities: annuities || [], problems,
+      pensionSavings: pensionSavings.ready ? (pension || { companies: [], guaranteed: [], basis: '' }) : null,
       source: '금융감독원 「금융상품 한눈에」(finlife.fss.or.kr)' });
   }
 

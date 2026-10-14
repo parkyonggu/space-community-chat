@@ -442,6 +442,14 @@ VPS에서는 Node 서버 앞에 HTTPS 역방향 프록시를 두고 WebSocket Up
 - 「🙋 저도 겪어요」(공감) 수가 전달 문안에 함께 들어간다.
 
 
+## 우리 동네 금융정보 (FINLIFE_API_KEY, FSS_PENSION_KEY)
+
+- `FINLIFE_API_KEY`: 금감원 「금융상품 한눈에」(finlife.fss.or.kr) 개인 인증키 — 정기예금·적금 금리순.
+- `FSS_PENSION_KEY`: 금감원 통합연금포털 Open API 인증키 (www.fss.or.kr → 통합연금포털 → OpenAPI → 인증키 신청/관리, 개인) — 연금저축 회사별 수익률·수수료율(psCorpList, 권역 1 은행·3 자산운용·4 생명·5 손해)과 원리금보장 연금저축보험(psGuaranteedProdList).
+  - `npx wrangler secret put FSS_PENSION_KEY`
+  - 확인: `/api/portal/finance/raw?source=pension&api=psCorpList&year=2026&quarter=2&areaCode=1`
+  - 화면에 "통합연금포털(금융감독원) 콘텐츠" 출처 표시(이용약관 제9조).
+
 ## 우리 동네 농사정보 (KAMIS_CERT_KEY, KAMIS_CERT_ID, NONGSARO_API_KEY)
 
 - 첫 화면 '🌾 우리 동네 농사정보' 칸. 키가 하나도 없으면 칸이 숨겨지고, 넣은 쪽만 보입니다.
