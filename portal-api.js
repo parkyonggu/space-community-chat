@@ -318,7 +318,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (!finance.ready) { send(200, { connected: false }); return; }
     const params = new URL(request.url, 'http://localhost').searchParams;
     if (pathname === '/api/portal/finance/raw') {
-      try { send(200, await finance.raw(params.get('service') || undefined, params.get('group') || undefined)); }
+      try { send(200, await finance.raw(params.get('service') || undefined, params.get('group') || undefined, params.get('page') || undefined)); }
       catch (error) { send(200, { error: error.message }); }
       return;
     }
@@ -326,9 +326,9 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     const [deposits, savings, annuities] = await Promise.all([
       cached('finance-deposits', TTL, finance.deposits),
       cached('finance-savings', TTL, finance.savings),
-      cached('finance-annuities', TTL, finance.annuities),
+      cached('finance-annuities-v2', TTL, finance.annuities),
     ]);
-    const problems = [...new Set(['finance-deposits', 'finance-savings', 'finance-annuities'].map(name => lastErrors.get(name)).filter(Boolean))];
+    const problems = [...new Set(['finance-deposits', 'finance-savings', 'finance-annuities-v2'].map(name => lastErrors.get(name)).filter(Boolean))];
     send(200, { connected: true, deposits: deposits || [], savings: savings || [], annuities: annuities || [], problems,
       source: '금융감독원 「금융상품 한눈에」(finlife.fss.or.kr)' });
   }

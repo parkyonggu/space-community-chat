@@ -101,12 +101,20 @@ function createFinanceInfo({ key = '', fetchImpl = fetch } = {}) {
   }
 
   // 연금저축: 보험은 공시이율, 펀드는 평균 수익률(과거 수익률은 미래를 보장하지 않음)
+  // 연금저축 판매 회사 종류: 은행(신탁) / 생명보험·손해보험(보험) / 금융투자(펀드)
+  function sectorOf(item) {
+    if (item.group === '020000') return '은행';
+    if (item.group === '060000') return '금융투자';
+    if (item.group === '050000') return /생명/.test(item.kor_co_nm || '') ? '생명보험' : '손해보험';
+    return '';
+  }
   function annuityRows(base) {
     const seen = new Set();
     return base
       .filter(item => { const id = `${item.fin_co_no}|${item.fin_prdt_cd}`; if (seen.has(id)) return false; seen.add(id); return true; })
       .map(item => ({
         group: GROUPS[item.group] || '',
+        sector: sectorOf(item),
         company: clip(item.kor_co_nm, 30),
         name: clip(item.fin_prdt_nm, 70),
         pensionKind: clip(item.pnsn_kind_nm, 20),
@@ -120,7 +128,7 @@ function createFinanceInfo({ key = '', fetchImpl = fetch } = {}) {
       }))
       .filter(row => (row.pensionKind || row.productType) && (row.avgRate !== null || row.disclosedRate !== null))
       .sort((a, b) => (b.avgRate ?? b.disclosedRate ?? 0) - (a.avgRate ?? a.disclosedRate ?? 0))
-      .slice(0, 30);
+      .slice(0, 80);
   }
 
   async function deposits() {
@@ -132,12 +140,13 @@ function createFinanceInfo({ key = '', fetchImpl = fetch } = {}) {
     return savingsRows(base, options, 'saving');
   }
   async function annuities() {
-    const { base } = await collect('annuitySavingProductsSearch', ['050000', '060000']);
+    const { base } = await collect('annuitySavingProductsSearch', ['020000', '050000', '060000']);
     return annuityRows(base);
   }
-  async function raw(service = 'depositProductsSearch', group = '020000') {
+  async function raw(service = 'depositProductsSearch', group = '020000', page = '1') {
     const safe = /^[A-Za-z]{5,40}$/.test(service) ? service : 'depositProductsSearch';
-    const response = await fetchImpl(`${workingHost}/finlifeapi/${safe}.json?auth=${encodeURIComponent(key)}&topFinGrpNo=${/^\d{6}$/.test(group) ? group : '020000'}&pageNo=1`);
+    const pageNo = /^\d{1,3}$/.test(String(page)) ? page : '1';
+    const response = await fetchImpl(`${workingHost}/finlifeapi/${safe}.json?auth=${encodeURIComponent(key)}&topFinGrpNo=${/^\d{6}$/.test(group) ? group : '020000'}&pageNo=${pageNo}`);
     return { status: response.status, host: workingHost, text: (await response.text()).slice(0, 2000) };
   }
   return { deposits, savings, annuities, raw, ready: Boolean(key) };

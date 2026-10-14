@@ -1537,11 +1537,10 @@
   }
 
   // ---------- 우리 동네 금융정보 (금융감독원 금융상품 한눈에) ----------
-  const fi = { data: null, view: 'deposit', group: 'all', sort: 'max' };
+  const fi = { data: null, view: 'deposit', group: 'all', sort: 'max', sector: 'all' };
   const pct = value => (value == null ? '–' : `${Number(value).toFixed(2)}%`);
   function fiFilterBar() {
     const bar = $('fi-filter');
-    if (fi.view === 'tax' || fi.view === 'annuity' || !fi.data?.connected) { bar.replaceChildren(); return; }
     const chip = (label, active, onClick) => {
       const button = make('button', 'chip', label);
       button.type = 'button';
@@ -1549,6 +1548,12 @@
       button.addEventListener('click', onClick);
       return button;
     };
+    if (fi.view === 'annuity') {
+      bar.replaceChildren(...[['all', '전체'], ...FI_SECTORS.map(name => [name, name])]
+        .map(([id, label]) => chip(label, fi.sector === id, () => { fi.sector = id; renderFinance(); })));
+      return;
+    }
+    if (fi.view === 'tax' || !fi.data?.connected) { bar.replaceChildren(); return; }
     bar.replaceChildren(
       ...[['all', '전체'], ['은행', '은행'], ['저축은행', '저축은행']].map(([id, label]) => chip(label, fi.group === id, () => { fi.group = id; renderFinance(); })),
       make('span', 'fi-sep', '·'),
@@ -1599,7 +1604,8 @@
     rows.slice(0, 20).forEach(row => {
       const li = make('li', 'fi-item');
       const head = make('div', 'fi-head');
-      head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.pensionKind || row.group));
+      head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.sector || row.group));
+      if (row.pensionKind) head.appendChild(make('span', 'fi-badge', row.pensionKind));
       if (row.productType) head.appendChild(make('span', 'fi-badge', row.productType));
       const rate = make('p', 'fi-rate');
       if (row.avgRate != null) rate.append('평균 수익률 ', make('strong', 'hi', pct(row.avgRate)));
@@ -1669,20 +1675,56 @@
     wrap.append(form, out);
     return wrap;
   }
-  // 금감원 연금저축 Open API가 연금저축 목록을 주지 않을 때: 세액공제 안내 + 금감원 비교 화면 연결
-  function fiAnnuityGuide() {
+  // 연금저축: 판매 회사 종류별 안내 (금감원 Open API가 연금저축 목록을 주지 않을 때도 보여 준다)
+  const FI_SECTORS = ['은행', '생명보험', '손해보험', '금융투자'];
+  const FI_SECTOR_INFO = {
+    은행: { product: '연금저축신탁', points: [
+      '2018년 1월부터 새로 가입할 수 없습니다. 이미 가입한 분만 계속 넣을 수 있습니다.',
+      '은행 창구에서 새로 들려면 은행이 판매하는 연금저축펀드(운용은 자산운용사)나 개인형 퇴직연금(IRP)을 이용합니다.',
+      '기존 신탁은 실적에 따라 수익이 달라지며, 다른 회사 연금저축으로 세금 불이익 없이 옮길(이전) 수 있습니다.',
+    ] },
+    생명보험: { product: '연금저축보험', points: [
+      '보험사가 정하는 공시이율로 쌓이고, 최저보증이율 아래로는 내려가지 않습니다.',
+      '살아 있는 동안 계속 받는 종신연금을 고를 수 있는 것은 생명보험 연금저축뿐입니다.',
+      '예금자보호(1인당 1억 원, 같은 회사의 다른 보호상품과 합산)를 받습니다.',
+      '사업비(수수료)를 먼저 떼므로, 일찍 해지하면 낸 돈보다 적게 받을 수 있습니다. 정해진 날짜에 꼬박꼬박 내야 합니다.',
+    ] },
+    손해보험: { product: '연금저축손해보험', points: [
+      '공시이율로 쌓이고 최저보증이율이 있습니다(화재·손해보험사 상품).',
+      '연금은 정해진 기간(최장 25년) 동안만 받는 확정기간형이며, 종신형은 없습니다.',
+      '예금자보호(1인당 1억 원, 같은 회사의 다른 보호상품과 합산)를 받습니다.',
+      '사업비 때문에 일찍 해지하면 낸 돈보다 적게 받을 수 있습니다.',
+    ] },
+    금융투자: { product: '연금저축펀드', points: [
+      '증권사에서 계좌를 열고 그 안에서 펀드(ETF 포함)를 골라 굴립니다.',
+      '투자 결과에 따라 수익이 나거나 원금 손실이 날 수 있고, 예금자보호가 없습니다.',
+      '돈을 넣는 시기와 금액이 자유롭고, 상품을 바꿔 타기 쉽습니다.',
+      '과거 수익률이 앞으로의 수익을 보장하지 않습니다.',
+    ] },
+  };
+  function fiAnnuityGuide(sector, hasData) {
     const box = make('div', 'fi-guide');
-    box.appendChild(make('p', 'fi-name', '연금저축은 「낼 때 세금을 돌려받는」 노후 저축입니다'));
-    const ul = make('ul', 'fi-guide-list');
-    [
-      '1년에 낸 돈 중 600만 원까지(퇴직연금 IRP와 합쳐 900만 원까지) 세액공제를 받습니다.',
-      '공제율: 총급여 5,500만 원(종합소득 4,500만 원) 이하 16.5%, 그 위는 13.2% — 600만 원을 내면 79만~99만 원을 돌려받습니다.',
-      '55세 이후 10년 넘게 나눠 받으면 연금소득세 5.5%(70세 미만)·4.4%(70~79세)·3.3%(80세 이상)만 냅니다.',
-      '중간에 깨면 공제받은 부분과 이익에 16.5%(기타소득세)를 냅니다.',
-      '연금저축보험은 공시이율·최저보증이율, 연금저축펀드는 수익률이 오르내리고 원금 손실이 날 수 있습니다.',
-    ].forEach(text => ul.appendChild(make('li', '', text)));
-    box.appendChild(ul);
-    box.appendChild(make('p', 'fi-meta', '금융감독원 공개 자료(Open API)에서 지금 연금저축 상품 목록을 받을 수 없어, 회사별 수익률·공시이율은 아래 금감원 비교 화면에서 확인해 주세요.'));
+    if (sector === 'all') {
+      box.appendChild(make('p', 'fi-name', '연금저축은 「낼 때 세금을 돌려받는」 노후 저축입니다'));
+      const ul = make('ul', 'fi-guide-list');
+      [
+        '1년에 낸 돈 중 600만 원까지(퇴직연금 IRP와 합쳐 900만 원까지) 세액공제를 받습니다.',
+        '공제율: 총급여 5,500만 원(종합소득 4,500만 원) 이하 16.5%, 그 위는 13.2% — 600만 원을 내면 79만~99만 원을 돌려받습니다.',
+        '55세 이후 10년 넘게 나눠 받으면 연금소득세 5.5%(70세 미만)·4.4%(70~79세)·3.3%(80세 이상)만 냅니다.',
+        '중간에 깨면 공제받은 부분과 이익에 16.5%(기타소득세)를 냅니다.',
+      ].forEach(text => ul.appendChild(make('li', '', text)));
+      box.appendChild(ul);
+      const table = make('ul', 'fi-guide-list');
+      FI_SECTORS.forEach(name => table.appendChild(make('li', '', `${name}: ${FI_SECTOR_INFO[name].product} — ${FI_SECTOR_INFO[name].points[0]}`)));
+      box.append(make('p', 'fi-name', '어디서 파나요? (위 칸을 누르면 자세히 볼 수 있습니다)'), table);
+    } else {
+      const info = FI_SECTOR_INFO[sector];
+      box.appendChild(make('p', 'fi-name', `${sector} — ${info.product}`));
+      const ul = make('ul', 'fi-guide-list');
+      info.points.forEach(text => ul.appendChild(make('li', '', text)));
+      box.appendChild(ul);
+    }
+    if (!hasData) box.appendChild(make('p', 'fi-meta', '금융감독원 공개 자료(Open API)가 지금 연금저축 상품 목록 대신 다른 자료를 보내고 있어 회사별 금리·수익률은 아직 보여 드리지 못합니다. 자료가 정상으로 돌아오면 이 칸에 자동으로 나옵니다. 그전에는 아래 금감원 화면에서 확인해 주세요.'));
     const link = make('a', 'fi-link', '금감원 「금융상품 한눈에」 열기 ↗ (연금 → 연금저축)');
     link.href = 'https://finlife.fss.or.kr/';
     link.target = '_blank'; link.rel = 'noopener';
@@ -1693,15 +1735,22 @@
     const panel = $('finance-panel');
     if (!panel) return;
     const data = fi.data || {};
-    if (data.connected === false && fi.view !== 'tax') fi.view = 'tax';
+    if (data.connected === false && (fi.view === 'deposit' || fi.view === 'saving')) fi.view = 'tax';
     panel.querySelectorAll('[data-fi-view]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.fiView === fi.view)));
     fiFilterBar();
     const body = $('fi-body');
     if (fi.view === 'tax') { body.replaceChildren(fiTaxView()); return; }
+    if (fi.view === 'annuity' && data.connected === false) { body.replaceChildren(fiAnnuityGuide(fi.sector, false)); return; }
     if (!fi.data) { body.replaceChildren(make('p', 'pn-empty', '금융감독원에서 금리 자료를 받아 오는 중입니다… (처음 한 번은 10~20초 걸릴 수 있습니다)')); return; }
     if (!data.connected) { body.replaceChildren(make('p', 'pn-empty', '금리 자료를 연결하는 중입니다.')); return; }
     const rows = fi.view === 'deposit' ? data.deposits : fi.view === 'saving' ? data.savings : data.annuities;
-    if (fi.view === 'annuity' && !rows?.length) { body.replaceChildren(fiAnnuityGuide()); return; }
+    if (fi.view === 'annuity') {
+      const list = (rows || []).filter(row => fi.sector === 'all' || row.sector === fi.sector);
+      const parts = [fiAnnuityGuide(fi.sector, list.length > 0)];
+      if (list.length) parts.push(fiAnnuityList(list));
+      body.replaceChildren(...parts);
+      return;
+    }
     if (!rows?.length && data.problems?.length) { body.replaceChildren(make('p', 'pn-empty', '금융감독원 자료를 잠시 받지 못했습니다. 잠시 뒤 다시 확인해 주세요.')); return; }
     body.replaceChildren(fi.view === 'annuity' ? fiAnnuityList(rows || []) : fiSavingsList(rows || [], fi.view));
   }

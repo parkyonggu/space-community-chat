@@ -35,3 +35,20 @@ test('https가 안 되면 http로 다시 받는다', async () => {
   const rows = await info.deposits();
   assert.equal(rows.length, 2);
 });
+
+test('연금저축: 회사 종류(은행·생명보험·손해보험·금융투자)로 나누고 대출 등 다른 자료는 거른다', async () => {
+  const bodies = {
+    '020000': [{ fin_co_no: 'B', fin_prdt_cd: 'L1', kor_co_nm: '가은행', fin_prdt_nm: '담보대출', loan_type: '담보대출' }],
+    '050000': [
+      { fin_co_no: 'L', fin_prdt_cd: 'A1', kor_co_nm: '가생명보험', fin_prdt_nm: '연금저축A', pnsn_kind_nm: '연금저축보험(생명)', dcls_rate: 2.9, guar_rate: 1 },
+      { fin_co_no: 'N', fin_prdt_cd: 'A2', kor_co_nm: '나화재해상보험', fin_prdt_nm: '연금저축B', pnsn_kind_nm: '연금저축보험(손해)', dcls_rate: 2.7 },
+    ],
+    '060000': [{ fin_co_no: 'F', fin_prdt_cd: 'A3', kor_co_nm: '다자산운용', fin_prdt_nm: '연금펀드', pnsn_kind_nm: '연금저축펀드', prdt_type_nm: '주식형', avg_prft_rate: 5.1 }],
+  };
+  const info = createFinanceInfo({ key: 'K', fetchImpl: async url => {
+    const group = new URL(url).searchParams.get('topFinGrpNo');
+    return { status: 200, text: async () => JSON.stringify({ result: { err_cd: '000', max_page_no: 1, baseList: bodies[group], optionList: [] } }) };
+  } });
+  const rows = await info.annuities();
+  assert.deepEqual(rows.map(row => row.sector), ['금융투자', '생명보험', '손해보험']);
+});
