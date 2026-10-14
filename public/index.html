@@ -56,14 +56,11 @@
       <a href="#top" class="active" data-home>홈</a>
       <a href="/chat" class="nav-talk">💬 스페이스 톡</a>
       <a href="#chat-section" data-target="chat-section">광장 채팅<span class="nav-count" id="nav-online" hidden></span></a>
-      <a href="#community-section" data-target="community-section">소통·나눔</a>
-      <a href="#voice-section" data-target="voice-section">시민의 소리</a>
+      <a href="#latest-section" data-boards>📋 게시판</a>
       <a href="#policy-panel" class="nav-policy">📰 정책브리핑</a>
       <a href="#issue-panel" class="nav-issue">🗞️ 오늘의 이슈</a>
       <a href="#eco-panel" class="nav-eco">📈 경제지표</a>
       <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
-      <a href="#policy-section" data-target="policy-section">정책 제안</a>
-      <a href="#research-section" data-target="research-section">칼럼·학술</a>
       <a href="#newsletter-section">스페이스 레터</a>
       <a href="#guide-section">이용 안내</a>
     </nav>
@@ -130,9 +127,8 @@
       <li data-tag="시민의 소리" data-href="#voice-section">공론화 후 주민감사·조례 청구는 행정안전부 '주민e직접'에서 정식으로 진행해 주세요.</li>
     </ul>
 
-    <div class="dash">
-      <div class="dash-main">
-        <nav class="home-tiles" data-view-of="home" aria-label="바로가기">
+    <nav class="home-tiles" data-view-of="home" aria-label="바로가기">
+          <a href="#latest-section"><span aria-hidden="true">📋</span><b>게시판</b><small>지금 올라온 글</small></a>
           <a href="#policy-panel"><span aria-hidden="true">📰</span><b>정책브리핑</b><small>오늘 나온 정부 정책</small></a>
           <a href="#issue-panel"><span aria-hidden="true">🗞️</span><b>오늘의 이슈</b><small>분야별 주요 뉴스</small></a>
           <a href="#benefit-panel"><span aria-hidden="true">🎁</span><b>우리동네 혜택</b><small>신청할 수 있는 지원</small></a>
@@ -143,55 +139,54 @@
           <a href="#newsletter-section"><span aria-hidden="true">✉️</span><b>스페이스 레터</b><small>매주 월요일 브리핑</small></a>
         </nav>
 
-        <section class="panel tabbox home-box" data-view-of="home" data-tabbox="main" aria-label="커뮤니티 소식">
-          <div class="tabbox-tabs" role="tablist" aria-label="커뮤니티 소식 고르기"></div>
-          <section class="tab-pane" data-tab="🆕 지금 올라온 글" aria-labelledby="feed-title">
-          <div class="feed-head panel-head">
-            <h2 id="feed-title">지금 올라온 글</h2>
-            <span class="hint" id="feed-hint">새 글이 올라오면 자동으로 바뀝니다</span>
-          </div>
-          <div class="feed-tabs" role="tablist" aria-label="게시판 선택">
-            <button type="button" class="chip" role="tab" data-feed="all" aria-selected="true">전체</button>
-            <button type="button" class="chip" role="tab" data-feed="community" aria-selected="false">소통·나눔</button>
-            <button type="button" class="chip" role="tab" data-feed="voice" aria-selected="false">시민의 소리</button>
-            <button type="button" class="chip" role="tab" data-feed="policy" aria-selected="false">정책 제안</button>
-            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">칼럼·학술</button>
-          </div>
-          <ul class="feed-list" id="feed-list" aria-live="polite">
-            <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+    <div class="dash">
+      <div class="dash-main">
+
+        <section class="panel tabbox side-box info-box" data-tabbox="side" data-view-of="home" aria-label="오늘의 정보">
+          <div class="tabbox-tabs" role="tablist" aria-label="오늘의 정보 고르기"></div>
+          <section class="tab-pane panel-pad eco-mini" data-tab="📈 경제" aria-labelledby="eco-mini-title">
+          <div class="panel-head"><h2 id="eco-mini-title"><a href="#eco-panel">오늘의 경제지표 ›</a></h2><span class="hint" id="eco-mini-updated">눌러서 자세히 보기</span></div>
+          <div class="kr-tape" id="kr-tape-home" aria-live="off"></div>
+          <div class="eco-mini-grid" id="eco-mini-grid"></div>
+          <nav class="eco-mini-links" aria-label="경제지표 바로가기">
+            <a href="#eco-panel"><span aria-hidden="true">📊</span>항목별 최신 발표</a>
+            <a href="#house-panel"><span aria-hidden="true">🏢</span>아파트 주간동향</a>
+            <a href="#realestate-panel"><span aria-hidden="true">🏠</span>부동산 동향</a>
+            <a href="#market-panel"><span aria-hidden="true">📈</span>국내·미국 증시</a>
+          </nav>
+        </section>
+          <section class="tab-pane panel-pad wx-panel" data-tab="☀️ 날씨" id="weather-panel" aria-labelledby="wx-title">
+          <div class="panel-head"><h2 id="wx-title">오늘의 날씨</h2><span class="hint" id="wx-updated">기상청 · 매시간 갱신</span></div>
+          <div class="wx-regions" id="wx-regions" role="tablist" aria-label="지역"></div>
+          <div class="wx-body" id="wx-body" aria-live="polite"><div class="skeleton"></div></div>
+          <p class="source">출처: 기상청 단기예보(공공데이터포털)</p>
+        </section>
+          <section class="tab-pane panel-pad safety-box" data-tab="🚨 안전" aria-labelledby="safety-title">
+          <div class="panel-head"><h2 id="safety-title">안전 알림</h2><span class="hint">공식 기관 바로가기</span></div>
+          <ul class="safety-links">
+            <li><a href="https://www.safekorea.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">📢</span><span><strong>재난문자 조회</strong><small>국민안전24(국민재난안전포털) · 행정안전부</small></span><span class="go" aria-hidden="true">›</span></a></li>
+            <li><a href="https://www.safe182.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">🧒</span><span><strong>실종아동 찾기 · 실종경보</strong><small>안전Dream · 경찰청</small></span><span class="go" aria-hidden="true">›</span></a></li>
           </ul>
-          <div class="feed-foot">
-            <span class="search-note" id="search-note"></span>
-            <button type="button" class="more-link" id="feed-more">게시판으로 가기 ›</button>
+          <div class="safety-calls" aria-label="긴급 신고 전화">
+            <a href="tel:112"><strong>112</strong><span>범죄 신고</span></a>
+            <a href="tel:119"><strong>119</strong><span>화재·구조·구급</span></a>
+            <a href="tel:182"><strong>182</strong><span>실종 신고</span></a>
           </div>
+          <details class="safety-howto">
+            <summary>내 휴대폰에서 재난문자 켜는 법</summary>
+            <p><strong>갤럭시(안드로이드)</strong>: 설정 → 안전 및 긴급 → 무선 긴급 알림 → 긴급 재난 문자·안전 안내 문자 켜기 <small>(기종에 따라 '메시지 → 설정 → 긴급 알림'에 있을 수 있습니다)</small></p>
+            <p><strong>아이폰</strong>: 설정 → 알림 → 맨 아래 '정부 경보'에서 긴급 재난 문자·안전 안내 문자 켜기</p>
+            <p class="note">안전안내문자, 긴급재난문자, 실종경보문자는 정부가 지역 내 휴대폰으로 직접 보내는 문자입니다. 위 설정을 켜 두면 따로 가입하지 않아도 자동으로 받습니다.</p>
+          </details>
         </section>
-          <section class="tab-pane panel-pad" data-tab="👍 공감 많은 제안" aria-labelledby="rank-title">
-            <div class="panel-head"><h2 id="rank-title">많이 공감한 정책 제안</h2><span class="hint">최근 30일 추천 순</span></div>
-            <ol class="rank-list" id="rank-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
-            <a class="more-link" href="#policy-section">정책 제안 전체 보기 ›</a>
-          </section>
-          <section class="tab-pane panel-pad" data-tab="📣 시민의 소리" aria-labelledby="voice-title-mini">
-            <div class="panel-head"><h2 id="voice-title-mini">시민의 소리</h2><span class="hint">행정·정책에 대한 의견과 고발</span></div>
-            <ul class="rank-list" id="voice-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
-            <a class="more-link" href="#voice-section">시민의 소리 전체 보기 ›</a>
-          </section>
-          <div class="tab-pane tab-letter" data-tab="✉️ 스페이스 레터">
-            <section class="letter-band" aria-labelledby="letter-title">
-          <div class="copy">
-            <div class="eyebrow">스페이스 레터 · 매주 월요일 07:00</div>
-            <h2 id="letter-title">이번 주 경제·정책 브리핑</h2>
-            <p>금리·환율·주식·부동산 지표와 정부 정책, 커뮤니티에서 나온 목소리를 한 번에 정리해 보내 드립니다. 지난 레터는 누구나 읽을 수 있습니다.</p>
-          </div>
-          <ul class="letter-list" id="letter-list"><li class="letter-empty">지난 레터를 불러오는 중입니다.</li></ul>
+          <section class="tab-pane panel-pad chat-preview" data-tab="💬 채팅" aria-labelledby="chat-mini-title">
+          <div class="panel-head"><h2 id="chat-mini-title">실시간 채팅</h2><span class="online"><span class="dot" aria-hidden="true"></span><span id="chat-online">연결 중</span></span></div>
+          <ul class="chat-lines" id="chat-lines"><li class="empty">새 대화가 오면 여기에 바로 보입니다.</li></ul>
+          <div class="me-actions"><a class="btn btn-outline" style="width:100%" href="#chat-section">광장 채팅 들어가기</a><a class="btn btn-primary" style="width:100%" href="/chat">스페이스 톡 (단체·1:1 대화방)</a></div>
         </section>
-            <section class="sub-box" aria-labelledby="sub-title">
-          <h2 id="sub-title">스페이스 레터 구독</h2>
-          <p>매주 월요일 아침, 경제·정책 브리핑을 무료로 받아 보세요. 확인 메일의 버튼을 눌러야 구독이 완료됩니다.</p>
-          <a class="btn btn-primary" style="width:100%" href="#newsletter-section" id="sub-go">구독 신청하기</a>
-          <button type="button" class="link-btn letter-mark" data-letter-mark>이미 구독하셨나요? 이 기기에도 '구독완료'로 표시</button>
         </section>
-          </div>
-        </section>
+
+
 
         <div class="ad-slot panel" data-ad="feed" hidden><span class="ad-label">광고</span></div>
 
@@ -410,49 +405,6 @@
           </div>
         </section>
 
-        <section class="panel tabbox side-box" data-tabbox="side" aria-label="오늘의 정보">
-          <div class="tabbox-tabs" role="tablist" aria-label="오늘의 정보 고르기"></div>
-          <section class="tab-pane panel-pad eco-mini" data-tab="📈 경제" aria-labelledby="eco-mini-title">
-          <div class="panel-head"><h2 id="eco-mini-title"><a href="#eco-panel">오늘의 경제지표 ›</a></h2><span class="hint" id="eco-mini-updated">눌러서 자세히 보기</span></div>
-          <div class="kr-tape" id="kr-tape-home" aria-live="off"></div>
-          <div class="eco-mini-grid" id="eco-mini-grid"></div>
-          <nav class="eco-mini-links" aria-label="경제지표 바로가기">
-            <a href="#eco-panel"><span aria-hidden="true">📊</span>항목별 최신 발표</a>
-            <a href="#house-panel"><span aria-hidden="true">🏢</span>아파트 주간동향</a>
-            <a href="#realestate-panel"><span aria-hidden="true">🏠</span>부동산 동향</a>
-            <a href="#market-panel"><span aria-hidden="true">📈</span>국내·미국 증시</a>
-          </nav>
-        </section>
-          <section class="tab-pane panel-pad wx-panel" data-tab="☀️ 날씨" id="weather-panel" aria-labelledby="wx-title">
-          <div class="panel-head"><h2 id="wx-title">오늘의 날씨</h2><span class="hint" id="wx-updated">기상청 · 매시간 갱신</span></div>
-          <div class="wx-regions" id="wx-regions" role="tablist" aria-label="지역"></div>
-          <div class="wx-body" id="wx-body" aria-live="polite"><div class="skeleton"></div></div>
-          <p class="source">출처: 기상청 단기예보(공공데이터포털)</p>
-        </section>
-          <section class="tab-pane panel-pad safety-box" data-tab="🚨 안전" aria-labelledby="safety-title">
-          <div class="panel-head"><h2 id="safety-title">안전 알림</h2><span class="hint">공식 기관 바로가기</span></div>
-          <ul class="safety-links">
-            <li><a href="https://www.safekorea.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">📢</span><span><strong>재난문자 조회</strong><small>국민안전24(국민재난안전포털) · 행정안전부</small></span><span class="go" aria-hidden="true">›</span></a></li>
-            <li><a href="https://www.safe182.go.kr" target="_blank" rel="noopener"><span class="ico" aria-hidden="true">🧒</span><span><strong>실종아동 찾기 · 실종경보</strong><small>안전Dream · 경찰청</small></span><span class="go" aria-hidden="true">›</span></a></li>
-          </ul>
-          <div class="safety-calls" aria-label="긴급 신고 전화">
-            <a href="tel:112"><strong>112</strong><span>범죄 신고</span></a>
-            <a href="tel:119"><strong>119</strong><span>화재·구조·구급</span></a>
-            <a href="tel:182"><strong>182</strong><span>실종 신고</span></a>
-          </div>
-          <details class="safety-howto">
-            <summary>내 휴대폰에서 재난문자 켜는 법</summary>
-            <p><strong>갤럭시(안드로이드)</strong>: 설정 → 안전 및 긴급 → 무선 긴급 알림 → 긴급 재난 문자·안전 안내 문자 켜기 <small>(기종에 따라 '메시지 → 설정 → 긴급 알림'에 있을 수 있습니다)</small></p>
-            <p><strong>아이폰</strong>: 설정 → 알림 → 맨 아래 '정부 경보'에서 긴급 재난 문자·안전 안내 문자 켜기</p>
-            <p class="note">안전안내문자, 긴급재난문자, 실종경보문자는 정부가 지역 내 휴대폰으로 직접 보내는 문자입니다. 위 설정을 켜 두면 따로 가입하지 않아도 자동으로 받습니다.</p>
-          </details>
-        </section>
-          <section class="tab-pane panel-pad chat-preview" data-tab="💬 채팅" aria-labelledby="chat-mini-title">
-          <div class="panel-head"><h2 id="chat-mini-title">실시간 채팅</h2><span class="online"><span class="dot" aria-hidden="true"></span><span id="chat-online">연결 중</span></span></div>
-          <ul class="chat-lines" id="chat-lines"><li class="empty">새 대화가 오면 여기에 바로 보입니다.</li></ul>
-          <div class="me-actions"><a class="btn btn-outline" style="width:100%" href="#chat-section">광장 채팅 들어가기</a><a class="btn btn-primary" style="width:100%" href="/chat">스페이스 톡 (단체·1:1 대화방)</a></div>
-        </section>
-        </section>
 
 
 
@@ -473,6 +425,7 @@
       <div class="boards-head">
         <h2 id="boards-title">게시판</h2>
         <div class="board-tabs" aria-label="게시판 선택">
+          <button type="button" class="section-tab" data-target="latest-section">🆕 지금 올라온 글</button>
           <button type="button" class="section-tab" data-target="community-section">소통·나눔 광장</button>
           <button type="button" class="section-tab" data-target="voice-section">시민의 소리</button>
           <button type="button" class="section-tab" data-target="policy-section">정책비평·제안</button>
@@ -480,6 +433,42 @@
           <button type="button" class="section-tab" data-target="chat-section">실시간 채팅</button>
         </div>
       </div>
+
+      <section id="latest-section" class="board-section surface latest-section" aria-labelledby="latest-title"><div class="section-head"><div><div class="eyebrow">00 · WHAT'S NEW</div><h2 id="latest-title">지금 올라온 글</h2></div><span class="hint">네 게시판의 새 글을 한곳에서</span></div>
+        <section class="panel tabbox home-box" data-tabbox="main" aria-label="최근 글">
+          <div class="tabbox-tabs" role="tablist" aria-label="커뮤니티 소식 고르기"></div>
+          <section class="tab-pane" data-tab="🆕 지금 올라온 글" aria-labelledby="feed-title">
+          <div class="feed-head panel-head">
+            <h2 id="feed-title">지금 올라온 글</h2>
+            <span class="hint" id="feed-hint">새 글이 올라오면 자동으로 바뀝니다</span>
+          </div>
+          <div class="feed-tabs" role="tablist" aria-label="게시판 선택">
+            <button type="button" class="chip" role="tab" data-feed="all" aria-selected="true">전체</button>
+            <button type="button" class="chip" role="tab" data-feed="community" aria-selected="false">소통·나눔</button>
+            <button type="button" class="chip" role="tab" data-feed="voice" aria-selected="false">시민의 소리</button>
+            <button type="button" class="chip" role="tab" data-feed="policy" aria-selected="false">정책 제안</button>
+            <button type="button" class="chip" role="tab" data-feed="research" aria-selected="false">칼럼·학술</button>
+          </div>
+          <ul class="feed-list" id="feed-list" aria-live="polite">
+            <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+          </ul>
+          <div class="feed-foot">
+            <span class="search-note" id="search-note"></span>
+            <button type="button" class="more-link" id="feed-more">소통·나눔 광장에서 글쓰기 ›</button>
+          </div>
+        </section>
+          <section class="tab-pane panel-pad" data-tab="👍 공감 많은 제안" aria-labelledby="rank-title">
+            <div class="panel-head"><h2 id="rank-title">많이 공감한 정책 제안</h2><span class="hint">최근 30일 추천 순</span></div>
+            <ol class="rank-list" id="rank-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
+            <a class="more-link" href="#policy-section">정책 제안 전체 보기 ›</a>
+          </section>
+          <section class="tab-pane panel-pad" data-tab="📣 시민의 소리" aria-labelledby="voice-title-mini">
+            <div class="panel-head"><h2 id="voice-title-mini">시민의 소리</h2><span class="hint">행정·정책에 대한 의견과 고발</span></div>
+            <ul class="rank-list" id="voice-list"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul>
+            <a class="more-link" href="#voice-section">시민의 소리 전체 보기 ›</a>
+          </section>
+        </section>
+      </section>
 
       <section id="community-section" class="board-section surface" aria-labelledby="community-title"><div class="section-head"><div><div class="eyebrow">01 · OPEN COMMUNITY</div><h2 id="community-title">소통·나눔 광장</h2></div><span class="tag">자유로운 이야기</span></div><p class="intro">안부, 일상, 취미, 고민 상담 등 우리 곁의 이야기를 나누는 공간입니다. 실명 또는 닉네임으로 참여할 수 있으며, 서로 다른 생각에도 예의를 지키는 대화를 약속합니다.</p><div class="grid"><article class="card"><h3>안부와 일상</h3><p>오늘 있었던 일, 이웃에게 전하고 싶은 소식을 편하게 나눠보세요.</p></article><article class="card"><h3>취미와 정보</h3><p>함께 즐길 수 있는 활동과 생활에 도움이 되는 정보를 공유하세요.</p></article><article class="card"><h3>고민 상담</h3><p>혼자 고민하지 않도록 경험과 응원의 말을 건네는 공간입니다.</p></article><article class="card"><h3>시·시적인 글</h3><p>마음에 머문 장면과 생각을 시로 적어 나눠 보세요. 줄바꿈 그대로 보여 드립니다.</p></article></div>
         <div class="post-composer"><h3>새 이야기 쓰기</h3><select id="communityType" aria-label="글 종류" style="margin-bottom:8px"><option value="">이야기·일상</option><option value="시">시·시적인 글</option></select><input id="communityTitle" class="post-title-input" maxlength="120" placeholder="제목 (선택)" aria-label="글 제목"><textarea id="communityInput" placeholder="안부, 일상, 취미, 고민을 자유롭게 적어주세요." aria-label="새 이야기 내용"></textarea><div class="post-controls"><span class="label">존중하는 대화</span><button class="submitPolicy" id="communitySubmit">이야기 등록</button></div><div class="post-controls"><strong>종류별 보기</strong><select id="communityFilter" aria-label="소통·나눔 종류 필터"><option value="all">전체</option><option value="">이야기·일상</option><option value="시">시·시적인 글</option></select></div><div id="communityPosts" class="post-list"></div></div></section>
@@ -528,6 +517,14 @@
           <button type="submit" class="like-btn">구독 해지</button>
         </form>
         <p id="unsubscribe-status" class="form-status" role="status"></p></details>
+        <section class="letter-band letter-past" aria-labelledby="letter-title">
+          <div class="copy">
+            <div class="eyebrow">스페이스 레터 · 매주 월요일 07:00</div>
+            <h2 id="letter-title">이번 주 경제·정책 브리핑</h2>
+            <p>금리·환율·주식·부동산 지표와 정부 정책, 커뮤니티에서 나온 목소리를 한 번에 정리해 보내 드립니다. 지난 레터는 누구나 읽을 수 있습니다.</p>
+          </div>
+          <ul class="letter-list" id="letter-list"><li class="letter-empty">지난 레터를 불러오는 중입니다.</li></ul>
+        </section>
       </section>
 
       <section id="guide-section" data-view-of="guide" class="surface" aria-labelledby="guide-title">
@@ -708,8 +705,8 @@
     window.spaceRevealTab = revealTab;
 
     // 화면 나누기: 위쪽 메뉴를 누르면 그 항목 화면만 보여 준다 (홈 / 게시판 / 정책브리핑 / 오늘의 이슈 / 우리동네 / 스페이스 레터 / 이용 안내)
-    const boardSections = ["community-section", "voice-section", "policy-section", "research-section", "chat-section"];
-    const view = { name: "home", sub: { local: "benefit-panel", economy: "eco-panel" }, board: "community-section" };
+    const boardSections = ["latest-section", "community-section", "voice-section", "policy-section", "research-section", "chat-section"];
+    const view = { name: "home", sub: { local: "benefit-panel", economy: "eco-panel" }, board: "latest-section" };
     const hasSubs = name => Boolean(document.querySelector(`.sub-tabs[data-view-of="${name}"]`));
     function hostOf(element) { return element && element.closest ? element.closest("[data-view-of]") : null; }
     function viewOfId(id) {
@@ -742,6 +739,7 @@
         const id = (link.getAttribute("href") || "").slice(1);
         const target = viewOfId(id);
         const active = link.hasAttribute("data-home") ? view.name === "home"
+          : link.hasAttribute("data-boards") ? view.name === "boards" && view.board !== "chat-section"
           : boardSections.includes(id) ? view.name === "boards" && view.board === id
           : Boolean(target) && target === view.name;
         link.classList.toggle("active", active);

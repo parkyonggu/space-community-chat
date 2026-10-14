@@ -147,7 +147,7 @@
     state.feed = chip.dataset.feed;
     clearSearch(false);
     document.querySelectorAll('[data-feed]').forEach(other => other.setAttribute('aria-selected', String(other === chip)));
-    $('feed-more').textContent = state.feed === 'all' ? '게시판으로 가기 ›' : `${BOARD_LABEL[state.feed]} 게시판으로 가기 ›`;
+    $('feed-more').textContent = state.feed === 'all' ? '소통·나눔 광장에서 글쓰기 ›' : `${BOARD_LABEL[state.feed]} 전체 보기 ›`;
     renderFeed();
   }));
   $('feed-more').addEventListener('click', () => goBoard(state.feed === 'all' ? 'community' : state.feed));
@@ -1970,7 +1970,7 @@
     }
   }
   loadLetters();
-  $('sub-go').addEventListener('click', () => setTimeout(() => $('newsletter-email')?.focus({ preventScroll: true }), 500));
+  $('sub-go')?.addEventListener('click', () => setTimeout(() => $('newsletter-email')?.focus({ preventScroll: true }), 500));
 
   // ---------- ad boxes: AdSense when a unit number is set, otherwise our own notices (house ads) ----------
   // 승인 전이거나 Google이 광고를 채우지 못하면(unfilled) 같은 자리에 사이트 안내 배너가 돌아가며 나옵니다.

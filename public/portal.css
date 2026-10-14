@@ -1000,3 +1000,22 @@ body:not([data-view="home"]) .boards-head h2 { display:none; }
   .home-box .tabbox-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:6px 4px 0; }
   .home-box .tabbox-tab { padding:10px 2px 9px; font-size:12.5px; white-space:normal; line-height:1.3; text-align:center; word-break:keep-all; }
 }
+
+/* ---------- 게시판 메뉴로 옮긴 '지금 올라온 글' · 홈의 '오늘의 정보' 넓게 ---------- */
+.home-tiles { grid-template-columns:repeat(9,minmax(0,1fr)); }
+@media (max-width:1100px) { .home-tiles { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+@media (max-width:720px) { .home-tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } .home-tiles b { font-size:12.5px; } }
+.info-box .tabbox-tabs { display:flex; padding:6px 8px 0; }
+.info-box .tabbox-tab { padding:12px 16px 11px; font-size:14.5px; }
+@media (min-width:721px) {
+  .info-box .eco-mini-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .info-box .eco-mini-links { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .info-box .safety-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+}
+@media (max-width:720px) { .info-box .tabbox-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:6px 4px 0; } .info-box .tabbox-tab { padding:11px 2px 10px; font-size:13px; text-align:center; } }
+.latest-section .home-box { margin-top:12px; box-shadow:none; }
+.letter-past { margin-top:22px; background:#f6f7fb; color:var(--ink); border:1px solid var(--line); }
+.letter-past h2 { color:var(--ink); font-size:19px; }
+.letter-past p { color:var(--muted); }
+.letter-past .eyebrow { color:#b07d12; }
+.home-tiles[data-view-of="home"] { margin-top:18px; }
