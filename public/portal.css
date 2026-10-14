@@ -959,3 +959,44 @@ body:not([data-view="home"]) .boards-head h2 { display:none; }
 .eco-mini-links a { display:flex; align-items:center; gap:6px; padding:9px 10px; border-radius:10px; background:#f4f6fb; color:var(--ink); font-size:13.5px; font-weight:700; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:background .18s, color .18s; }
 .eco-mini-links a:hover, .eco-mini-links a:focus-visible { background:var(--navy); color:#fff; }
 @media (max-width:720px) { .ticker-msg { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; font-size:14px; } .ticker-text { white-space:normal; } }
+
+/* ---------- 홈 상자 탭 (지금 올라온 글·공감 제안·시민의 소리·레터 / 경제·날씨·안전·채팅) ---------- */
+.tabbox { overflow:hidden; }
+.tabbox-tabs { display:flex; gap:2px; padding:6px 8px 0; border-bottom:1px solid var(--line); background:#fafbfd; overflow-x:auto; scrollbar-width:none; }
+.tabbox-tabs::-webkit-scrollbar { display:none; }
+.tabbox-tab { position:relative; flex:0 0 auto; padding:12px 14px 11px; border:0; background:none; color:var(--muted); font-size:14.5px; font-weight:700; white-space:nowrap; cursor:pointer; border-radius:10px 10px 0 0; transition:color .18s, background .18s; }
+.tabbox-tab:hover { color:var(--ink); background:#f0f2f8; }
+.tabbox-tab[aria-selected="true"] { color:var(--ink); background:var(--card); font-weight:800; }
+.tabbox-tab[aria-selected="true"]::after { content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:3px; border-radius:3px 3px 0 0; background:var(--gold); }
+.tabbox-tab[hidden] { display:none; }
+.side-box .tabbox-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:6px 6px 0; }
+.side-box .tabbox-tab { padding:11px 4px 10px; font-size:13.5px; text-align:center; }
+.tab-pane.tab-off { display:none; }
+.tab-pane { animation:paneIn .25s ease; }
+@keyframes paneIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+.tabbox .tab-pane > .panel-head h2:not(.searching), .tabbox .tab-pane > .feed-head h2:not(.searching), .tabbox .tab-pane > .panel-head h2 a { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.tabbox .tab-pane > .panel-head, .tabbox .tab-pane > .feed-head { justify-content:flex-end; }
+.tabbox .tab-pane > .feed-head { padding-top:12px; }
+.tabbox .tab-pane > .panel-head .hint { font-size:12.5px; }
+.tabbox .feed-tabs { padding-top:8px; }
+.home-box .feed-list { min-height:0; }
+.tab-letter { padding:18px 20px; display:grid; gap:14px; }
+.tab-letter .letter-band { background:none; color:var(--ink); padding:0; border-radius:0; }
+.tab-letter .letter-band h2 { color:var(--ink); font-size:19px; }
+.tab-letter .letter-band p { color:var(--muted); }
+.tab-letter .letter-band .eyebrow { color:#b07d12; }
+.tab-letter .sub-box { margin:0; }
+@media (prefers-reduced-motion: reduce) { .tab-pane { animation:none; } }
+
+/* 바로가기: PC에서는 한 줄 8칸, 휴대폰에서는 앱 아이콘처럼 4칸 */
+.home-tiles { grid-template-columns:repeat(8,minmax(0,1fr)); gap:8px; }
+.home-tiles a { align-items:center; text-align:center; padding:12px 4px 10px; gap:4px; }
+.home-tiles span { font-size:24px; }
+.home-tiles b { font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.home-tiles small { display:none; }
+@media (max-width:1100px) { .home-tiles { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:720px) { .home-tiles { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; } .home-tiles a { padding:10px 2px 8px; border-radius:12px; } .home-tiles span { font-size:22px; } .home-tiles b { font-size:12px; } }
+@media (max-width:720px) {
+  .home-box .tabbox-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:6px 4px 0; }
+  .home-box .tabbox-tab { padding:10px 2px 9px; font-size:12.5px; white-space:normal; line-height:1.3; text-align:center; word-break:keep-all; }
+}

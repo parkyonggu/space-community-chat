@@ -158,6 +158,7 @@
     $('searchInput').value = '';
     $('search-note').replaceChildren();
     $('feed-title').textContent = '지금 올라온 글';
+    $('feed-title').classList.remove('searching');
     document.querySelectorAll('[data-feed]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.feed === state.feed)));
     if (render) renderFeed();
   }
@@ -167,6 +168,7 @@
     if (!keyword) { clearSearch(); return; }
     state.search = keyword;
     $('feed-title').textContent = '검색 결과';
+    $('feed-title').classList.add('searching');
     document.querySelectorAll('[data-feed]').forEach(chip => chip.setAttribute('aria-selected', 'false'));
     renderFeed();
     const count = feedItems().length;
