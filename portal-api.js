@@ -7,6 +7,7 @@ const { recentPolicyNews, pensionNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
 const { createPension, pensionPlan, uploadedRegions } = require('./pension');
+const { createFinanceInfo } = require('./finance-info');
 const { createHash } = require('node:crypto');
 const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
@@ -41,7 +42,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', financeKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -50,6 +51,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const benefits = localBenefits.createLocalBenefits({ key: benefitKey, url: benefitUrl, fetchImpl: (...args) => fetchImpl(...args), now });
   const lastErrors = new Map();
   const weather = createWeather({ key: weatherKey, fetchImpl: (...args) => fetchImpl(...args), now });
+  const finance = createFinanceInfo({ key: financeKey, fetchImpl: (...args) => fetchImpl(...args) });
   const pension = createPension({ key: pensionKey, reciptKey: pensionKeys.recipt, sbscrbKey: pensionKeys.sbscrb, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
   const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
@@ -308,6 +310,29 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
   }
 
+  // ---------- 우리 동네 금융정보 (금융감독원 금융상품 한눈에: 정기예금·적금·연금저축) ----------
+  async function handleFinance(request, send, pathname) {
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const ip = request.socket?.remoteAddress || 'unknown';
+    if (rateLimit && !rateLimit(`finance:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    if (!finance.ready) { send(200, { connected: false }); return; }
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    if (pathname === '/api/portal/finance/raw') {
+      try { send(200, await finance.raw(params.get('service') || undefined, params.get('group') || undefined)); }
+      catch (error) { send(200, { error: error.message }); }
+      return;
+    }
+    const TTL = 12 * 60 * 60 * 1000;
+    const [deposits, savings, annuities] = await Promise.all([
+      cached('finance-deposits', TTL, finance.deposits),
+      cached('finance-savings', TTL, finance.savings),
+      cached('finance-annuities', TTL, finance.annuities),
+    ]);
+    const problems = [...new Set(['finance-deposits', 'finance-savings', 'finance-annuities'].map(name => lastErrors.get(name)).filter(Boolean))];
+    send(200, { connected: true, deposits: deposits || [], savings: savings || [], annuities: annuities || [], problems,
+      source: '금융감독원 「금융상품 한눈에」(finlife.fss.or.kr)' });
+  }
+
   // ---------- 우리 동네 농사정보 (KAMIS 농산물 가격 + 농촌진흥청 농사로 주간농사정보) ----------
   async function handleFarm(request, send, pathname) {
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
@@ -439,6 +464,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
     if (pathname === '/api/portal/pension' || pathname.startsWith('/api/portal/pension/')) { await handlePension(request, send, pathname); return; }
     if (pathname === '/api/portal/farm' || pathname === '/api/portal/farm/raw') { await handleFarm(request, send, pathname); return; }
+    if (pathname === '/api/portal/finance' || pathname === '/api/portal/finance/raw') { await handleFinance(request, send, pathname); return; }
     if (pathname !== '/api/portal') { send(404, { error: '요청한 기능이 없습니다.' }); return; }
     if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
     const ip = request.socket?.remoteAddress || 'unknown';

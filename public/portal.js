@@ -1536,6 +1536,157 @@
     loadFarm();
   }
 
+  // ---------- 우리 동네 금융정보 (금융감독원 금융상품 한눈에) ----------
+  const fi = { data: null, view: 'deposit', group: 'all', sort: 'max' };
+  const pct = value => (value == null ? '–' : `${Number(value).toFixed(2)}%`);
+  function fiFilterBar() {
+    const bar = $('fi-filter');
+    if (fi.view === 'tax' || fi.view === 'annuity' || !fi.data?.connected) { bar.replaceChildren(); return; }
+    const chip = (label, active, onClick) => {
+      const button = make('button', 'chip', label);
+      button.type = 'button';
+      button.setAttribute('aria-pressed', String(active));
+      button.addEventListener('click', onClick);
+      return button;
+    };
+    bar.replaceChildren(
+      ...[['all', '전체'], ['은행', '은행'], ['저축은행', '저축은행']].map(([id, label]) => chip(label, fi.group === id, () => { fi.group = id; renderFinance(); })),
+      make('span', 'fi-sep', '·'),
+      chip('최고금리순', fi.sort === 'max', () => { fi.sort = 'max'; renderFinance(); }),
+      chip('기본금리순', fi.sort === 'base', () => { fi.sort = 'base'; renderFinance(); }),
+    );
+  }
+  function fiSavingsList(rows, kind) {
+    let list = rows.filter(row => fi.group === 'all' || row.group === fi.group);
+    if (fi.sort === 'base') list = [...list].sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
+    list = list.slice(0, 20);
+    if (!list.length) return make('p', 'pn-empty', '보여 드릴 상품이 없습니다.');
+    const ol = make('ol', 'fi-list');
+    list.forEach(row => {
+      const li = make('li', 'fi-item');
+      const head = make('div', 'fi-head');
+      head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.group));
+      if (row.joinDeny && row.joinDeny !== '제한 없음') head.appendChild(make('span', 'fi-badge warn', row.joinDeny));
+      const name = make('p', 'fi-name', row.name);
+      const rate = make('p', 'fi-rate');
+      rate.append(`${row.term}개월 · 기본 `, make('strong', '', pct(row.rate)), ' · 최고 ', make('strong', 'hi', pct(row.maxRate)));
+      if (row.rateType) rate.append(` (${row.rateType}${row.reserveType ? `·${row.reserveType}` : ''})`);
+      li.append(head, name, rate);
+      const meta = [row.joinWay && `가입: ${row.joinWay}`, row.member && `대상: ${row.member}`, row.maxLimit ? `한도 ${Number(row.maxLimit).toLocaleString('ko-KR')}원` : ''].filter(Boolean).join(' · ');
+      if (meta) li.appendChild(make('p', 'fi-meta', meta));
+      if (row.special) {
+        const more = make('details', 'fi-more');
+        more.append(make('summary', '', '우대 조건 보기'), make('p', 'fi-meta', row.special));
+        li.appendChild(more);
+      }
+      ol.appendChild(li);
+    });
+    return ol;
+  }
+  function fiAnnuityList(rows) {
+    if (!rows.length) return make('p', 'pn-empty', '보여 드릴 상품이 없습니다.');
+    const wrap = make('div');
+    wrap.appendChild(make('p', 'pn-calc-note', '연금저축펀드는 과거 평균 수익률, 연금저축보험은 공시이율입니다. 과거 수익률이 앞으로의 수익을 보장하지 않으며, 펀드는 원금 손실이 날 수 있습니다. 연금저축은 낸 돈에 세액공제 혜택이 있습니다.'));
+    const ol = make('ol', 'fi-list');
+    rows.slice(0, 20).forEach(row => {
+      const li = make('li', 'fi-item');
+      const head = make('div', 'fi-head');
+      head.append(make('span', 'fi-co', row.company), make('span', 'fi-badge', row.pensionKind || row.group));
+      if (row.productType) head.appendChild(make('span', 'fi-badge', row.productType));
+      const rate = make('p', 'fi-rate');
+      if (row.avgRate != null) rate.append('평균 수익률 ', make('strong', 'hi', pct(row.avgRate)));
+      if (row.disclosedRate != null) rate.append(row.avgRate != null ? ' · ' : '', '공시이율 ', make('strong', 'hi', pct(row.disclosedRate)));
+      if (row.guaranteedRate != null) rate.append(` · 최저보증 ${pct(row.guaranteedRate)}`);
+      li.append(head, make('p', 'fi-name', row.name), rate);
+      const recent = row.recent.filter(value => value != null);
+      if (recent.length) li.appendChild(make('p', 'fi-meta', `최근 연도별 수익률: ${row.recent.map(value => (value == null ? '–' : pct(value))).join(' / ')}`));
+      ol.appendChild(li);
+    });
+    wrap.appendChild(ol);
+    return wrap;
+  }
+  // 세금 덜 내는 저축 (2026년 10월 기준)
+  const FI_TAX = [
+    ['일반 예금·적금 이자', '이자의 15.4%(소득세 14% + 지방소득세 1.4%)를 떼고 받습니다.'],
+    ['비과세종합저축', '만 65세 이상 기초연금 수급자(2026년 신규 가입부터), 장애인, 독립·국가유공자, 기초생활수급자 등. 전 금융회사 합쳐 1인당 원금 5,000만 원까지 이자에 세금이 없습니다. 2028년 말까지 가입. 최근 3년 안에 금융소득종합과세 대상이었다면 가입할 수 없습니다.'],
+    ['농협·수협·신협·산림조합·새마을금고 조합원 예탁금', '조합원(준조합원)이면 1인당 3,000만 원까지 이자에 농어촌특별세 1.4%만 냅니다(출자금은 2,000만 원까지 배당 비과세). 2026년부터 총급여 7,000만 원(종합소득 6,000만 원) 넘는 분은 단계적으로 세율이 오르고, 그 이하인 분은 당분간 1.4%가 유지됩니다.'],
+    ['ISA(개인종합자산관리계좌)', '3년 이상 유지하면 이익 200만 원(서민·농어민형 400만 원)까지 비과세, 넘는 부분은 9.9%만 냅니다. 한 해 2,000만 원(총 1억 원)까지 넣을 수 있습니다.'],
+  ];
+  function fiTaxView() {
+    const wrap = make('div', 'pn-calc');
+    const list = make('ol', 'pn-policy-list');
+    FI_TAX.forEach(([title, body]) => { const li = make('li'); li.append(make('strong', '', title), make('span', '', body)); list.appendChild(li); });
+    wrap.appendChild(make('p', 'pn-calc-title', '🧾 같은 이자라도 어디에 맡기느냐에 따라 손에 쥐는 돈이 달라집니다 (2026년 10월 기준)'));
+    wrap.appendChild(list);
+    const form = make('div', 'pn-calc-form');
+    const state = fi.tax || (fi.tax = { amount: 3000, rate: 3.5, months: 12 });
+    const input = (label, key, attrs) => {
+      const box = make('label', 'pn-field');
+      box.appendChild(make('span', '', label));
+      const el = make('input');
+      Object.assign(el, { type: 'number', min: 0, step: 'any', inputMode: 'decimal', value: state[key], ...attrs });
+      el.addEventListener('input', () => { state[key] = el.value; update(); });
+      box.appendChild(el);
+      form.appendChild(box);
+    };
+    input('맡길 돈(만 원)', 'amount', {});
+    input('연 금리(%)', 'rate', {});
+    input('기간(개월)', 'months', { step: 1 });
+    const out = make('div', 'pn-total-card');
+    const update = () => {
+      const principal = Math.max(0, Number(state.amount) || 0) * 10000;
+      const rate = Math.max(0, Number(state.rate) || 0) / 100;
+      const months = Math.max(0, Number(state.months) || 0);
+      const interestOf = amount => amount * rate * (months / 12);
+      const gross = interestOf(principal);
+      const mutualPart = Math.min(principal, 30000000);
+      const freePart = Math.min(principal, 50000000);
+      const cases = [
+        ['일반 과세 (15.4%)', gross * 0.154],
+        ['조합 예탁금 (3,000만 원까지 1.4%)', interestOf(mutualPart) * 0.014 + interestOf(principal - mutualPart) * 0.154],
+        ['비과세종합저축 (5,000만 원까지 0%)', interestOf(principal - freePart) * 0.154],
+        ['ISA 일반형 (200만 원까지 0%, 초과 9.9%)', Math.max(0, gross - 2000000) * 0.099],
+      ];
+      out.replaceChildren(make('p', 'pn-total-title', `💵 세전 이자 ${Math.round(gross).toLocaleString('ko-KR')}원 → 세후 받는 이자`));
+      const table = make('table', 'pn-total-table');
+      cases.forEach(([label, tax]) => {
+        const tr = make('tr');
+        tr.append(make('th', '', label), make('td', '', `${Math.round(gross - tax).toLocaleString('ko-KR')}원 (세금 ${Math.round(tax).toLocaleString('ko-KR')}원)`));
+        table.appendChild(tr);
+      });
+      out.appendChild(table);
+      out.appendChild(make('p', 'pn-calc-caution', '단리로 단순 계산했습니다. 각 제도는 가입 자격과 한도가 있고(위 설명 참고), ISA는 3년 이상 유지 등 조건을 채워야 합니다.'));
+    };
+    update();
+    wrap.append(form, out);
+    return wrap;
+  }
+  function renderFinance() {
+    const panel = $('finance-panel');
+    if (!panel) return;
+    const data = fi.data || {};
+    if (!data.connected && fi.view !== 'tax') fi.view = 'tax';
+    panel.querySelectorAll('[data-fi-view]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.fiView === fi.view)));
+    fiFilterBar();
+    const body = $('fi-body');
+    if (fi.view === 'tax') { body.replaceChildren(fiTaxView()); return; }
+    if (!data.connected) { body.replaceChildren(make('p', 'pn-empty', '금리 자료를 연결하는 중입니다.')); return; }
+    const rows = fi.view === 'deposit' ? data.deposits : fi.view === 'saving' ? data.savings : data.annuities;
+    if (!rows?.length && data.problems?.length) { body.replaceChildren(make('p', 'pn-empty', '금융감독원 자료를 잠시 받지 못했습니다. 잠시 뒤 다시 확인해 주세요.')); return; }
+    body.replaceChildren(fi.view === 'annuity' ? fiAnnuityList(rows || []) : fiSavingsList(rows || [], fi.view));
+  }
+  async function loadFinance() {
+    try {
+      const response = await fetch('/api/portal/finance', { credentials: 'same-origin' });
+      fi.data = response.ok ? await response.json() : { connected: false };
+    } catch { fi.data = { connected: false }; }
+    renderFinance();
+  }
+  if ($('finance-panel')) {
+    $('finance-panel').querySelectorAll('[data-fi-view]').forEach(chip => chip.addEventListener('click', () => { fi.view = chip.dataset.fiView; renderFinance(); }));
+    loadFinance();
+  }
+
   // ---------- 첫 화면 사진 카드의 '살아 있는 소식 한 줄': 접속자·방금 올라온 글·정책브리핑을 번갈아 보여 준다 ----------
   const heroTicker = { index: 0, timer: null };
   function heroTickerItems() {

@@ -856,3 +856,20 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-total-table th { text-align:left; font-weight:600; color:var(--text); padding:5px 0; }
 .pn-total-table td { text-align:right; font-weight:700; color:var(--ink); padding:5px 0; font-variant-numeric:tabular-nums; }
 .pn-total-table tr.sum th, .pn-total-table tr.sum td { border-top:1px solid var(--line); color:#1958e8; font-size:17px; font-weight:800; padding-top:8px; }
+
+.fi-filter { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 10px; }
+.fi-filter .chip[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+.fi-sep { color:var(--muted); }
+.fi-list { list-style:none; counter-reset:fi; margin:0; padding:0; display:grid; gap:10px; }
+.fi-item { counter-increment:fi; position:relative; padding:10px 12px 10px 42px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+.fi-item::before { content:counter(fi); position:absolute; left:12px; top:11px; width:22px; height:22px; border-radius:50%; background:#eef3ff; color:#1958e8; font-weight:800; font-size:12.5px; display:grid; place-items:center; }
+.fi-head { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.fi-co { font-weight:800; color:var(--ink); }
+.fi-badge { font-size:11.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:#f1f3f8; color:var(--text); }
+.fi-badge.warn { background:#fff4e5; color:#9a3412; }
+.fi-name { margin:3px 0; color:var(--text); font-size:14px; }
+.fi-rate { margin:2px 0; font-size:14px; color:var(--text); }
+.fi-rate strong { color:var(--ink); }
+.fi-rate strong.hi { color:#1958e8; font-size:16px; }
+.fi-meta { margin:2px 0 0; font-size:12.5px; color:var(--muted); }
+.fi-more summary { cursor:pointer; font-size:12.5px; color:#1958e8; font-weight:700; margin-top:4px; }
