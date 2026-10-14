@@ -269,6 +269,23 @@
           <p class="source" id="bf-source">출처: 행정안전부 「대한민국 공공서비스(혜택) 정보」(정부24 보조금24) · 공공데이터포털. 정확한 조건과 기간은 '자세히'에서 꼭 확인하세요.</p>
         </section>
 
+        <section class="panel panel-pad pn-panel" id="pension-panel" aria-labelledby="pn-title" hidden>
+          <div class="panel-head"><h2 id="pn-title">우리 동네 국민연금</h2><span class="hint">통계 · 2026 제도 · 국민연금·기초연금 계산</span></div>
+          <div class="pn-views" role="tablist" aria-label="국민연금 보기" id="pn-views">
+            <button type="button" class="chip" role="tab" data-pn-view="stats" aria-selected="true">📊 우리 동네 통계</button>
+            <button type="button" class="chip" role="tab" data-pn-view="policy" aria-selected="false">📌 2026 달라진 점</button>
+            <button type="button" class="chip" role="tab" data-pn-view="news" aria-selected="false">📰 최근 소식</button>
+            <button type="button" class="chip" role="tab" data-pn-view="calc" aria-selected="false">🧮 국민연금 계산</button>
+            <button type="button" class="chip" role="tab" data-pn-view="basic" aria-selected="false">👵 기초연금 계산</button>
+          </div>
+          <div class="re-tabs" role="tablist" aria-label="지역" id="pn-regions"></div>
+          <div id="pn-body" aria-live="polite"><div class="skeleton"></div></div>
+          <div class="pn-links">
+            <a class="btn btn-outline" href="https://www.nps.or.kr" target="_blank" rel="noopener">정확한 내 연금 조회 (국민연금공단·본인인증) ↗</a>
+          </div>
+          <p class="source" id="pn-source">출처: 국민연금공단 수급현황·가입현황(공공데이터포털) · 지역·나이별 평균 통계이며, 개인별 연금액은 국민연금공단에서 본인 인증 후 확인하세요.</p>
+        </section>
+
         <section class="panel panel-pad fm-panel" id="farm-panel" aria-labelledby="fm-title" hidden>
           <div class="panel-head"><h2 id="fm-title">🌾 우리 동네 농사정보</h2><span class="hint" id="fm-updated">농산물 가격 · 이번 주 농사정보</span></div>
           <div class="fm-block" id="fm-prices-block" hidden>
@@ -291,23 +308,6 @@
             <a class="btn btn-outline" href="https://www.nongsaro.go.kr" target="_blank" rel="noopener">농사로 농업기술 ↗</a>
           </div>
           <p class="source" id="fm-source">출처: 한국농수산식품유통공사 농산물유통정보(KAMIS) 전국 평균 가격 · 농촌진흥청 농사로 Open API. 가격은 조사일 기준이며 지역·품질에 따라 다릅니다.</p>
-        </section>
-
-        <section class="panel panel-pad pn-panel" id="pension-panel" aria-labelledby="pn-title" hidden>
-          <div class="panel-head"><h2 id="pn-title">우리 동네 국민연금</h2><span class="hint">통계 · 2026 제도 · 국민연금·기초연금 계산</span></div>
-          <div class="pn-views" role="tablist" aria-label="국민연금 보기" id="pn-views">
-            <button type="button" class="chip" role="tab" data-pn-view="stats" aria-selected="true">📊 우리 동네 통계</button>
-            <button type="button" class="chip" role="tab" data-pn-view="policy" aria-selected="false">📌 2026 달라진 점</button>
-            <button type="button" class="chip" role="tab" data-pn-view="news" aria-selected="false">📰 최근 소식</button>
-            <button type="button" class="chip" role="tab" data-pn-view="calc" aria-selected="false">🧮 국민연금 계산</button>
-            <button type="button" class="chip" role="tab" data-pn-view="basic" aria-selected="false">👵 기초연금 계산</button>
-          </div>
-          <div class="re-tabs" role="tablist" aria-label="지역" id="pn-regions"></div>
-          <div id="pn-body" aria-live="polite"><div class="skeleton"></div></div>
-          <div class="pn-links">
-            <a class="btn btn-outline" href="https://www.nps.or.kr" target="_blank" rel="noopener">정확한 내 연금 조회 (국민연금공단·본인인증) ↗</a>
-          </div>
-          <p class="source" id="pn-source">출처: 국민연금공단 수급현황·가입현황(공공데이터포털) · 지역·나이별 평균 통계이며, 개인별 연금액은 국민연금공단에서 본인 인증 후 확인하세요.</p>
         </section>
 
         <section class="letter-band" aria-labelledby="letter-title">
