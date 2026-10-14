@@ -879,3 +879,21 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .fi-link { font-weight: 700; color: var(--accent, #1d6fd1); }
 
 .fi-sortnote { margin: 0 0 4px; font-weight: 700; font-size: .95rem; }
+
+/* ---------- 화면 나누기: 위쪽 메뉴마다 그 화면만 ---------- */
+.view-off { display:none !important; }
+body[data-view="boards"] .dash, body[data-view="letter"] .dash, body[data-view="guide"] .dash { display:none; }
+body:not([data-view="home"]) .dash, body:not([data-view="home"]) .boards { margin-top:18px; }
+body:not([data-view="home"]) .boards-head h2 { display:none; }
+.home-tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.home-tiles a { display:flex; flex-direction:column; gap:2px; padding:14px 14px 12px; border:1px solid var(--line,#e3e6ef); border-radius:14px; background:#fff; color:var(--ink); text-decoration:none; min-width:0; transition:border-color .15s, transform .15s, box-shadow .15s; }
+.home-tiles a:hover, .home-tiles a:focus-visible { border-color:var(--navy); transform:translateY(-1px); box-shadow:0 6px 18px rgba(14,23,48,.08); }
+.home-tiles span { font-size:22px; line-height:1.2; }
+.home-tiles b { font-size:15px; letter-spacing:-.02em; }
+.home-tiles small { color:var(--muted); font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (max-width:720px) { .home-tiles { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.local-tabs { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px 0; }
+.local-tabs::-webkit-scrollbar { display:none; }
+.local-tabs a { flex:0 0 auto; padding:9px 16px; border-radius:999px; border:1px solid var(--line,#e3e6ef); background:#fff; color:var(--ink); font-weight:700; font-size:14.5px; text-decoration:none; white-space:nowrap; }
+.local-tabs a.active { background:var(--navy); border-color:var(--navy); color:#fff; }
+.local-tabs a[hidden] { display:none; }

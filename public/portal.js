@@ -639,15 +639,6 @@
       return li;
     }));
   }
-  // 메뉴의 '정책브리핑'을 누르면 상자로 부드럽게 내려가 잠시 강조한다.
-  document.querySelectorAll('a[href="#policy-panel"]').forEach(link => link.addEventListener('click', event => {
-    const panel = $('policy-panel');
-    if (!panel) return;
-    event.preventDefault();
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    panel.classList.add('flash-target');
-    setTimeout(() => panel.classList.remove('flash-target'), 1600);
-  }));
   $('policy-panel')?.querySelectorAll('[data-pb]').forEach(button => button.addEventListener('click', () => { pbTab = button.dataset.pb; renderPolicy(); }));
 
   // ---------- 오늘의 이슈 (매일경제 헤드라인 자동 선별) + 회원 평론 ----------
@@ -831,12 +822,6 @@
     };
     adminForm.addEventListener('submit', event => { event.preventDefault(); adminAction('set'); });
     adminForm.querySelectorAll('button[data-action]:not([type=submit])').forEach(button => button.addEventListener('click', () => adminAction(button.dataset.action)));
-    document.querySelectorAll('a[href="#issue-panel"]').forEach(link => link.addEventListener('click', event => {
-      event.preventDefault();
-      $('issue-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      $('issue-panel').classList.add('flash-target');
-      setTimeout(() => $('issue-panel').classList.remove('flash-target'), 1600);
-    }));
     window.addEventListener('space-auth', () => { renderIssues(); loadIssueReviews(); });
     loadIssues();
     loadIssueReviews();
@@ -993,13 +978,6 @@
         status.textContent = error.message;
       }
     });
-    document.querySelectorAll('a[href="#benefit-panel"]').forEach(link => link.addEventListener('click', event => {
-      event.preventDefault();
-      const panel = $('benefit-panel');
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      panel.classList.add('flash-target');
-      setTimeout(() => panel.classList.remove('flash-target'), 1600);
-    }));
     window.addEventListener('space-auth', () => renderBenefits());
     loadBenefits();
   }
