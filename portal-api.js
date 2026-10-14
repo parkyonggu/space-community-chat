@@ -3,7 +3,7 @@
 // hit the public APIs directly.
 const { ecos, rebHousing } = require('./weekly-brief');
 const { createRealEstate } = require('./realestate');
-const { recentPolicyNews } = require('./policy-news');
+const { recentPolicyNews, pensionNews } = require('./policy-news');
 const localBenefits = require('./local-benefits');
 const { createWeather } = require('./weather');
 const { createPension, pensionPlan, uploadedRegions } = require('./pension');
@@ -295,14 +295,16 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       return;
     }
     const names = pension.regions.map(({ id, name }) => ({ id, name }));
+    // 연금 관련 정책브리핑 소식(6시간마다)
+    const news = policyKey ? await cached('pension-news', 6 * 60 * 60 * 1000, async () => ({ items: await pensionNews(fetchImpl, policyKey, now()) })) : null;
     if (freshUpload) {
-      send(200, { connected: true, regions: freshUpload.regions, names, problems: [], uploadedAt: new Date(freshUpload.at).toISOString(),
+      send(200, { connected: true, regions: freshUpload.regions, names, problems: [], news: news?.items || [], uploadedAt: new Date(freshUpload.at).toISOString(),
         source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
       return;
     }
     const regions = await Promise.all(pension.regions.map(region => cached(`pension-${region.id}`, 24 * 60 * 60 * 1000, () => pension.load(region.id))));
     const problems = [...new Set(pension.regions.map(region => lastErrors.get(`pension-${region.id}`)).filter(Boolean))].slice(0, 2);
-    send(200, { connected: true, regions: regions.filter(Boolean), names, problems,
+    send(200, { connected: true, regions: regions.filter(Boolean), names, problems, news: news?.items || [],
       source: '국민연금공단 수급현황·가입현황(공공데이터포털)' });
   }
 

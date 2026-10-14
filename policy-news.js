@@ -193,4 +193,33 @@ function dailyBriefingText(items, now = Date.now(), siteUrl = 'https://withpluce
   ].filter((line, index, all) => line !== '' || all[index - 1] !== '').join('\n').trim();
   return text.length > 1900 ? `${text.slice(0, 1890)}…` : text;
 }
-module.exports = { weeklyPolicyNews, recentPolicyNews, dailyBriefingText, pickDailyTheme, THEMES, parseNews, isTypeOne };
+// 국민연금 칸 '최근 소식': 지난 30일 정책브리핑에서 연금 관련 기사만(제목·부제 기준) 고른다. 3일 단위로 나눠 받는다.
+const PENSION_WORDS = /국민연금|기초연금|노령연금|연금개혁|연금 개혁|퇴직연금|장애인연금|연금보험료|국민연금공단/;
+async function pensionNews(fetchImpl, key, now, { days = 30, limit = 8 } = {}) {
+  if (!key) return null;
+  const serviceKey = key.includes('%') ? key : encodeURIComponent(key);
+  const raw = [];
+  for (let end = now; end > now - days * DAY; end -= 3 * DAY) {
+    const url = `https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2?serviceKey=${serviceKey}&startDate=${ymd(end - 2 * DAY)}&endDate=${ymd(end)}`;
+    try {
+      const response = await fetchImpl(url, { headers: { Accept: 'application/xml' } });
+      if (!response.ok) continue;
+      raw.push(...parseNews(await response.text()));
+    } catch { /* 한 구간이 실패해도 나머지로 */ }
+  }
+  const seen = new Set();
+  return raw
+    .filter(item => item.Title && item.OriginalUrl && isTypeOne(item.KoglType) && PENSION_WORDS.test(`${item.Title} ${item.SubTitle1 || ''}`))
+    .filter(item => { const id = item.NewsItemId || item.OriginalUrl; if (seen.has(id)) return false; seen.add(id); return true; })
+    .map(item => ({
+      title: item.Title.replace(FACT_PREFIX, ''),
+      sub: (item.SubTitle1 || '').slice(0, 120),
+      dept: item.MinisterCode || '정부',
+      at: approvedAt(item.ApproveDate) || null,
+      url: /^https?:\/\//.test(item.OriginalUrl) ? item.OriginalUrl : `https://www.korea.kr${item.OriginalUrl}`,
+    }))
+    .sort((a, b) => (b.at || 0) - (a.at || 0))
+    .slice(0, limit);
+}
+
+module.exports = { pensionNews, weeklyPolicyNews, recentPolicyNews, dailyBriefingText, pickDailyTheme, THEMES, parseNews, isTypeOne };

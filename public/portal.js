@@ -1105,12 +1105,138 @@
     });
     return table;
   }
+  // ---------- 2026 달라진 국민연금 (운영자가 확인한 요약, 기준일 표시) ----------
+  const PN_POLICY_AS_OF = '2026년 10월 기준';
+  const PN_POLICY = [
+    ['보험료율 9% → 9.5%', '2026년 1월부터. 매년 0.5%p씩 올라 2033년 13%가 됩니다. 직장가입자는 회사와 절반씩(본인 4.75%) 냅니다.'],
+    ['받는 돈(소득대체율) 41.5% → 43%', '2026년 이후 가입한 기간부터 적용됩니다(40년 가입·평균소득 기준).'],
+    ['연금 지급을 국가가 보장', '국가가 연금 지급을 책임진다는 내용이 법에 명시되었습니다.'],
+    ['출산 크레딧 확대', '첫째 아이부터 가입기간 12개월을 인정하고, 50개월 상한을 없앴습니다.'],
+    ['군복무 크레딧 확대', '인정 기간이 최대 6개월에서 12개월로 늘었습니다.'],
+    ['저소득 지역가입자 보험료 지원', '월 소득 80만 원 미만 지역가입자는 보험료의 50%를 지원받습니다(납부 재개자 12개월 제한 폐지).'],
+    ['일하는 수급자 감액 완화', '일정 소득 미만이면 노령연금을 깎지 않고 전액 받을 수 있게 기준이 완화되었습니다.'],
+    ['연금액 2.1% 인상', '2026년 1월분부터 물가 상승률(2.1%)만큼 올랐습니다. 산정 기준 A값은 3,193,511원입니다.'],
+    ['보험료 기준소득 상·하한', '2026년 7월 ~ 2027년 6월: 상한 659만 원, 하한 41만 원.'],
+  ];
+  const PN_POLICY_SOURCES = [
+    ['정책브리핑 「국민연금, 2026년부터 이렇게 바뀐대!」', 'https://www.korea.kr/news/policyNewsView.do?newsId=148955341'],
+    ['정책브리핑 「국가가 연금 지급 보장 법제화」', 'https://www.korea.kr/news/policyNewsView.do?newsId=148957270'],
+    ['국민연금공단 공지·고시', 'https://www.nps.or.kr'],
+  ];
+  // ---------- 내 연금 간단 계산(2026년 산식, 간이) ----------
+  const PN_A = 3193511; // 2026년 A값(보건복지부 고시 제2026-12호)
+  const PN_CAP = 6590000;
+  const PN_FLOOR = 410000;
+  function pnStartAge(birthYear) {
+    if (!birthYear) return null;
+    if (birthYear <= 1952) return 60;
+    if (birthYear <= 1956) return 61;
+    if (birthYear <= 1960) return 62;
+    if (birthYear <= 1964) return 63;
+    if (birthYear <= 1968) return 64;
+    return 65;
+  }
+  function pnEstimate(incomeWon, years) {
+    const b = Math.min(PN_CAP, Math.max(PN_FLOOR, incomeWon));
+    if (years < 10) return { b, monthly: null };
+    const factor = years < 20 ? 0.5 + 0.05 * (years - 10) : 1 + 0.05 * (years - 20);
+    return { b, monthly: Math.round((1.29 * (PN_A + b) * factor) / 12) };
+  }
+  function pensionCalc() {
+    const wrap = make('div', 'pn-calc');
+    const form = make('div', 'pn-calc-form');
+    const field = (label, attrs) => {
+      const box = make('label', 'pn-field');
+      box.appendChild(make('span', '', label));
+      const input = make('input');
+      Object.assign(input, attrs);
+      box.appendChild(input);
+      form.appendChild(box);
+      return input;
+    };
+    const income = field('월 평균 소득(세전, 만 원)', { type: 'number', min: 0, max: 5000, step: 10, value: pn.calc?.income ?? 300, inputMode: 'numeric' });
+    const years = field('국민연금 가입 기간(예상, 년)', { type: 'number', min: 0, max: 45, step: 1, value: pn.calc?.years ?? 20, inputMode: 'numeric' });
+    const birth = field('태어난 해(선택)', { type: 'number', min: 1940, max: 2010, step: 1, value: pn.calc?.birth ?? '', placeholder: '예: 1968', inputMode: 'numeric' });
+    const out = make('div', 'pn-calc-out');
+    const update = () => {
+      const incomeWon = Math.max(0, Number(income.value) || 0) * 10000;
+      const y = Math.max(0, Math.min(45, Number(years.value) || 0));
+      const by = Number(birth.value) || 0;
+      pn.calc = { income: income.value, years: years.value, birth: birth.value };
+      const { b, monthly } = pnEstimate(incomeWon, y);
+      const start = pnStartAge(by >= 1940 && by <= 2010 ? by : 0);
+      const lines = [];
+      if (monthly === null) lines.push(make('p', 'pn-calc-big', '가입 기간이 10년 미만이면 매달 받는 연금 대신 낸 보험료를 돌려받습니다(반환일시금).'));
+      else {
+        const big = make('p', 'pn-calc-big');
+        big.append('예상 월 연금 약 ', make('strong', '', `${manwon(monthly)}`));
+        lines.push(big);
+      }
+      const fee = make('p', 'pn-calc-note');
+      fee.textContent = `지금 내는 보험료(9.5%): 월 ${Math.round(b * 0.095).toLocaleString('ko-KR')}원 · 직장가입자 본인 몫(4.75%) 월 ${Math.round(b * 0.0475).toLocaleString('ko-KR')}원`;
+      lines.push(fee);
+      if (start) lines.push(make('p', 'pn-calc-note', `${by}년생은 만 ${start}세부터 노령연금을 받습니다(조기·연기 수령은 공단에서 상담).`));
+      out.replaceChildren(...lines);
+    };
+    [income, years, birth].forEach(input => input.addEventListener('input', update));
+    update();
+    const caution = make('p', 'pn-calc-caution', '간이 계산입니다. 모든 가입 기간을 2026년 산식(지급률 1.29, A값 3,193,511원)으로 보고, 소득은 지금 화폐가치로 계산했습니다. 2025년 이전 가입 기간은 지급률이 더 높아 실제 연금이 이보다 많을 수 있고, 부양가족연금·크레딧·물가 조정은 빠졌습니다. 정확한 금액은 아래 「정확한 내 연금 조회」에서 본인 인증 후 확인하세요.');
+    wrap.append(form, out, caution);
+    return wrap;
+  }
+  function pensionPolicy() {
+    const wrap = make('div', 'pn-policy');
+    const head = make('p', 'pn-calc-note', `${PN_POLICY_AS_OF} · 연금개혁(2025년 국회 통과)으로 2026년부터 달라진 점`);
+    const list = make('ol', 'pn-policy-list');
+    PN_POLICY.forEach(([title, body]) => {
+      const li = make('li');
+      li.append(make('strong', '', title), make('span', '', body));
+      list.appendChild(li);
+    });
+    const sources = make('p', 'pn-calc-caution');
+    sources.append('출처: ');
+    PN_POLICY_SOURCES.forEach(([label, url], index) => {
+      const a = make('a', '', label);
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      if (index) sources.append(' · ');
+      sources.appendChild(a);
+    });
+    wrap.append(head, list, sources);
+    return wrap;
+  }
+  function pensionNewsView(data) {
+    const items = data.news || [];
+    if (!items.length) return make('p', 'pn-empty', '최근 30일 동안 정책브리핑에 올라온 연금 소식이 없습니다. 바뀌는 정책은 「2026 달라진 점」을 확인하세요.');
+    const list = make('ul', 'pn-news');
+    items.forEach(item => {
+      const li = make('li');
+      const a = make('a', '', item.title);
+      a.href = item.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      li.appendChild(a);
+      const meta = [item.dept, item.at ? new Date(item.at).toLocaleDateString('ko-KR') : ''].filter(Boolean).join(' · ');
+      if (item.sub) li.appendChild(make('span', 'pn-news-sub', item.sub));
+      li.appendChild(make('span', 'pn-news-meta', meta));
+      list.appendChild(li);
+    });
+    return list;
+  }
   function renderPension() {
     const data = pn.data;
     const panel = $('pension-panel');
     if (!panel || !data) return;
     if (!data.connected) { panel.hidden = true; return; }
     panel.hidden = false;
+    pn.view = pn.view || 'stats';
+    panel.querySelectorAll('[data-pn-view]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.pnView === pn.view)));
+    $('pn-regions').hidden = pn.view !== 'stats';
+    $('pn-source').hidden = pn.view !== 'stats';
+    if (pn.view === 'policy') { $('pn-body').replaceChildren(pensionPolicy()); return; }
+    if (pn.view === 'news') { $('pn-body').replaceChildren(pensionNewsView(data)); return; }
+    if (pn.view === 'calc') { $('pn-body').replaceChildren(pensionCalc()); return; }
     const names = data.names || [];
     $('pn-regions').replaceChildren(...names.map(entry => {
       const chip = make('button', 'chip', entry.name);
@@ -1153,7 +1279,10 @@
       renderPension();
     } catch { /* offline */ }
   }
-  if ($('pension-panel')) loadPension();
+  if ($('pension-panel')) {
+    $('pension-panel').querySelectorAll('[data-pn-view]').forEach(chip => chip.addEventListener('click', () => { pn.view = chip.dataset.pnView; renderPension(); }));
+    loadPension();
+  }
 
   // ---------- 우리 동네 농사정보 (KAMIS 가격 · 농사로 주간농사정보) ----------
   const fm = { data: null, kind: 'retail' };
