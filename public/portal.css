@@ -848,3 +848,11 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .pn-field { min-width:0; }
 .pn-field input, .pn-field select { width:100%; box-sizing:border-box; min-width:0; }
 .pn-calc-warn { margin:6px 0; font-size:13.5px; color:#9a3412; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:8px 10px; }
+
+.pn-total { margin:0 0 10px; }
+.pn-total-card { border:2px solid #1958e8; border-radius:14px; padding:12px 14px; background:#fff; }
+.pn-total-title { margin:0 0 6px; font-weight:800; font-size:16px; color:var(--ink); }
+.pn-total-table { width:100%; border-collapse:collapse; font-size:15px; }
+.pn-total-table th { text-align:left; font-weight:600; color:var(--text); padding:5px 0; }
+.pn-total-table td { text-align:right; font-weight:700; color:var(--ink); padding:5px 0; font-variant-numeric:tabular-nums; }
+.pn-total-table tr.sum th, .pn-total-table tr.sum td { border-top:1px solid var(--line); color:#1958e8; font-size:17px; font-weight:800; padding-top:8px; }

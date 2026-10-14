@@ -1300,11 +1300,12 @@
         big.append(state.household === 'both' ? '기초연금 예상 1인당 약 ' : '기초연금 예상 월 약 ', make('strong', '', manwon(r.each)));
         if (state.household === 'both') big.append(` (부부 합계 ${manwon(r.household)})`);
         lines.push(big);
-        if (r.pension) lines.push(make('p', 'pn-calc-note', `국민연금 ${manwon(r.pension)} + 기초연금 ${manwon(r.household)} = 매달 약 ${manwon(r.pension + r.household)}`));
         r.notes.forEach(note => lines.push(make('p', 'pn-calc-note', `· ${note}`)));
       }
       out.replaceChildren(...lines);
+      total.replaceChildren(pensionTotalCard(state, r));
     };
+    const total = make('div', 'pn-total');
     update();
     const how = make('details', 'pn-how');
     how.appendChild(make('summary', '', '계산 방법 보기'));
@@ -1325,8 +1326,35 @@
       a.href = href; a.target = '_blank'; a.rel = 'noopener';
       links.appendChild(a);
     });
-    wrap.append(title, form, out, how, caution, links);
+    wrap.append(title, form, total, out, how, caution, links);
     return wrap;
+  }
+  // 💰 매달 받는 돈 합계: 국민연금 + 기초연금 (+ 일해서 버는 돈)
+  function pensionTotalCard(state, r) {
+    const won = value => Math.max(0, Number(value) || 0) * 10000;
+    const national = won(state.pension);
+    const basic = r.eligible ? r.household : 0;
+    const work = won(state.work);
+    const other = won(state.other);
+    const card = make('div', 'pn-total-card');
+    card.appendChild(make('p', 'pn-total-title', `💰 매달 받는 돈 합계 ${state.household === 'both' ? '(부부 기준)' : ''}`));
+    const table = make('table', 'pn-total-table');
+    const row = (label, value, cls = '') => {
+      const tr = make('tr', cls);
+      tr.append(make('th', '', label), make('td', '', value));
+      table.appendChild(tr);
+    };
+    row('국민연금', manwon(national));
+    row(state.household === 'both' ? '기초연금 (부부 합계)' : '기초연금', r.eligible ? manwon(basic) : '대상 아님');
+    row('연금 합계', manwon(national + basic), 'sum');
+    if (work || other) {
+      if (work) row('일해서 버는 돈(근로소득)', manwon(work));
+      if (other) row('기타 소득', manwon(other));
+      row('모두 합친 한 달 수입', manwon(national + basic + work + other), 'sum');
+    }
+    card.appendChild(table);
+    card.appendChild(make('p', 'pn-calc-caution', '세금·건강보험료를 빼기 전 금액입니다. 국민연금은 소득이 있으면 세금(연금소득세)과 건강보험료가 생길 수 있습니다.'));
+    return card;
   }
   function pensionPolicy() {
     const wrap = make('div', 'pn-policy');
