@@ -1019,3 +1019,27 @@ body:not([data-view="home"]) .boards-head h2 { display:none; }
 .letter-past p { color:var(--muted); }
 .letter-past .eyebrow { color:#b07d12; }
 .home-tiles[data-view-of="home"] { margin-top:18px; }
+
+/* ---------- 홈 아래쪽: 두 칸 높이 맞추기 · 빈 공간 없애기 ---------- */
+body[data-view="home"] .dash { align-items:stretch; }
+body[data-view="home"] .dash-main, body[data-view="home"] .dash-side { align-self:stretch; }
+body[data-view="home"] .info-box { flex:1 1 auto; display:flex; flex-direction:column; min-height:430px; }
+body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { flex:1 1 auto; }
+body[data-view="home"] .me-box { flex:1 1 auto; display:flex; flex-direction:column; }
+.me-extra { margin-top:auto; padding-top:16px; display:grid; gap:6px; }
+.me-box .me-actions + .me-extra { border-top:1px dashed transparent; }
+.me-extra a { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:12px; background:#f4f6fb; color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; transition:background .18s, color .18s; }
+.me-extra a span:first-child { font-size:16px; }
+.me-extra a b { margin-left:auto; color:#9aa3bd; font-size:17px; transition:transform .18s, color .18s; }
+.me-extra a:hover, .me-extra a:focus-visible { background:var(--navy); color:#fff; }
+.me-extra a:hover b { color:var(--gold); transform:translateX(2px); }
+/* 맨 아래 안내 띠: 얇고 단정하게 */
+.shared-sections .ad-slot[data-ad="bottom"] { padding:0; overflow:hidden; border:0; background:none; box-shadow:none; }
+.ad-slot[data-ad="bottom"] .ad-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+.ad-slot[data-ad="bottom"] .house-ad-card { border-radius:var(--radius); padding:14px 20px; background:linear-gradient(100deg,var(--navy) 0%,#1b2a5e 100%); }
+.ad-slot[data-ad="bottom"] .house-ad-title { font-size:16px; }
+body[data-view="home"] .info-box { min-height:0; }
+body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-direction:column; }
+.info-box .chat-preview .chat-lines { flex:1 1 auto; min-height:120px; margin:0 0 12px; padding:12px 14px; border-radius:12px; background:#f6f7fb; border:1px solid var(--line-soft); }
+.info-box .chat-preview .me-actions { margin-top:auto; }
+.info-box .safety-box .safety-howto { margin-top:auto; }

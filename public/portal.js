@@ -615,6 +615,7 @@
       go.href = '/letter';
     }
     document.querySelectorAll('[data-letter-cta]').forEach(link => { link.textContent = '지난 레터 보기'; link.href = '/letter'; });
+    document.querySelectorAll('[data-letter-cta-row]').forEach(link => { link.href = '/letter'; const label = link.querySelector('.me-extra-letter'); if (label) label.textContent = '지난 스페이스 레터 보기'; });
     const note = $('letter-subscribed');
     if (note) note.hidden = false;
     const intro = $('letter-intro');
@@ -2018,9 +2019,11 @@
       setInterval(() => { if (!paused && document.visibilityState === 'visible') { index = (index + 1) % HOUSE_ADS.length; render(); } }, 7000);
     }
   }
+  // 광고 번호가 없는 자리는 숨기고, 맨 아래 한 곳만 '스페이스 커뮤니티 안내'를 보여 준다 (홈에 빈 공간·중복 안내가 생기지 않게)
+  const houseOnly = container => container.dataset.ad === 'bottom';
   document.querySelectorAll('.ad-slot[data-ad]').forEach((container, offset) => {
     const slot = AD_SLOTS[container.dataset.ad];
-    if (!slot) { houseAd(container, offset * 2); return; }
+    if (!slot) { if (houseOnly(container)) houseAd(container, 0); return; }
     const ins = document.createElement('ins');
     ins.className = 'adsbygoogle';
     ins.style.display = 'block';
@@ -2032,9 +2035,9 @@
     container.hidden = false;
     // Google marks a unit it could not fill with data-ad-status="unfilled": show our notice in its place.
     new MutationObserver(() => {
-      if (ins.dataset.adStatus === 'unfilled') { ins.remove(); houseAd(container, offset * 2); }
+      if (ins.dataset.adStatus === 'unfilled') { ins.remove(); if (houseOnly(container)) houseAd(container, 0); else container.hidden = true; }
     }).observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
-    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (error) { console.error('AdSense push failed:', error); houseAd(container, offset * 2); }
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (error) { console.error('AdSense push failed:', error); if (houseOnly(container)) houseAd(container, 0); else container.hidden = true; }
   });
 
   if (window.spaceBoards) renderBoards();
