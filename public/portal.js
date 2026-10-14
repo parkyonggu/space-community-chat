@@ -1189,7 +1189,13 @@
       if (monthly) {
         const next = make('button', 'pn-next', '👵 이 국민연금으로 기초연금 계산하기 →');
         next.type = 'button';
-        next.addEventListener('click', () => { pn.basic = { ...(pn.basic || {}), pension: Math.round(monthly / 10000), agrant: '' }; pn.view = 'basic'; renderPension(); });
+        // 국민연금 계산값을 그대로 넘긴다: 연금액, 연금 받을 때 근로소득, A급여(연금 중 A값 몫 = 연금 × A ÷ (A + 내 소득))
+        const aGrant = Math.round((monthly * PN_A) / (PN_A + b) / 1000) / 10;
+        next.addEventListener('click', () => {
+          pn.basic = { ...(pn.basic || {}), pension: Math.round(monthly / 1000) / 10, work: Math.round(laterWon / 10000), agrant: aGrant };
+          pn.view = 'basic';
+          renderPension();
+        });
         lines.push(next);
       }
       out.replaceChildren(...lines);
@@ -1250,7 +1256,7 @@
   }
   function basicPensionCalc() {
     const wrap = make('div', 'pn-calc');
-    const defaults = { household: 'single', area: pn.region === 'uiryeong' ? 'rural' : 'city', work: 0, pension: pn.lastPension ? Math.round(pn.lastPension.monthly / 10000) : 0, other: 0, home: 0, finance: 0, debt: 0, agrant: '' };
+    const defaults = { household: 'single', area: pn.region === 'uiryeong' ? 'rural' : 'city', work: 0, pension: pn.lastPension ? Math.round(pn.lastPension.monthly / 1000) / 10 : 0, other: 0, home: 0, finance: 0, debt: 0, agrant: '' };
     const state = pn.basic = { ...defaults, ...(pn.basic || {}) };
     const title = make('p', 'pn-calc-title', '👵 만 65세 이상이 받는 기초연금은 얼마일까? 국민연금·소득·재산에 따라 줄어드는 금액까지 계산합니다.');
     const form = make('div', 'pn-calc-form');
@@ -1268,7 +1274,7 @@
       const box = make('label', 'pn-field');
       box.appendChild(make('span', '', label));
       const el = make('input');
-      Object.assign(el, { type: 'number', min: 0, step: 1, inputMode: 'numeric', value: state[key], placeholder: hint });
+      Object.assign(el, { type: 'number', min: 0, step: 'any', inputMode: 'decimal', value: state[key], placeholder: hint });
       el.addEventListener('input', () => { state[key] = el.value; update(); });
       box.appendChild(el);
       form.appendChild(box);
@@ -1276,7 +1282,7 @@
     select('가구', 'household', [['single', '혼자 삶(단독)'], ['both', '부부 둘 다 65세 이상'], ['one', '부부 중 한 명만']]);
     select('사는 곳', 'area', [['city', '도의 시 (양산·김해 등)'], ['rural', '도의 군 (의령 등)'], ['metro', '서울·광역시']]);
     number('국민연금 월 수령액(만 원)', 'pension');
-    number('월 근로소득(만 원, 부부 합산)', 'work');
+    number('연금 받을 때 월 근로소득(만 원, 부부 합산)', 'work');
     number('기타 월 소득(만 원: 임대·이자·다른 연금 등)', 'other');
     number('집·땅 등 재산(공시가격, 만 원)', 'home');
     number('예금·적금 등 금융재산(만 원)', 'finance');
