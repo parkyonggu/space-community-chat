@@ -614,7 +614,12 @@
       go.textContent = '지난 레터 보기';
       go.href = '/letter';
     }
-    document.querySelectorAll('[data-letter-cta]').forEach(link => { link.textContent = '지난 레터 보기'; link.href = '/letter'; });
+    document.querySelectorAll('[data-letter-cta]').forEach(link => {
+      // 같은 줄(예: 맨 아래 바닥글)에 이미 '지난 레터 보기'가 있으면 겹치지 않게 숨긴다
+      const twin = [...(link.parentElement?.querySelectorAll('a[href="/letter"]') || [])].some(other => other !== link && !other.hasAttribute('data-letter-cta'));
+      if (twin) { link.hidden = true; return; }
+      link.textContent = '지난 레터 보기'; link.href = '/letter';
+    });
     document.querySelectorAll('[data-letter-cta-row]').forEach(link => { link.href = '/letter'; const label = link.querySelector('.me-extra-letter'); if (label) label.textContent = '지난 스페이스 레터 보기'; });
     const note = $('letter-subscribed');
     if (note) note.hidden = false;
