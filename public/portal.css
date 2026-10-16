@@ -1043,3 +1043,12 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .info-box .chat-preview .chat-lines { flex:1 1 auto; min-height:120px; margin:0 0 12px; padding:12px 14px; border-radius:12px; background:#f6f7fb; border:1px solid var(--line-soft); }
 .info-box .chat-preview .me-actions { margin-top:auto; }
 .info-box .safety-box .safety-howto { margin-top:auto; }
+
+/* 경제지표 > 국내·미국 증시 아래 '이번 주 시장분석 읽기' */
+.market-read { display:flex; align-items:center; gap:12px; margin:16px 0 6px; padding:14px 16px; border-radius:14px; background:linear-gradient(100deg,#fff8e6,#fff); border:1px solid var(--gold-line,#f0d48a); color:var(--ink); text-decoration:none; transition:box-shadow .18s, transform .18s; }
+.market-read > span:first-child { font-size:24px; }
+.market-read span { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.market-read b { font-size:15.5px; }
+.market-read small { color:var(--muted); font-size:12.5px; }
+.market-read .go { margin-left:auto; font-size:20px; color:#b07d12; }
+.market-read:hover, .market-read:focus-visible { box-shadow:0 6px 18px rgba(14,23,48,.08); transform:translateY(-1px); }

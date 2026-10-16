@@ -503,6 +503,13 @@
     table.append(thead, tbody);
     body.replaceChildren(table);
   }
+  // ---------- '이번 주 시장분석 읽기': 칼럼·학술 게시판을 시장분석 글만 보이게 열어 준다 ----------
+  document.querySelectorAll('[data-research-filter]').forEach(link => link.addEventListener('click', () => {
+    const filter = $('researchFilter');
+    if (!filter) return;
+    filter.value = link.dataset.researchFilter;
+    filter.dispatchEvent(new Event('change'));
+  }));
   // ---------- 미국 증시: TradingView 무료 위젯(화면에 보일 때만 불러옴) ----------
   (function usMarket() {
     const box = $('us-ticker');

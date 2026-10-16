@@ -12,7 +12,7 @@ const BOARDS = {
   // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
   issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
   // 칼럼·학술: 누구나 읽고, 회원만 쓴다(2026-10 전체 공개로 변경).
-  research: { publicRead: true, categories: ['칼럼', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결', '판결 평론'], title: true, max: 50000 },
+  research: { publicRead: true, categories: ['칼럼', '시장분석', '서평', '소고', '짧은 이야기', '학술', '논문', '학술지', '대법원 전원합의체 판결', '판결 평론'], title: true, max: 50000 },
 };
 // '판결 평론': 칼럼·학술에 올라온 '대법원 전원합의체 판결' 글 하나를 골라 그 판결에 대한 평론을 쓴다.
 const JUDGMENT = '대법원 전원합의체 판결';
