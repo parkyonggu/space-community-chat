@@ -404,7 +404,7 @@ export class ChatRoom extends DurableObject {
         // 안내장 사진(포스터)이 있으면 스페이스톡 카드에도 보이도록 사진 주소 줄을 붙인다.
         const poster = image ? `\n\n안내장 사진: ${site}/api/board/image?id=${image}` : '';
         const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/event-announcement', {
-          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text}${poster}\n\n자세히 보기·카카오톡 공유: ${link}` }),
+          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text}${poster}\n\n자세히 보기·카카오톡 공유: ${link}`, sender: window.uid ? { id: window.uid, nickname: window.name } : null }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);

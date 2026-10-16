@@ -118,7 +118,7 @@ export class ChatService extends DurableObject {
         return json({ ok: true, subscribers: result?.memberIds.length || 0 });
       }
       if (path === '/internal/event-announcement' && request.method === 'POST') {
-        const { sourceId, text } = await request.json();
+        const { sourceId, text, sender } = await request.json();
         if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
         if (typeof text !== 'string' || !announcement.kindOf(text) || text.length > 2000) throw new ChatError(400, '모임안내·초청장·정보안내 형식의 메시지가 아닙니다.');
         const key = `event-announcement:${sourceId}`;
@@ -130,6 +130,10 @@ export class ChatService extends DurableObject {
         if (info && !this.core.meta('info-channel-seeded')) {
           this.core.copyChannelMembers(EVENT_CHANNEL, INFO_CHANNEL, INFO_CHANNEL_NAME);
           this.core.meta('info-channel-seeded', '1');
+        }
+        // 보낸 운영자는 그 채널을 꼭 받아 보게 한다(보낸 글을 스페이스톡에서 바로 확인할 수 있게).
+        if (sender && typeof sender.id === 'string' && sender.id) {
+          try { this.core.subscribeChannel({ id: sender.id, nickname: String(sender.nickname || '운영자').slice(0, 40) }, channelId, channelName); } catch (error) { console.error('Sender subscribe failed:', error); }
         }
         const result = this.core.postToChannel(channelId, { nickname: EVENT_SENDER, roomName: channelName, text });
         this.core.meta(key, '1');
