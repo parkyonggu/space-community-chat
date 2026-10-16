@@ -88,18 +88,22 @@
     window.spaceOpenAuth?.('login');
   }
 
+  function matcher(keyword) {
+    const words = String(keyword).toLowerCase().split(/\s+/).filter(Boolean);
+    return post => {
+      const haystack = [post.title, post.text, post.category && DEPTS[post.category], post.category, post.authorName, post.no && `#${post.no}`]
+        .filter(Boolean).join('\n').toLowerCase();
+      return words.every(word => haystack.includes(word));
+    };
+  }
+
   // ---------- latest-posts feed ----------
   const feedList = $('feed-list');
   function feedItems() {
     let items = allPosts();
     if (state.search) {
       // 띄어 쓴 낱말이 모두 들어간 글을 찾는다(제목·본문·분류·글쓴이·글번호 #57).
-      const words = state.search.toLowerCase().split(/\s+/).filter(Boolean);
-      items = items.filter(post => {
-        const haystack = [post.title, post.text, post.category && DEPTS[post.category], post.category, post.authorName, post.no && `#${post.no}`]
-          .filter(Boolean).join('\n').toLowerCase();
-        return words.every(word => haystack.includes(word));
-      });
+      items = items.filter(matcher(state.search));
     } else if (state.feed !== 'all') {
       items = items.filter(post => post.board === state.feed);
     }
@@ -167,8 +171,101 @@
     document.querySelectorAll('[data-feed]').forEach(chip => chip.setAttribute('aria-selected', String(chip.dataset.feed === state.feed)));
     if (render) renderFeed();
   }
+  // ---------- 검색어를 적는 동안 맞는 글의 제목·내용 일부를 바로 아래에 보여 준다 ----------
+  const suggest = make('div', 'search-suggest');
+  suggest.id = 'search-suggest';
+  suggest.setAttribute('role', 'listbox');
+  suggest.hidden = true;
+  document.body.appendChild(suggest);
+  $('searchInput').setAttribute('aria-controls', 'search-suggest');
+  let suggestIndex = -1;
+  function hideSuggest() { suggest.hidden = true; suggestIndex = -1; }
+  function placeSuggest() {
+    const box = $('searchForm').getBoundingClientRect();
+    suggest.style.left = `${Math.max(8, box.left)}px`;
+    suggest.style.top = `${box.bottom + 6}px`;
+    suggest.style.width = `${Math.min(box.width, window.innerWidth - 16)}px`;
+  }
+  function snippetOf(post, keyword) {
+    const text = String(post.text || '').replace(/\s+/g, ' ').trim();
+    const word = String(keyword).toLowerCase().split(/\s+/).filter(Boolean).find(item => text.toLowerCase().includes(item));
+    const at = word ? text.toLowerCase().indexOf(word) : 0;
+    const start = Math.max(0, at - 20);
+    return `${start ? '…' : ''}${text.slice(start, start + 70)}${text.length > start + 70 ? '…' : ''}`;
+  }
+  function mark(element, text, keyword) {
+    const words = String(keyword).toLowerCase().split(/\s+/).filter(Boolean);
+    const lower = text.toLowerCase();
+    let index = 0;
+    while (index < text.length) {
+      let best = -1, size = 0;
+      for (const word of words) { const at = lower.indexOf(word, index); if (at !== -1 && (best === -1 || at < best)) { best = at; size = word.length; } }
+      if (best === -1) { element.append(text.slice(index)); break; }
+      element.append(text.slice(index, best), make('mark', '', text.slice(best, best + size)));
+      index = best + size;
+    }
+    return element;
+  }
+  function showSuggest() {
+    const keyword = $('searchInput').value.trim();
+    if (!keyword || /^#?\d+$/.test(keyword) || !window.spaceBoards) { hideSuggest(); return; }
+    // 제목에 검색어가 들어간 글을 먼저, 그다음 최신순
+    const inTitle = post => String(keyword).toLowerCase().split(/\s+/).filter(Boolean).every(word => titleOf(post).toLowerCase().includes(word));
+    const found = allPosts().filter(matcher(keyword)).sort((left, right) => inTitle(right) - inTitle(left));
+    suggestIndex = -1;
+    if (!found.length) {
+      suggest.replaceChildren(make('div', 'suggest-empty', `‘${keyword}’이(가) 들어간 글이 없습니다.`));
+    } else {
+      suggest.replaceChildren(...found.slice(0, 7).map(post => {
+        const link = make('a', 'suggest-item');
+        link.href = post.no ? `/post/${post.no}` : '#';
+        link.setAttribute('role', 'option');
+        const top = make('span', 'suggest-top');
+        top.append(make('span', `badge ${post.board}`, BOARD_LABEL[post.board]), mark(make('strong', 'suggest-title'), titleOf(post), keyword));
+        link.append(top, mark(make('span', 'suggest-snippet'), snippetOf(post, keyword), keyword),
+          make('span', 'suggest-meta', `${post.category ? `${post.category} · ` : ''}${clip(post.authorName, 10)} · ${timeAgo(post.createdAt)}`));
+        link.addEventListener('mousedown', event => event.preventDefault());
+        link.addEventListener('click', event => {
+          if (post.no && (event.ctrlKey || event.metaKey || event.shiftKey)) return;
+          event.preventDefault();
+          hideSuggest();
+          openPost(post);
+        });
+        return link;
+      }));
+      if (found.length > 7) {
+        const all = make('button', 'suggest-all', `‘${keyword}’ 검색 결과 ${found.length}건 모두 보기 ›`);
+        all.type = 'button';
+        all.addEventListener('mousedown', event => event.preventDefault());
+        all.addEventListener('click', () => $('searchForm').requestSubmit());
+        suggest.appendChild(all);
+      }
+    }
+    placeSuggest();
+    suggest.hidden = false;
+  }
+  $('searchInput').addEventListener('input', showSuggest);
+  $('searchInput').addEventListener('focus', showSuggest);
+  $('searchInput').addEventListener('blur', () => setTimeout(hideSuggest, 120));
+  $('searchInput').addEventListener('keydown', event => {
+    const items = [...suggest.querySelectorAll('.suggest-item')];
+    if (event.key === 'Escape') { hideSuggest(); return; }
+    if (suggest.hidden || !items.length || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+    if (event.key === 'Enter') {
+      if (suggestIndex >= 0) { event.preventDefault(); items[suggestIndex].click(); }
+      return;
+    }
+    event.preventDefault();
+    suggestIndex = (suggestIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length + 1) % (items.length + 1);
+    if (suggestIndex === items.length) suggestIndex = -1;
+    items.forEach((item, index) => item.classList.toggle('active', index === suggestIndex));
+  });
+  window.addEventListener('resize', () => { if (!suggest.hidden) placeSuggest(); });
+  window.addEventListener('scroll', () => { if (!suggest.hidden) placeSuggest(); }, { passive: true });
+
   $('searchForm').addEventListener('submit', event => {
     event.preventDefault();
+    hideSuggest();
     const keyword = $('searchInput').value.trim();
     if (!keyword) { clearSearch(); return; }
     // 글번호만 적으면(57 또는 #57) 그 글로 바로 간다.

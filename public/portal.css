@@ -1053,3 +1053,16 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .market-read small { color:var(--muted); font-size:12.5px; }
 .market-read .go { margin-left:auto; font-size:20px; color:#b07d12; }
 .market-read:hover, .market-read:focus-visible { box-shadow:0 6px 18px rgba(14,23,48,.08); transform:translateY(-1px); }
+
+/* 검색창 바로 아래 미리보기(적는 동안 맞는 글 제목·내용) */
+.search-suggest { position:fixed; z-index:60; background:#fff; border:1px solid var(--line, #dfe3ec); border-radius:14px; box-shadow:0 14px 36px rgba(15,23,42,.18); padding:6px; max-height:min(70vh,520px); overflow:auto; }
+.search-suggest[hidden] { display:none; }
+.suggest-item { display:flex; flex-direction:column; gap:3px; padding:9px 11px; border-radius:10px; color:var(--ink); text-decoration:none; }
+.suggest-item:hover, .suggest-item.active { background:#f1f4fa; }
+.suggest-top { display:flex; align-items:center; gap:8px; min-width:0; }
+.suggest-title { font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.suggest-snippet { color:var(--muted); font-size:13px; line-height:1.45; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.suggest-meta { color:var(--muted); font-size:11.5px; }
+.search-suggest mark { background:#ffe58a; color:inherit; border-radius:3px; padding:0 1px; }
+.suggest-empty { padding:12px; color:var(--muted); font-size:13.5px; }
+.suggest-all { width:100%; margin-top:4px; border:0; border-top:1px solid var(--line, #dfe3ec); background:none; padding:10px; color:var(--navy); font-weight:800; text-align:right; cursor:pointer; }
