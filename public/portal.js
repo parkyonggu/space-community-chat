@@ -206,6 +206,38 @@
     }
     return element;
   }
+  // 검색어가 사이트의 정보 메뉴와 관련 있으면 글 목록 위에 '바로가기'로 그 메뉴를 함께 보여 준다.
+  const SHORTCUTS = [
+    { href: '#pension-panel', icon: '👵', name: '국민연금 정보', where: '우리동네 혜택 › 국민연금', words: ['국민연금', '연금', '노령연금', '기초연금', '노후', '은퇴'] },
+    { href: '#finance-panel', icon: '💰', name: '금융정보 (예금·적금·연금저축)', where: '우리동네 혜택 › 금융정보', words: ['연금저축', '연금', '예금', '적금', '저축', '금리', '이자', '은행', '보험', '절세', '세금'] },
+    { href: '#benefit-panel', icon: '🎁', name: '우리동네 혜택', where: '우리동네 혜택 › 혜택', words: ['혜택', '지원금', '보조금', '복지', '지원', '바우처', '수당', '신청'] },
+    { href: '#farm-panel', icon: '🌾', name: '농사정보', where: '우리동네 혜택 › 농사정보', words: ['농사', '농업', '농촌', '농가', '작물', '귀농', '귀촌', '영농'] },
+    { href: '#eco-panel', icon: '📊', name: '항목별 최신 경제지표', where: '경제지표', words: ['경제', '지표', '물가', '환율', '기준금리', '금리', '실업', '고용', '수출'] },
+    { href: '#market-panel', icon: '📈', name: '국내·미국 증시', where: '경제지표 › 증시', words: ['주식', '증시', '코스피', '코스닥', '나스닥', '다우', '주가', '시장분석'] },
+    { href: '#house-panel', icon: '🏢', name: '아파트 주간동향', where: '경제지표 › 아파트', words: ['아파트', '집값', '전세', '매매', '시세'] },
+    { href: '#realestate-panel', icon: '🏠', name: '부동산 동향', where: '경제지표 › 부동산', words: ['부동산', '토지', '땅', '주택', '집값'] },
+    { href: '#policy-panel', icon: '📰', name: '정책브리핑', where: '정책브리핑', words: ['정책', '브리핑', '정부', '발표'] },
+    { href: '#issue-panel', icon: '🗞️', name: '오늘의 이슈', where: '오늘의 이슈', words: ['이슈', '뉴스', '기사', '평론'] },
+    { href: '#weather-panel', icon: '☀️', name: '오늘 날씨', where: '홈 › 날씨', words: ['날씨', '기온', '비', '미세먼지'] },
+    { href: '#newsletter-section', icon: '✉️', name: '스페이스 레터 (무료 구독)', where: '스페이스 레터', words: ['레터', '뉴스레터', '구독', '이메일'] },
+    { href: '#voice-section', icon: '📣', name: '시민의 소리 (불편·민원)', where: '게시판 › 시민의 소리', words: ['민원', '불편', '신고', '시민의 소리', '고발'] },
+    { href: '#chat-section', icon: '💬', name: '광장 채팅', where: '광장 채팅', words: ['채팅', '광장', '대화'] },
+    { href: '/chat', icon: '🗨️', name: '스페이스 톡 (대화방)', where: '스페이스 톡', words: ['스페이스톡', '스페이스 톡', '톡', '대화방', '단톡'] },
+    { href: '#guide-section', icon: '❓', name: '이용 안내', where: '이용 안내', words: ['이용', '안내', '가입', '회원', '사용법', '도움말'] },
+  ];
+  function shortcutsFor(keyword) {
+    const words = String(keyword).toLowerCase().split(/\s+/).filter(Boolean);
+    const hit = word => entry => entry.words.some(key => key === word || (word.length >= 2 && (key.includes(word) || word.includes(key) && key.length >= 2)));
+    // 자료가 없어 숨겨 둔 메뉴(예: 연결 전인 정보)는 바로가기에서도 뺀다
+    const available = entry => {
+      if (!entry.href.startsWith('#')) return true;
+      const target = document.getElementById(entry.href.slice(1));
+      if (!target || target.hidden || target.closest('[hidden]')) return false;
+      return !document.querySelector(`.sub-tabs a[href="${entry.href}"][hidden], .tabbox-tab[hidden][data-for="${entry.href.slice(1)}"]`);
+    };
+    return SHORTCUTS.filter(entry => words.some(word => hit(word)(entry)) && available(entry)).slice(0, 3);
+  }
+
   function showSuggest() {
     const keyword = $('searchInput').value.trim();
     if (!keyword || /^#?\d+$/.test(keyword) || !window.spaceBoards) { hideSuggest(); return; }
@@ -213,10 +245,25 @@
     const inTitle = post => String(keyword).toLowerCase().split(/\s+/).filter(Boolean).every(word => titleOf(post).toLowerCase().includes(word));
     const found = allPosts().filter(matcher(keyword)).sort((left, right) => inTitle(right) - inTitle(left));
     suggestIndex = -1;
+    const shortcuts = shortcutsFor(keyword).map(entry => {
+      const link = make('a', 'suggest-item suggest-go');
+      link.href = entry.href;
+      link.setAttribute('role', 'option');
+      const top = make('span', 'suggest-top');
+      top.append(make('span', 'suggest-icon', entry.icon), make('strong', 'suggest-title', entry.name), make('span', 'suggest-arrow', '바로 가기 ›'));
+      link.append(top, make('span', 'suggest-meta', `메뉴 위치: ${entry.where}`));
+      link.addEventListener('mousedown', event => event.preventDefault());
+      link.addEventListener('click', () => { hideSuggest(); $('searchInput').blur(); });
+      return link;
+    });
+    const parts = [];
+    if (shortcuts.length) parts.push(make('div', 'suggest-head', '🔎 관련 정보 메뉴'), ...shortcuts);
+    if (shortcuts.length && found.length) parts.push(make('div', 'suggest-head', '📝 관련 글'));
     if (!found.length) {
-      suggest.replaceChildren(make('div', 'suggest-empty', `‘${keyword}’이(가) 들어간 글이 없습니다.`));
+      parts.push(make('div', 'suggest-empty', `‘${keyword}’이(가) 들어간 글이 없습니다.`));
+      suggest.replaceChildren(...parts);
     } else {
-      suggest.replaceChildren(...found.slice(0, 7).map(post => {
+      suggest.replaceChildren(...parts, ...found.slice(0, shortcuts.length ? 5 : 7).map(post => {
         const link = make('a', 'suggest-item');
         link.href = post.no ? `/post/${post.no}` : '#';
         link.setAttribute('role', 'option');
@@ -233,7 +280,7 @@
         });
         return link;
       }));
-      if (found.length > 7) {
+      if (found.length > (shortcuts.length ? 5 : 7)) {
         const all = make('button', 'suggest-all', `‘${keyword}’ 검색 결과 ${found.length}건 모두 보기 ›`);
         all.type = 'button';
         all.addEventListener('mousedown', event => event.preventDefault());

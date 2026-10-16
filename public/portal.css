@@ -1066,3 +1066,7 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .search-suggest mark { background:#ffe58a; color:inherit; border-radius:3px; padding:0 1px; }
 .suggest-empty { padding:12px; color:var(--muted); font-size:13.5px; }
 .suggest-all { width:100%; margin-top:4px; border:0; border-top:1px solid var(--line, #dfe3ec); background:none; padding:10px; color:var(--navy); font-weight:800; text-align:right; cursor:pointer; }
+.suggest-head { padding:8px 11px 4px; color:var(--muted); font-size:11.5px; font-weight:800; letter-spacing:.02em; }
+.suggest-go { background:#f7f9fd; margin-bottom:3px; }
+.suggest-icon { font-size:17px; line-height:1; }
+.suggest-arrow { margin-left:auto; flex:none; color:var(--navy); font-size:12px; font-weight:800; }
