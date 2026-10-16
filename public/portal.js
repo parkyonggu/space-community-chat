@@ -93,13 +93,17 @@
   function feedItems() {
     let items = allPosts();
     if (state.search) {
-      const keyword = state.search.toLowerCase();
-      items = items.filter(post => [post.title, post.text, post.category && DEPTS[post.category], post.category, post.authorName]
-        .some(value => value && String(value).toLowerCase().includes(keyword)));
+      // 띄어 쓴 낱말이 모두 들어간 글을 찾는다(제목·본문·분류·글쓴이·글번호 #57).
+      const words = state.search.toLowerCase().split(/\s+/).filter(Boolean);
+      items = items.filter(post => {
+        const haystack = [post.title, post.text, post.category && DEPTS[post.category], post.category, post.authorName, post.no && `#${post.no}`]
+          .filter(Boolean).join('\n').toLowerCase();
+        return words.every(word => haystack.includes(word));
+      });
     } else if (state.feed !== 'all') {
       items = items.filter(post => post.board === state.feed);
     }
-    return items.slice(0, state.search ? 20 : 8);
+    return items.slice(0, state.search ? 30 : 8);
   }
   function renderFeed() {
     const ready = Boolean(window.spaceBoards);
@@ -130,6 +134,7 @@
       if (Date.now() - Date.parse(post.createdAt) < 6 * HOUR) button.appendChild(make('span', 'feed-new', 'N'));
       const meta = make('span', 'feed-meta');
       if (post.board === 'policy') meta.appendChild(make('span', 'likes', `♥ ${post.likes}`));
+      if (post.no) meta.appendChild(make('span', 'post-no', `#${post.no}`));
       meta.appendChild(make('span', 'author', clip(post.authorName, 10)));
       meta.appendChild(make('span', 'when', timeAgo(post.createdAt)));
       button.appendChild(meta);
@@ -166,6 +171,9 @@
     event.preventDefault();
     const keyword = $('searchInput').value.trim();
     if (!keyword) { clearSearch(); return; }
+    // 글번호만 적으면(57 또는 #57) 그 글로 바로 간다.
+    const number = keyword.match(/^(?:#|no\.?\s*|글\s*번호\s*)?(\d{1,7})$/i);
+    if (number) { window.location.href = `/post/${Number(number[1])}`; return; }
     state.search = keyword;
     $('feed-title').textContent = '검색 결과';
     $('feed-title').classList.add('searching');
@@ -173,7 +181,7 @@
     renderFeed();
     const count = feedItems().length;
     const note = $('search-note');
-    note.replaceChildren(`‘${keyword}’ 검색 결과 ${count}건${count >= 20 ? ' (최근 20건)' : ''} `);
+    note.replaceChildren(`‘${keyword}’ 검색 결과 ${count}건${count >= 30 ? ' (최근 30건)' : ''} `);
     const reset = make('button', 'more-link', '검색 지우기');
     reset.type = 'button';
     reset.addEventListener('click', () => clearSearch());

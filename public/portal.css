@@ -158,6 +158,7 @@ a { color:var(--primary); }
 .feed-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; }
 .feed-meta { flex:none; display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12.5px; }
 .feed-meta .likes { color:var(--up); font-weight:800; }
+.feed-meta .post-no { font-variant-numeric:tabular-nums; font-weight:700; color:var(--accent, #2b6cb0); }
 .feed-new { flex:none; color:#fff; background:var(--up); font-size:10.5px; font-weight:800; border-radius:5px; padding:0 5px; line-height:17px; }
 .feed-empty { padding:36px 0; text-align:center; color:var(--muted); }
 .feed-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:4px 20px 14px; flex-wrap:wrap; }

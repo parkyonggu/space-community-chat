@@ -150,7 +150,7 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
     <div class="page-wrap">
       <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › <a href="/#${board.anchor}">${escapeHtml(board.name)}</a></p>
       <h1 class="post-title">${escapeHtml(headline)}</h1>
-      <p class="post-meta">${category ? `<span class="tag">${escapeHtml(category)}</span>` : ''}${escapeHtml(post.authorName || '회원')} · <time datetime="${escapeHtml(post.createdAt)}">${kstDate(post.createdAt)}</time>${post.editedAt ? ' · 수정됨' : ''}</p>
+      <p class="post-meta">${category ? `<span class="tag">${escapeHtml(category)}</span>` : ''}${escapeHtml(post.authorName || '회원')} · <time datetime="${escapeHtml(post.createdAt)}">${kstDate(post.createdAt)}</time>${post.editedAt ? ' · 수정됨' : ''} · 글번호 #${Number(post.no)}</p>
     </div>
   </header>
   <main class="page-wrap page-body">
