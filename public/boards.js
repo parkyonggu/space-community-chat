@@ -210,7 +210,7 @@
     add.addEventListener('click', () => file.click());
     file.addEventListener('change', () => { addFiles(file.files); file.value = ''; });
     // 복사한 사진을 글쓰기 칸에 Ctrl+V(휴대폰은 길게 눌러 붙여넣기)로 넣을 수 있다.
-    const area = textarea.closest('.post-composer, form, .research-composer') || textarea.parentElement;
+    const area = textarea.closest('.post-composer, form, .research-composer') || textarea.parentElement || textarea;
     area.addEventListener('paste', event => {
       const files = [...(event.clipboardData?.files || [])].filter(file => file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name || ''));
       if (!files.length) files.push(...[...(event.clipboardData?.items || [])].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean));
@@ -831,8 +831,10 @@
     save.type = 'submit';
     buttons.append(cancel, save);
     actions.append(note, buttons);
+    // 사진 붙여넣기 칸은 글 입력칸이 들어 있는 폼을 찾아 연결하므로, 입력칸을 먼저 폼에 넣는다.
+    form.append(text);
     const editPhotos = photoPicker(post.board, text, post.images || []);
-    form.append(text, editPhotos.element, actions, status);
+    form.append(editPhotos.element, actions, status);
     lengthCounter(text);
     const original = [...item.childNodes];
     item.replaceChildren(form);
