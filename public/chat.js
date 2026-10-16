@@ -160,7 +160,7 @@
     if (await copyText(url ? `${text}\n${url}` : text)) toast('복사했어요. 카카오톡 대화방에 길게 눌러 붙여넣기 하세요.');
   }
   // 모임안내·초청장: 글 끝의 공유 주소(/e/글번호)를 보내면 카카오톡이 스페이스 커뮤니티 로고가 담긴 카드로 보여 준다.
-  const ANNOUNCE_KINDS = [{ tag: '[모임안내]', label: '📣 모임안내' }, { tag: '[초청장]', label: '💌 초청장' }];
+  const ANNOUNCE_KINDS = [{ tag: '[모임안내]', label: '📣 모임안내' }, { tag: '[초청장]', label: '💌 초청장' }, { tag: '[정보안내]', label: '📊 정보안내' }];
   const SHARE_LINE = /\n*자세히 보기·카카오톡 공유: (https?:\/\/\S+\/e\/[0-9a-z-]+)\s*$/;
   const POSTER_LINE = /\n*안내장 사진: (https?:\/\/\S+\/api\/board\/image\?id=[0-9a-f]{32})\s*$/;
   function announcementOf(text) {
@@ -183,7 +183,7 @@
       // 1순위: 카카오톡 공식 공유 카드. 안 되면 공유 창이나 주소 복사.
       if (window.spaceKakaoShare && await window.spaceKakaoShare({
         title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
-        imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: info.link,
+        imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png', '[정보안내]': '/share/info.png' }[info.kind.tag] || '/share/announcement.png'}`, link: info.link,
         ...(info.poster ? { poster: info.poster } : {}), card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
       })) return;
       await shareText(title, info.link);

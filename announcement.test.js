@@ -26,3 +26,10 @@ test('a poster photo becomes the preview image and is shown on the page', () => 
   assert.match(html, /class="poster"/);
   assert.ok(!html.includes('og:image:width'));
 });
+
+test('정보안내: 시장분석 같은 정보 글도 공유 카드와 정보안내 그림으로 만든다', () => {
+  assert.equal(kindOf('[정보안내]\n이번 주 시장분석').id, 'info');
+  const html = renderAnnouncementPage({ id: '1791560000000-abcdef9999', at: Date.parse('2026-10-16T06:00:00Z'), text: '[정보안내]\n10월 셋째 주 시장분석\n코스피가 하락한 이유를 정리했습니다.' }, 'https://withpluces.com');
+  assert.match(html, /og:title" content="📊 정보안내 10월 셋째 주 시장분석"/);
+  assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/info\.png"/);
+});

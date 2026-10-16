@@ -9,6 +9,7 @@ chatBox.before(chatStatus);
 const ANNOUNCE_KINDS = [
   { tag: '[모임안내]', label: '📣 모임안내' },
   { tag: '[초청장]', label: '💌 초청장' },
+  { tag: '[정보안내]', label: '📊 정보안내' },
 ];
 const announcementOption = document.createElement('label');
 announcementOption.className = 'chat-announcement-option';
@@ -235,7 +236,7 @@ async function shareAnnouncement(message) {
   const posterUrl = typeof message.image === 'string' && /^[0-9a-f]{32}$/.test(message.image) ? `${location.origin}/api/board/image?id=${message.image}` : '';
   if (info && message.id && window.spaceKakaoShare && await window.spaceKakaoShare({
     title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
-    imageUrl: `${location.origin}${info.kind.tag === '[초청장]' ? '/share/invitation.png' : '/share/announcement.png'}`, link: url,
+    imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png', '[정보안내]': '/share/info.png' }[info.kind.tag] || '/share/announcement.png'}`, link: url,
     ...(posterUrl ? { poster: posterUrl } : {}), card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
   })) {
     report('카카오톡 공유 창을 열었습니다. 보낼 대화방을 골라 주세요.');
@@ -651,7 +652,7 @@ function updateChatInput(signedIn) {
   announcementOption.hidden = !isAdmin;
   announcementKind.disabled = !isAdmin || !canSend;
   if (!isAdmin) announcementKind.value = '';
-  chatInput.placeholder = canSend ? (isAdmin ? '메시지 입력 · 모임안내·초청장은 위에서 종류를 고르고 첫 줄에 제목을 적으세요' : '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.') :
+  chatInput.placeholder = canSend ? (isAdmin ? '메시지 입력 · 모임안내·초청장·정보안내는 위에서 종류를 고르고 첫 줄에 제목을 적으세요' : '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.') :
     signedIn ? '이메일 인증을 완료하면 채팅을 보낼 수 있습니다.' : '로그인한 회원만 채팅을 보낼 수 있습니다. 대화는 누구나 볼 수 있습니다.';
 }
 
