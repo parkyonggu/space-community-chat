@@ -762,7 +762,7 @@ function sendChat() {
   const chosen = isAdmin ? announcementKind.value : '';
   if (chosen && !announcementOf(text)) text = `${chosen}\n${text}`;
   if (text.length > 2000) {
-    chatStatus.textContent = '채팅은 1~2,000자로 입력해 주세요.';
+    chatStatus.textContent = `글이 너무 깁니다(${text.length.toLocaleString('ko-KR')}자). 광장 채팅은 2,000자까지 보낼 수 있어요. 긴 글은 게시판에 올린 뒤 그 글의 「📊 정보안내로 알리기」 버튼을 눌러 요약과 주소만 보내 주세요.`;
     chatStatus.dataset.error = 'true';
     return;
   }
@@ -776,6 +776,21 @@ function sendChat() {
   announcementKind.value = '';
 }
 chatSend.addEventListener('click', sendChat);
+// 게시판 글의 「📊 정보안내로 알리기」: 글 종류와 초안을 채우고 광장 채팅으로 옮겨 간다. 전송은 운영자가 확인한 뒤 직접 누른다.
+window.addEventListener('space-announce-draft', event => {
+  const { tag = '', text = '' } = event.detail || {};
+  if (!ANNOUNCE_KINDS.some(kind => kind.tag === tag)) return;
+  announcementKind.value = tag;
+  chatInput.value = String(text).slice(0, 1900);
+  // 게시판 안의 '실시간 채팅' 탭으로 바꾼 뒤 그 자리로 옮겨 간다.
+  document.querySelector('.board-tabs [data-target="chat-section"]')?.click();
+  setTimeout(() => document.getElementById('chat-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  chatStatus.textContent = isAdmin
+    ? '정보안내 초안을 채웠습니다. 내용을 확인·수정한 뒤 「전송」을 누르면 광장 채팅과 스페이스톡 「📊 정보안내」로 함께 갑니다.'
+    : '운영자 계정으로 로그인해야 정보안내로 보낼 수 있습니다.';
+  chatStatus.dataset.error = isAdmin ? 'false' : 'true';
+  setTimeout(() => { chatInput.focus({ preventScroll: true }); chatInput.setSelectionRange(0, 0); chatInput.scrollTop = 0; }, 450);
+});
 chatInput.addEventListener('keydown', event => {
   if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
     event.preventDefault();

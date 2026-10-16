@@ -633,6 +633,24 @@
     setTimeout(() => $('researchTitle').focus({ preventScroll: true }), 400);
   }
 
+  // 정보안내 초안: 첫 줄 = 제목, 다음 = 본문 앞부분 요약(문장 단위로 약 300자), 끝 = 전체 글 주소.
+  function infoDraft(post) {
+    const body = String(post.text || '').replace(/\r/g, '').trim();
+    const title = (post.title || body.split('\n')[0] || '스페이스 커뮤니티 정보안내').trim().slice(0, 80);
+    const rest = post.title ? body : body.split('\n').slice(1).join('\n');
+    const flat = rest.replace(/\n{2,}/g, '\n').trim();
+    let summary = flat.slice(0, 300);
+    if (flat.length > 300) {
+      const cut = Math.max(summary.lastIndexOf('. '), summary.lastIndexOf('다.'), summary.lastIndexOf('\n'));
+      summary = `${(cut > 120 ? summary.slice(0, summary[cut] === '\n' ? cut : cut + 2) : summary).trim()} …`;
+    }
+    const lines = [title];
+    if (summary) lines.push(summary);
+    lines.push('', `▶ 전체 글 보기: ${location.origin}/post/${post.no}`);
+    if (post.category === '시장분석') lines.push('※ 투자 권유가 아닌 정보 제공입니다. 투자 판단과 책임은 본인에게 있습니다.');
+    return lines.join('\n');
+  }
+
   function renderPost(post) {
     const item = make('article', post.category === '시' ? 'post-item poem' : 'post-item');
     item.id = `post-${post.id}`;
@@ -662,6 +680,16 @@
       permalink.title = '이 글만 따로 보기·공유하기';
       permalink.style.textDecoration = 'none';
       meta.appendChild(permalink);
+    }
+    // 운영자만: 이 글의 제목·요약·글 주소를 광장 채팅 '📊 정보안내'로 옮겨 담는다(스페이스톡 정보안내 채널로 전달).
+    if (state.user?.admin && post.no && !post.hidden) {
+      const notify = make('button', 'like-btn info-notify-btn', '📊 정보안내로 알리기');
+      notify.type = 'button';
+      notify.title = '제목·요약·글 주소를 광장 채팅에 채워 넣습니다. 확인한 뒤 「전송」을 누르면 스페이스톡 정보안내로도 갑니다.';
+      notify.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('space-announce-draft', { detail: { tag: '[정보안내]', text: infoDraft(post) } }));
+      });
+      meta.appendChild(notify);
     }
     if (post.board === 'voice' && !post.hidden) {
       const official = make('button', 'like-btn official-btn', '📮 공식 민원으로 보내기');
