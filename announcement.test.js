@@ -33,3 +33,11 @@ test('정보안내: 시장분석 같은 정보 글도 공유 카드와 정보안
   assert.match(html, /og:title" content="📊 정보안내 10월 셋째 주 시장분석"/);
   assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/info\.png"/);
 });
+
+test('정보안내 공유 화면: 본문 속 글 주소는 누를 수 있는 링크와 「전체 글 읽기」 단추가 된다', () => {
+  const html = renderAnnouncementPage({ id: '1760000000000-abcdef12', at: Date.now(),
+    text: '[정보안내]\n주간 시장분석\n코스피 정리\n▶ 전체 글 보기: https://withpluces.com/post/2' });
+  assert.match(html, /<h1>📊 정보안내<\/h1>/);
+  assert.match(html, /<a class="body-link" href="https:\/\/withpluces\.com\/post\/2">/);
+  assert.match(html, /<a class="btn gold" href="https:\/\/withpluces\.com\/post\/2">📖 전체 글 읽기<\/a>/);
+});

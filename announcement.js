@@ -37,7 +37,15 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
   const dayText = `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 (${'일월화수목금토'[date.getUTCDay()]})`;
   const hours = date.getUTCHours();
   const timeText = `${hours < 12 ? '오전' : '오후'} ${hours % 12 || 12}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
-  const bodyHtml = body.split('\n').map(line => (line ? escapeHtml(line) : '')).join('<br>');
+  // 본문 속 주소(https://…)는 눌러서 열 수 있는 링크로 보여 준다(이 사이트 주소는 같은 창, 다른 사이트는 새 창).
+  const linkLine = line => escapeHtml(line).replace(/https?:\/\/[^\s<>"']+/g, raw => {
+    const href = raw.replace(/&amp;/g, '&');
+    const own = href.startsWith(`${siteUrl}/`) || /^https:\/\/(www\.)?withpluces\.com\//.test(href);
+    return `<a class="body-link" href="${escapeHtml(href)}"${own ? '' : ' target="_blank" rel="noopener nofollow"'}>${raw}</a>`;
+  });
+  const postMatch = body.match(/https?:\/\/(?:www\.)?[^\s/]+\/post\/(\d+)/);
+  const postUrl = postMatch && (postMatch[0].startsWith(`${siteUrl}/`) || /withpluces\.com\/post\//.test(postMatch[0])) ? `${siteUrl}/post/${postMatch[1]}` : '';
+  const bodyHtml = body.split('\n').map(line => (line ? linkLine(line) : '')).join('<br>');
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -86,6 +94,8 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .card .actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 14px; border-radius:10px; font-weight:800; font-size:14px; text-decoration:none; border:1px solid var(--line); color:var(--navy); background:#fff; cursor:pointer; font-family:inherit; }
     .btn.kakao { background:#fee500; border-color:#fee500; color:#191919; }
+    .btn.gold { background:var(--gold); border-color:var(--gold); color:var(--navy); }
+    .card .body a.body-link { color:#1d4ed8; text-decoration:underline; word-break:break-all; }
     .bar { flex:none; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
     .bar .btn.gold { background:var(--gold); border-color:var(--gold); }
   </style>
@@ -93,7 +103,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
 <body>
   <header class="top">
     <a class="back" href="/chat" aria-label="스페이스톡으로">‹</a>
-    <div class="room"><h1>📣 모임안내</h1><span>스페이스 커뮤니티 소식 채널</span></div>
+    <div class="room"><h1>${kind.id === 'info' ? '📊 정보안내' : '📣 모임안내'}</h1><span>스페이스 커뮤니티 소식 채널</span></div>
   </header>
   <main class="messages">
     <div class="day"><span>${escapeHtml(dayText)}</span></div>
@@ -107,7 +117,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
             ${poster ? `<a href="${escapeHtml(poster)}" target="_blank" rel="noopener"><img class="poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)} 안내장"></a>` : ''}
             <h2>${escapeHtml(title)}</h2>
             <div class="body">${bodyHtml}</div>
-            <div class="actions"><button class="btn kakao" type="button" id="share">카카오톡으로 공유</button></div>
+            <div class="actions">${postUrl ? `<a class="btn gold" href="${escapeHtml(postUrl)}">📖 전체 글 읽기</a>` : ''}<button class="btn kakao" type="button" id="share">카카오톡으로 공유</button></div>
           </article>
           <span class="time">${escapeHtml(timeText)}</span>
         </div>

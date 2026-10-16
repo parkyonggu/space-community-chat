@@ -211,10 +211,31 @@
     (document.querySelector('dialog[open]') || document.body).appendChild(bar);
   }
 
+  function findPostLink(text) {
+    for (const match of String(text || '').matchAll(/https?:\/\/[^\s<>"']+\/post\/\d+/g)) {
+      try {
+        const url = new URL(match[0]);
+        if (url.origin === location.origin || /(^|\.)withpluces\.com$/.test(url.hostname)) return `${location.origin}${url.pathname}`;
+      } catch { /* 주소가 아니면 건너뜀 */ }
+    }
+    return '';
+  }
+  window.spaceFindPostLink = findPostLink;
+
   // { title, description, imageUrl, link, button, card } → 카카오톡 공유 창을 연다.
   // card: { kindLabel, cardTitle, body } 를 주면 안내문 전체를 그린 그림을 카카오 서버에 올려(100일 보관) 카드 그림으로 쓴다.
   window.spaceKakaoShare = async ({ title, description = '', imageUrl, link, button = '자세히 보기', card, poster }) => {
     try {
+      // 정보안내처럼 본문에 이 사이트의 글 주소(/post/번호)가 있으면: 카드를 누르면 그 글이 바로 열리게 하고,
+      // 그림 속에 (누를 수 없는) 주소 글자를 그리는 대신 '전체 글 읽기' 안내를 넣는다.
+      const postLink = findPostLink(card?.body) || findPostLink(description);
+      if (postLink) {
+        link = postLink;
+        button = '전체 글 읽기';
+        const strip = value => String(value || '').split('\n').filter(line => !line.includes(postLink)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        if (card) card = { ...card, body: `${strip(card.body)}\n\n▶ 아래 「전체 글 읽기」를 누르면 글 전체를 볼 수 있습니다.` };
+        description = strip(description).replace(/\s+/g, ' ').slice(0, 120);
+      }
       const Kakao = await load();
       if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY);
       let image = { imageUrl, imageWidth: 1200, imageHeight: 630 };
