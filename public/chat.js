@@ -106,8 +106,10 @@
     fragment.append(text.slice(last));
     return fragment;
   }
+  // 운영자 소식 채널(모임안내·정보안내): 스페이스 커뮤니티 로고로 보낸다
+  const NOTICE_CHANNELS = ['channel-event-announcements', 'channel-info-announcements'];
   function avatar(name, key, small = false) {
-    if (key === 'channel-event-announcements') {
+    if (['channel-event-announcements', 'channel-info-announcements'].includes(key)) {
       const image = make('img', `avatar${small ? ' small' : ''}`);
       image.src = '/icons/icon-192.png';
       image.alt = '';
@@ -295,9 +297,11 @@
   }
   function channelCard(channel) {
     const eventChannel = channel.roomId === 'channel-event-announcements';
+    const infoChannel = channel.roomId === 'channel-info-announcements';
     const item = make('li', 'channel-card');
     const description = eventChannel ?
       '스페이스 커뮤니티가 보내는 모임안내·초청장을 받아 봐요. 카카오톡으로 바로 공유할 수 있고, 새 소식 알림도 받을 수 있어요.' :
+      infoChannel ? '주간 시장분석처럼 운영자가 정리한 정보를 받아 봐요. 지수가 왜 오르고 내렸는지 쉽게 풀어 드려요(투자 권유 아님).' :
       '매일 아침 7시 30분, 정부 부처의 전날 정책뉴스에서 가장 중요한 테마를 골라 보내 드려요. 새 소식 알림도 받을 수 있어요.';
     item.append(make('strong', '', channel.name), make('p', '', `${description}${channel.subscribers ? ` (${channel.subscribers}명 받아 보는 중)` : ''}`));
     const join = make('button', 'btn gold', '받아 보기');
@@ -305,11 +309,11 @@
     join.addEventListener('click', async () => {
       join.disabled = true;
       try {
-        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : '/api/chat/channel/subscribe';
+        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : infoChannel ? '/api/chat/info-channel/subscribe' : '/api/chat/channel/subscribe';
         const { room } = await api(endpoint, { method: 'POST', body: {} });
         channel.subscribed = true;
         await loadRooms();
-        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
+        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : infoChannel ? '구독했어요. 운영자의 정보안내(시장분석 등)가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
         location.hash = `room=${room.id}`;
       } catch (error) { toast(error.message); join.disabled = false; }
     });
@@ -317,11 +321,12 @@
     return item;
   }
   async function loadRooms() {
-    const [{ rooms }, channel, eventChannel] = await Promise.all([
+    const [{ rooms }, channel, eventChannel, infoChannel] = await Promise.all([
       api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null), api('/api/chat/event-channel').catch(() => null),
+      api('/api/chat/info-channel').catch(() => null),
     ]);
     state.rooms = rooms;
-    state.channels = [channel, eventChannel].filter(Boolean);
+    state.channels = [channel, eventChannel, infoChannel].filter(Boolean);
     renderRooms();
   }
   $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
@@ -457,7 +462,7 @@
     const row = make('div', `msg${mine ? ' mine' : ''}${cont ? ' cont' : ''}${message.pending ? ' pending' : ''}`);
     row.dataset.id = message.id;
     if (!mine) row.appendChild(avatar(message.nickname,
-      state.room?.id === 'channel-event-announcements' && !message.userId ? state.room.id : message.userId, true));
+      NOTICE_CHANNELS.includes(state.room?.id) && !message.userId ? state.room.id : message.userId, true));
     const body = make('div', 'msg-body');
     if (!mine) body.appendChild(make('div', 'msg-name', message.nickname || '알 수 없음'));
     const line = make('div', 'msg-line');
@@ -536,7 +541,8 @@
     if (!state.messages.length) {
       const empty = make('div', 'system');
       const channelHint = state.room?.id === 'channel-event-announcements' ?
-        '운영자가 광장채팅에 올린 모임안내·초청장이 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' : '매일 아침 7시 30분에 전날 정책뉴스로 만든 정책브리핑이 이곳에 올라옵니다.';
+        '운영자가 광장채팅에 올린 모임안내·초청장이 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' :
+        state.room?.id === 'channel-info-announcements' ? '운영자가 광장채팅에 올린 정보안내(주간 시장분석 등)가 「스페이스 커뮤니티」 이름으로 이곳에 전달됩니다.' : '매일 아침 7시 30분에 전날 정책뉴스로 만든 정책브리핑이 이곳에 올라옵니다.';
       empty.appendChild(make('span', '', state.room?.kind === 'channel' ? channelHint : state.room?.kind === 'dm' ? '1:1 대화를 시작해 보세요.' : '첫 메시지를 보내 보세요.'));
       nodes.push(empty);
     }

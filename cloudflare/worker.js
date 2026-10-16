@@ -408,10 +408,10 @@ export class ChatRoom extends DurableObject {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-        socket.send(JSON.stringify({ type: 'forwarded', id: stored.id, subscribers: result.subscribers || 0 }));
+        socket.send(JSON.stringify({ type: 'forwarded', id: stored.id, subscribers: result.subscribers || 0, channel: result.channel || '📣 모임안내' }));
       } catch (failure) {
         console.error('Announcement forward failed:', failure);
-        socket.send(JSON.stringify({ type: 'forward-error', error: `스페이스톡 모임안내 채널로 보내지 못했습니다: ${failure.message}` }));
+        socket.send(JSON.stringify({ type: 'forward-error', error: `스페이스톡 안내 채널로 보내지 못했습니다: ${failure.message}` }));
       }
     }
   }

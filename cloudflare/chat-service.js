@@ -11,6 +11,9 @@ const POLICY_CHANNEL = 'channel-policy-briefing';
 const POLICY_CHANNEL_NAME = '📰 오늘의 정책브리핑';
 const EVENT_CHANNEL = 'channel-event-announcements';
 const EVENT_CHANNEL_NAME = '📣 모임안내';
+// 정보안내 채널: 운영자가 광장채팅에서 '📊 정보안내'로 올린 글(주간 시장분석 등)
+const INFO_CHANNEL = 'channel-info-announcements';
+const INFO_CHANNEL_NAME = '📊 정보안내';
 // 모임안내 채널 글의 보낸 사람 이름(화면에는 로고와 함께 보인다)
 const EVENT_SENDER = '스페이스 커뮤니티';
 const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -117,13 +120,21 @@ export class ChatService extends DurableObject {
       if (path === '/internal/event-announcement' && request.method === 'POST') {
         const { sourceId, text } = await request.json();
         if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
-        if (typeof text !== 'string' || !announcement.kindOf(text) || text.length > 2000) throw new ChatError(400, '모임안내·초청장 형식의 메시지가 아닙니다.');
+        if (typeof text !== 'string' || !announcement.kindOf(text) || text.length > 2000) throw new ChatError(400, '모임안내·초청장·정보안내 형식의 메시지가 아닙니다.');
         const key = `event-announcement:${sourceId}`;
         if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
-        const result = this.core.postToChannel(EVENT_CHANNEL, { nickname: EVENT_SENDER, roomName: EVENT_CHANNEL_NAME, text });
+        const info = announcement.kindOf(text).id === 'info';
+        const channelId = info ? INFO_CHANNEL : EVENT_CHANNEL;
+        const channelName = info ? INFO_CHANNEL_NAME : EVENT_CHANNEL_NAME;
+        // 정보안내 채널을 처음 쓸 때 모임안내 구독자를 함께 받아 보게 한다(한 번만).
+        if (info && !this.core.meta('info-channel-seeded')) {
+          this.core.copyChannelMembers(EVENT_CHANNEL, INFO_CHANNEL, INFO_CHANNEL_NAME);
+          this.core.meta('info-channel-seeded', '1');
+        }
+        const result = this.core.postToChannel(channelId, { nickname: EVENT_SENDER, roomName: channelName, text });
         this.core.meta(key, '1');
         this.deliver(result, { id: null });
-        return json({ ok: true, subscribers: result.memberIds.length });
+        return json({ ok: true, subscribers: result.memberIds.length, channel: channelName });
       }
       if (path === '/internal/user-deleted') {
         const { userId } = await request.json();
@@ -290,6 +301,11 @@ export class ChatService extends DurableObject {
         return json({ room });
       }
       if (first === 'event-channel' && method === 'GET') return json(this.core.channel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME));
+      if (first === 'info-channel' && method === 'GET') return json(this.core.channel(user, INFO_CHANNEL, INFO_CHANNEL_NAME));
+      if (first === 'info-channel' && id === 'subscribe' && method === 'POST') {
+        const room = this.core.subscribeChannel(user, INFO_CHANNEL, INFO_CHANNEL_NAME);
+        return json({ room });
+      }
       if (first === 'event-channel' && id === 'subscribe' && method === 'POST') {
         const room = this.core.subscribeChannel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME);
         return json({ room });

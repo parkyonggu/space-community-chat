@@ -688,7 +688,7 @@ function connectChat() {
       return;
     }
     if (result.type === 'forwarded') {
-      chatStatus.textContent = `스페이스톡 「📣 모임안내」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}. 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.`;
+      chatStatus.textContent = `스페이스톡 「${result.channel || '📣 모임안내'}」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}. 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.`;
       chatStatus.dataset.error = 'false';
       return;
     }

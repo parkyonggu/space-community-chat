@@ -177,6 +177,20 @@ function createChatCore(sql, { now = Date.now } = {}) {
       return roomView(one('SELECT * FROM chat_rooms WHERE id = ?', room.id), user.id);
     },
 
+    // 새 채널을 처음 열 때 다른 채널의 구독자를 그대로 옮겨 담는다(예: 모임안내 구독자 → 정보안내).
+    copyChannelMembers(fromId, toId, toName) {
+      let room = one('SELECT * FROM chat_rooms WHERE id = ?', toId);
+      if (!room) {
+        run('INSERT INTO chat_rooms (id, kind, name, owner_id, max_members, created_at) VALUES (?, ?, ?, ?, ?, ?)', toId, 'channel', toName, null, 1000000, iso());
+        room = one('SELECT * FROM chat_rooms WHERE id = ?', toId);
+      }
+      const before = all('SELECT user_id FROM chat_members WHERE room_id = ?', toId).length;
+      run(`INSERT INTO chat_members (room_id, user_id, role, joined_at, joined_seq, last_read_seq)
+        SELECT ?, user_id, 'member', ?, ?, ? FROM chat_members WHERE room_id = ? AND user_id NOT IN (SELECT user_id FROM chat_members WHERE room_id = ?)`,
+      toId, iso(), room.last_seq, room.last_seq, fromId, toId);
+      return all('SELECT user_id FROM chat_members WHERE room_id = ?', toId).length - before;
+    },
+
     postToChannel(channelId, { nickname, text, roomName }) {
       let room = one('SELECT * FROM chat_rooms WHERE id = ?', channelId);
       if (!room) {

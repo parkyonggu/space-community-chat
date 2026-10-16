@@ -224,3 +224,17 @@ test('광장에서 함께 접속이 확인된 회원(trusted)은 같은 방이 �
   assert.equal(room.kind, 'dm');
   assert.equal(core.startDm(b, { userId: a.id, person: a, trusted: true }).id, room.id);
 });
+
+test('정보안내 채널: 모임안내 구독자를 한 번에 옮겨 담고, 새 글을 모두 받는다', () => {
+  const chat = createChatCore(memorySql());
+  chat.subscribeChannel(users.alice, 'event', '📣 모임안내');
+  chat.subscribeChannel(users.bob, 'event', '📣 모임안내');
+  chat.subscribeChannel(users.carol, 'info', '📊 정보안내');
+  assert.equal(chat.copyChannelMembers('event', 'info', '📊 정보안내'), 2);
+  assert.equal(chat.copyChannelMembers('event', 'info', '📊 정보안내'), 0, '두 번째는 중복 없음');
+  const posted = chat.postToChannel('info', { nickname: '스페이스 커뮤니티', text: '[정보안내]\n주간 시장분석' });
+  assert.deepEqual(posted.memberIds.sort(), ['u-a', 'u-b', 'u-c']);
+  assert.equal(chat.channel(users.alice, 'info', '📊 정보안내').subscribed, true);
+  assert.equal(chat.messages(users.bob, 'info').messages.at(-1).text, '[정보안내]\n주간 시장분석');
+  assert.equal(chat.copyChannelMembers('none', 'info2', '새 채널'), 0, '원본이 없으면 빈 채널만 만든다');
+});
