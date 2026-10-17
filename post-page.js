@@ -13,6 +13,7 @@ const DEPARTMENTS = { economy: '기획재정부', industry: '산업통상자원�
   unification: '통일부', defense: '국방부', science: '과학기술정보통신부', landtransport: '국토교통부', agriculture: '농림축산식품부',
   ocean: '해양수산부', safety: '행정안전부', justice: '법무부', personnel: '인사혁신처' };
 
+const richText = require('./public/rich-text.js');
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const kstDate = iso => {
   const date = new Date(Date.parse(iso) + 9 * 60 * 60 * 1000);
@@ -31,34 +32,13 @@ function headlineOf(post) {
   return cleaned.length > 60 ? `${cleaned.slice(0, 58)}…` : cleaned;
 }
 function summaryOf(post, max = 150) {
-  const plain = String(post.text || '').replace(/\[([^\]]*)\]\((https?:[^)]+)\)/g, '$1').replace(/https?:\/\/\S+/g, '').replace(/[#*>•]/g, '').replace(/\s+/g, ' ').trim();
+  const plain = richText.plain(post.text || '', { tables: false }).replace(/\[([^\]]*)\]\((https?:[^)]+)\)/g, '$1').replace(/https?:\/\/\S+/g, '').replace(/[#*>•]/g, '').replace(/\s+/g, ' ').trim();
   return plain.length > max ? `${plain.slice(0, max - 1)}…` : plain;
 }
 
-// 본문: 이스케이프한 뒤 [글](주소)·맨 주소를 링크로, 빈 줄로 문단을 나눈다. 외부 링크는 nofollow ugc.
+// 본문: 이스케이프한 뒤 링크·표·소제목(##, ■)·밑줄(__ __)·굵게(** **)를 꾸민다(public/rich-text.js, 화면과 같은 규칙).
 function bodyHtml(text) {
-  const link = (url, label) => `<a href="${escapeHtml(url)}" rel="nofollow ugc noopener" target="_blank">${label}</a>`;
-  const inline = line => {
-    const parts = [];
-    let rest = line;
-    const pattern = /\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/;
-    let match;
-    while ((match = pattern.exec(rest))) {
-      parts.push(escapeHtml(rest.slice(0, match.index)));
-      if (match[2]) parts.push(link(match[2], escapeHtml(match[1])));
-      else {
-        const url = match[3].replace(/[.,)\]]+$/, '');
-        parts.push(link(url, escapeHtml(url)));
-        rest = rest.slice(match.index + url.length);
-        continue;
-      }
-      rest = rest.slice(match.index + match[0].length);
-    }
-    parts.push(escapeHtml(rest));
-    return parts.join('');
-  };
-  return String(text || '').replace(/\r\n/g, '\n').split(/\n{2,}/).map(block => block.trim()).filter(Boolean)
-    .map(block => `<p>${block.split('\n').map(inline).join('<br>')}</p>`).join('\n');
+  return richText.toHtml(text);
 }
 
 const shell = ({ title, description, canonical, head = '', body, siteUrl, noindex = false }) => `<!DOCTYPE html>
@@ -101,6 +81,14 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .post-body p { margin:0 0 1.1em; }
     .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
     .post-body a { color:var(--primary); }
+    .post-body .rt-h { margin:1.6em 0 .7em; font-size:19px; line-height:1.5; padding-bottom:6px; border-bottom:2px solid var(--primary, #1d3b8a); }
+    .post-body u { text-decoration-thickness:2px; text-underline-offset:3px; }
+    .rt-table { overflow-x:auto; margin:0 0 1.2em; -webkit-overflow-scrolling:touch; }
+    .rt-table table { border-collapse:collapse; min-width:100%; font-size:15px; line-height:1.5; }
+    .rt-table th, .rt-table td { border:1px solid #d6dbe6; padding:7px 10px; text-align:left; white-space:nowrap; }
+    .rt-table th { background:#eef2f9; font-weight:800; }
+    .rt-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .rt-table tbody tr:nth-child(even) td { background:#fafbfd; }
     .post-foot { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; padding-top:16px; border-top:1px solid var(--line-soft); align-items:center; }
     .post-foot .likes { color:var(--up); font-weight:800; margin-right:auto; }
     .related h2 { font-size:18px; margin:0 0 10px; }

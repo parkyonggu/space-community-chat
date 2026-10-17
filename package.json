@@ -13,7 +13,7 @@
     "test:worker": "node --test cloudflare/integration.test.cjs cloudflare/talk.integration.test.cjs",
     "start": "node server.js",
     "check:mail": "node check-mail.js",
-    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js newsletter-api.test.js portal-api.test.js realestate.test.js policy-news.test.js post-page.test.js local-benefits.test.js android-app.test.js weather.test.js pension.test.js news-issues.test.js board-images.test.js farm-info.test.js finance-info.test.js pension-savings.test.js slack-notify.test.js announcement.test.js worker-chat.test.js chat-core.test.js web-push.test.mjs"
+    "test": "node --test community-api.test.js auth-api.test.js board-api.test.js newsletter-api.test.js portal-api.test.js realestate.test.js policy-news.test.js post-page.test.js local-benefits.test.js android-app.test.js weather.test.js pension.test.js news-issues.test.js board-images.test.js farm-info.test.js finance-info.test.js pension-savings.test.js slack-notify.test.js announcement.test.js rich-text.test.js worker-chat.test.js chat-core.test.js web-push.test.mjs"
   },
   "keywords": [],
   "author": "",

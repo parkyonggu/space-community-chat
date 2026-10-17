@@ -187,7 +187,7 @@
     suggest.style.width = `${Math.min(box.width, window.innerWidth - 16)}px`;
   }
   function snippetOf(post, keyword) {
-    const text = String(post.text || '').replace(/\s+/g, ' ').trim();
+    const text = (window.spaceRichText ? window.spaceRichText.plain(post.text || '') : String(post.text || '')).replace(/\s+/g, ' ').trim();
     const word = String(keyword).toLowerCase().split(/\s+/).filter(Boolean).find(item => text.toLowerCase().includes(item));
     const at = word ? text.toLowerCase().indexOf(word) : 0;
     const start = Math.max(0, at - 20);

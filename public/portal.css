@@ -1070,3 +1070,18 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .suggest-go { background:#f7f9fd; margin-bottom:3px; }
 .suggest-icon { font-size:17px; line-height:1; }
 .suggest-arrow { margin-left:auto; flex:none; color:var(--navy); font-size:12px; font-weight:800; }
+
+/* 게시판 글 본문 꾸미기: 표·소제목·밑줄 (rich-text.js) */
+.rich-body { color:var(--text); margin:6px 0; overflow-wrap:anywhere; line-height:1.75; }
+.rich-body p { white-space:normal; margin:0 0 .9em; }
+.rich-body .rt-h { margin:1.2em 0 .6em; font-size:17px; line-height:1.5; padding-bottom:5px; border-bottom:2px solid var(--navy); color:var(--navy); }
+.rich-body u { text-decoration-thickness:2px; text-underline-offset:3px; }
+.rich-body a { color:#1d4ed8; }
+.rt-table { overflow-x:auto; margin:0 0 1em; -webkit-overflow-scrolling:touch; }
+.rt-table table { border-collapse:collapse; min-width:100%; font-size:14px; line-height:1.5; }
+.rt-table th, .rt-table td { border:1px solid #d6dbe6; padding:6px 10px; text-align:left; white-space:nowrap; }
+.rt-table th { background:#eef2f9; font-weight:800; color:var(--navy); }
+.rt-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.rt-table tbody tr:nth-child(even) td { background:#fafbfd; }
+.format-hint { display:block; width:100%; margin-top:4px; color:var(--muted); font-size:12.5px; }
+.format-hint b { color:var(--navy); background:#eef2f9; border-radius:4px; padding:0 4px; }

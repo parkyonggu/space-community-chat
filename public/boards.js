@@ -145,7 +145,42 @@
   }
   const photoUrl = id => `/api/board/image?id=${id}`;
   // 글쓰기 칸 하나에 붙는 사진 고르기 도구. existing: 수정할 때 이미 붙어 있는 사진 id들.
+  // 한글·엑셀·웹에서 표를 복사해 붙이면 칸 사이를 탭으로 바꿔 넣는다(글 화면에서 표로 보임).
+  function tablePaste(textarea) {
+    textarea.addEventListener('paste', event => {
+      const html = event.clipboardData?.getData('text/html') || '';
+      if (!/<table[\s>]/i.test(html)) return;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const parts = [];
+      let used = false;
+      const walk = node => {
+        if (node.nodeType === 3) { parts.push(node.textContent); return; }
+        if (node.nodeType !== 1) return;
+        if (node.tagName === 'TABLE') {
+          used = true;
+          const rows = [...node.querySelectorAll('tr')].map(row => [...row.children].filter(cell => /^T[DH]$/.test(cell.tagName))
+            .map(cell => cell.innerText?.trim?.() ?? cell.textContent.replace(/\s+/g, ' ').trim()).map(text => text.replace(/[\t\n]+/g, ' ')))
+            .filter(row => row.some(Boolean));
+          parts.push(`\n${rows.map(row => row.join('\t')).join('\n')}\n`);
+          return;
+        }
+        if (/^(BR)$/.test(node.tagName)) { parts.push('\n'); return; }
+        const block = /^(P|DIV|H[1-6]|LI|UL|OL|SECTION|ARTICLE)$/.test(node.tagName);
+        if (block) parts.push('\n');
+        node.childNodes.forEach(walk);
+        if (block) parts.push('\n');
+      };
+      walk(doc.body);
+      if (!used) return;
+      const text = parts.join('').replace(/[ \u00a0]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+      event.preventDefault();
+      textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
   function photoPicker(board, textarea, existing = []) {
+    tablePaste(textarea);
     const photos = existing.map(id => ({ id, url: photoUrl(id) }));
     const box = make('div', 'photo-picker');
     const row = make('div', 'photo-row');
@@ -635,7 +670,8 @@
 
   // 정보안내 초안: 첫 줄 = 제목, 다음 = 본문 앞부분 요약(문장 단위로 약 300자), 끝 = 전체 글 주소.
   function infoDraft(post) {
-    const body = String(post.text || '').replace(/\r/g, '').trim();
+    // 표·꾸밈 기호는 빼고 문장만 요약한다(표는 「전체 글 읽기」에서 보이도록).
+    const body = (window.spaceRichText ? window.spaceRichText.plain(post.text || '', { tables: false }) : String(post.text || '')).replace(/\r/g, '').trim();
     const title = (post.title || body.split('\n')[0] || '스페이스 커뮤니티 정보안내').trim().slice(0, 80);
     const rest = post.title ? body : body.split('\n').slice(1).join('\n');
     const flat = rest.replace(/\n{2,}/g, '\n').trim();
@@ -660,8 +696,15 @@
     if (post.title) head.appendChild(make('strong', 'post-title', post.title));
     if (head.childNodes.length) item.appendChild(head);
     if (post.board === 'research' && post.category === '판결 평론' && post.about) item.appendChild(aboutLine(post));
-    const body = make('p', '', post.text);
-    body.style.whiteSpace = 'pre-wrap';
+    // 본문: 표·소제목·밑줄·굵게·링크를 꾸며 보여 준다(시는 줄바꿈 그대로).
+    let body;
+    if (post.category !== '시' && window.spaceRichText) {
+      body = make('div', 'rich-body');
+      body.innerHTML = window.spaceRichText.toHtml(post.text);
+    } else {
+      body = make('p', '', post.text);
+      body.style.whiteSpace = 'pre-wrap';
+    }
     item.appendChild(body);
     if (post.board === 'research' && post.category === '대법원 전원합의체 판결' && !post.hidden) item.appendChild(judgmentReviews(post));
     if (post.images?.length) item.appendChild(postPhotos(post));
