@@ -40,12 +40,13 @@
       element.textContent = message;
       element.dataset.error = String(isError);
     }
-    const output = board === 'policy' && policyCard?.querySelector('.policy-output');
-    if (output) {
-      output.textContent = message;
-      output.className = `policy-output form-status${isError ? ' policy-error' : ''}`;
-      output.dataset.error = String(isError);
-      output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 결과 문구는 글 목록(.policy-output)과 따로 둔 안내 줄에 쓴다(글 목록을 덮지 않게).
+    const note = board === 'policy' && policyCard?.querySelector('.policy-status');
+    if (note) {
+      note.textContent = message;
+      note.classList.toggle('policy-error', isError);
+      note.dataset.error = String(isError);
+      note.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
@@ -88,13 +89,15 @@
       tableButton.type = 'button';
       tableButton.addEventListener('click', () => openTableMaker(textarea));
       tools.append(tableButton, make('span', 'photo-note', '소제목은 줄 앞에 ## 또는 ■ · 밑줄은 __글자__ · 2만 자까지'));
-      card.append(textarea, tools, button, output);
+      const cardStatus = make('p', 'form-status policy-status');
+      cardStatus.setAttribute('role', 'status');
+      card.append(textarea, tools, button, cardStatus, output);
       // 붙여넣은 글이 2만 자를 넘으면 브라우저가 뒤쪽을 잘라 버리므로 바로 알려 준다.
       textarea.addEventListener('paste', () => setTimeout(() => {
         if (textarea.value.length >= textarea.maxLength) {
-          output.textContent = `글이 ${textarea.maxLength.toLocaleString('ko-KR')}자를 넘어 뒤쪽이 잘렸습니다. 별첨·참고자료 부분을 빼고 본문만 붙여넣어 주세요.`;
-          output.className = 'policy-output form-status policy-error';
-          output.dataset.error = 'true';
+          cardStatus.textContent = `글이 ${textarea.maxLength.toLocaleString('ko-KR')}자를 넘어 뒤쪽이 잘렸습니다. 별첨·참고자료 부분을 빼고 본문만 붙여넣어 주세요.`;
+          cardStatus.classList.add('policy-error');
+          cardStatus.dataset.error = 'true';
         }
       }, 0));
       grid.appendChild(card);
