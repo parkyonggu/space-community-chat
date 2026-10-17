@@ -903,6 +903,19 @@
       body.style.whiteSpace = 'pre-wrap';
     }
     item.appendChild(body);
+    // 정책 제안 부처 칸은 좁아서 긴 글은 접어 둔다. 그래야 글 아래 '수정'·'추천' 단추가 바로 보인다.
+    if (post.board === 'policy' && post.text.length > 600) {
+      const closedLabel = `▼ 전체 펼치기 (${post.text.length.toLocaleString('ko-KR')}자)`;
+      body.classList.add('rt-folded');
+      const toggle = make('button', 'like-btn fold-toggle', closedLabel);
+      toggle.type = 'button';
+      toggle.addEventListener('click', () => {
+        const folded = body.classList.toggle('rt-folded');
+        toggle.textContent = folded ? closedLabel : '▲ 접기';
+        if (folded) item.scrollIntoView({ block: 'nearest' });
+      });
+      item.appendChild(toggle);
+    }
     if (post.board === 'research' && post.category === '대법원 전원합의체 판결' && !post.hidden) item.appendChild(judgmentReviews(post));
     if (post.images?.length) item.appendChild(postPhotos(post));
     if (post.board === 'voice' && post.forward) item.appendChild(forwardBadge(post));
