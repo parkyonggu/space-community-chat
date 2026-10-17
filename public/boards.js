@@ -145,6 +145,107 @@
   }
   const photoUrl = id => `/api/board/image?id=${id}`;
   // 글쓰기 칸 하나에 붙는 사진 고르기 도구. existing: 수정할 때 이미 붙어 있는 사진 id들.
+  // ---------- 📋 표 넣기: 칸에 바로 적어 표를 만들고, 글쓰기 칸 커서 자리에 넣는다 ----------
+  // 표는 '칸 | 칸 | 칸' 글자로 들어가고, 등록하면 게시판·글 화면에서 테두리 있는 표로 보인다(rich-text.js).
+  function openTableMaker(textarea) {
+    const dialog = make('dialog', 'table-maker');
+    dialog.setAttribute('aria-label', '표 넣기');
+    let grid = [['항목', '내용', '비고'], ['', '', ''], ['', '', '']];
+    const head = make('div', 'tm-head');
+    head.append(make('strong', '', '📋 표 넣기'), make('span', 'tm-hint', '첫 줄은 머리줄(회색 칸)입니다. 숫자는 오른쪽에 맞춰져요.'));
+    const tools = make('div', 'tm-tools');
+    const wrap = make('div', 'tm-wrap');
+    const table = make('table', 'tm-grid');
+    wrap.appendChild(table);
+    const status = make('p', 'tm-status');
+    const read = () => { grid = [...table.rows].map(row => [...row.cells].map(cell => cell.querySelector('input').value)); };
+    const draw = focus => {
+      table.replaceChildren(...grid.map((cells, r) => {
+        const tr = make('tr', r === 0 ? 'tm-header' : '');
+        cells.forEach((value, c) => {
+          const td = make('td');
+          const input = make('input');
+          input.type = 'text';
+          input.value = value;
+          input.maxLength = 80;
+          input.placeholder = r === 0 ? `제목 ${c + 1}` : '';
+          input.setAttribute('aria-label', `${r + 1}번째 줄 ${c + 1}번째 칸`);
+          input.addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            read();
+            if (r === grid.length - 1) { grid.push(Array(grid[0].length).fill('')); draw([r + 1, c]); }
+            else table.rows[r + 1].cells[c].querySelector('input').focus();
+          });
+          // 한글·엑셀에서 여러 칸을 복사해 붙이면 칸마다 나눠 채운다.
+          input.addEventListener('paste', event => {
+            const text = event.clipboardData?.getData('text/plain') || '';
+            if (!/[\t\n]/.test(text.trim())) return;
+            event.preventDefault();
+            read();
+            text.replace(/\r/g, '').replace(/\n+$/, '').split('\n').forEach((line, dr) => {
+              line.split('\t').forEach((cellText, dc) => {
+                while (grid.length <= r + dr) grid.push(Array(grid[0].length).fill(''));
+                if (grid[0].length <= c + dc && grid[0].length < 10) grid.forEach(row => row.push(''));
+                if (c + dc < grid[0].length) grid[r + dr][c + dc] = cellText.trim();
+              });
+            });
+            draw([r, c]);
+          });
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        return tr;
+      }));
+      if (focus) table.rows[focus[0]]?.cells[focus[1]]?.querySelector('input')?.focus();
+    };
+    const tool = (label, action, title) => {
+      const button = make('button', 'like-btn', label);
+      button.type = 'button';
+      button.title = title;
+      button.addEventListener('click', () => { read(); action(); draw(); });
+      tools.appendChild(button);
+    };
+    tool('＋ 줄', () => { if (grid.length < 40) grid.push(Array(grid[0].length).fill('')); }, '맨 아래에 줄 더하기');
+    tool('－ 줄', () => { if (grid.length > 2) grid.pop(); }, '맨 아래 줄 빼기');
+    tool('＋ 칸', () => { if (grid[0].length < 10) grid.forEach(row => row.push('')); }, '오른쪽에 칸 더하기');
+    tool('－ 칸', () => { if (grid[0].length > 2) grid.forEach(row => row.pop()); }, '맨 오른쪽 칸 빼기');
+    const actions = make('div', 'tm-actions');
+    const cancel = make('button', 'btn btn-outline', '취소');
+    cancel.type = 'button';
+    const insert = make('button', 'submitPolicy', '표 넣기');
+    insert.type = 'button';
+    actions.append(cancel, insert);
+    dialog.append(head, tools, wrap, status, actions);
+    document.body.appendChild(dialog);
+    const close = () => { dialog.close(); dialog.remove(); };
+    cancel.addEventListener('click', close);
+    dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    insert.addEventListener('click', () => {
+      read();
+      // 칸 안의 | 는 표를 나누는 표시와 겹치므로 ／ 로 바꾸고, 내용이 없는 줄은 뺀다(머리줄은 남김).
+      const clean = value => String(value || '').replace(/\|/g, '／').replace(/\s+/g, ' ').trim();
+      const rows = grid.map(cells => cells.map(clean)).filter((cells, index) => index === 0 || cells.some(Boolean));
+      if (rows.length < 2 || !rows[0].some(Boolean)) {
+        status.textContent = '머리줄과 내용을 한 줄 이상 적어 주세요.';
+        return;
+      }
+      // 빈 칸은 '-' 로 채워 표 모양이 흐트러지지 않게 한다.
+      const text = rows.map(cells => cells.map(value => value || '-').join(' | ')).join('\n');
+      const before = textarea.value.slice(0, textarea.selectionStart);
+      const after = textarea.value.slice(textarea.selectionEnd);
+      const lead = before && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+      const tail = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
+      textarea.focus();
+      textarea.setRangeText(`${lead}${text}${tail}`, textarea.selectionStart, textarea.selectionEnd, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      close();
+    });
+    draw();
+    dialog.showModal();
+    table.rows[0].cells[0].querySelector('input').select();
+  }
+
   // 한글·엑셀·웹에서 표를 복사해 붙이면 칸 사이를 탭으로 바꿔 넣는다(글 화면에서 표로 보임).
   function tablePaste(textarea) {
     textarea.addEventListener('paste', event => {
@@ -194,7 +295,11 @@
     file.hidden = true;
     const note = make('span', 'photo-note', `최대 ${MAX_PHOTOS}장 · 사진 위치정보는 자동으로 지워져요. 얼굴·차량번호는 가려 주세요.`);
     const strip = make('div', 'photo-strip');
-    row.append(add, file, note);
+    const tableButton = make('button', 'like-btn table-add', '📋 표 넣기');
+    tableButton.type = 'button';
+    tableButton.title = '줄·칸 수를 정하고 내용을 채워 표를 넣습니다';
+    tableButton.addEventListener('click', () => openTableMaker(textarea));
+    row.append(add, tableButton, file, note);
     box.append(row, strip);
     const draw = () => {
       strip.replaceChildren(...photos.map(photo => {

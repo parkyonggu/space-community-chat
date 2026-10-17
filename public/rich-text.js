@@ -54,7 +54,7 @@
         const real = rows.filter(row => row[0] !== '__divider__');
         if (real.length >= (loose ? 3 : 2)) {
           flush();
-          blocks.push({ type: 'table', rows: real });
+          blocks.push({ type: 'table', rows: real, pipe: !loose && !lines[index].includes('\t') });
           index = end;
           tabled = true;
           break;
@@ -102,12 +102,13 @@
   }
 
   const NUMERIC = /^[+\-−±]?\s*(?:HK\$|US\$|\$|₩|€|¥)?\s*[\d,.]+\s*(?:%|%p|원|위안|달러|엔|배|건|명|개)?(?:\s*\(.*\))?$/;
-  function tableHtml(rows) {
+  function tableHtml(rows, pipe = false) {
     const width = Math.max(...rows.map(row => row.length));
     const padded = rows.map(row => [...row, ...Array(width - row.length).fill('')]);
     // 첫 줄에 숫자 칸이 없고 다른 줄에는 있으면 머리줄로 본다.
     const hasNumber = row => row.some(cell => NUMERIC.test(cell));
-    const header = padded.length >= 2 && !hasNumber(padded[0]) && padded.slice(1).some(hasNumber);
+    // 칸을 | 로 나눈 표(📋 표 넣기 포함)는 첫 줄이 늘 머리줄이다.
+    const header = padded.length >= 2 && !hasNumber(padded[0]) && (pipe || padded.slice(1).some(hasNumber));
     const cell = (tag, value) => `<${tag}${tag === 'td' && NUMERIC.test(value) ? ' class="num"' : ''}>${inline(value)}</${tag}>`;
     const head = header ? `<thead><tr>${padded[0].map(value => cell('th', value)).join('')}</tr></thead>` : '';
     const body = (header ? padded.slice(1) : padded).map(row => `<tr>${row.map(value => cell('td', value)).join('')}</tr>`).join('');
@@ -116,7 +117,7 @@
 
   function toHtml(text) {
     return blocksOf(text).map(block => {
-      if (block.type === 'table') return tableHtml(block.rows);
+      if (block.type === 'table') return tableHtml(block.rows, block.pipe);
       if (block.type === 'h') return `<h3 class="rt-h">${inline(block.text)}</h3>`;
       return `<p>${block.lines.map(inline).join('<br>')}</p>`;
     }).join('\n');

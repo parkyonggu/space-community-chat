@@ -1085,3 +1085,21 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .rt-table tbody tr:nth-child(even) td { background:#fafbfd; }
 .format-hint { display:block; width:100%; margin-top:4px; color:var(--muted); font-size:12.5px; }
 .format-hint b { color:var(--navy); background:#eef2f9; border-radius:4px; padding:0 4px; }
+
+/* 📋 표 넣기 창 */
+.table-add { font-weight:800; }
+.table-maker { width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); border:0; border-radius:16px; padding:16px; box-shadow:0 20px 50px rgba(15,23,42,.3); color:var(--ink); }
+.table-maker::backdrop { background:rgba(14,23,48,.45); }
+.tm-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin-bottom:10px; }
+.tm-head strong { font-size:18px; color:var(--navy); }
+.tm-hint { color:var(--muted); font-size:13px; }
+.tm-tools { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.tm-wrap { overflow:auto; max-height:52vh; border:1px solid #d6dbe6; border-radius:10px; }
+.tm-grid { border-collapse:collapse; min-width:100%; }
+.tm-grid td { border:1px solid #d6dbe6; padding:0; min-width:110px; }
+.tm-grid input { width:100%; border:0; padding:9px 10px; font:inherit; font-size:14.5px; background:transparent; outline:none; }
+.tm-grid input:focus { background:#fff8e0; box-shadow:inset 0 0 0 2px var(--gold); }
+.tm-header td { background:#eef2f9; }
+.tm-header input { font-weight:800; color:var(--navy); }
+.tm-status { min-height:1.2em; margin:8px 0 0; color:#c0392b; font-size:13.5px; }
+.tm-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
