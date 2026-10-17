@@ -150,7 +150,7 @@ ${bodyHtml(post.text)}
       </div>${(post.images || []).filter(id => /^[0-9a-f]{32}$/.test(id)).length ? `
       <div class="post-photos">${post.images.filter(id => /^[0-9a-f]{32}$/.test(id)).map((id, index) => `<a href="/api/board/image?id=${id}" target="_blank" rel="noopener"><img src="/api/board/image?id=${id}" alt="첨부 사진 ${index + 1}" loading="lazy"></a>`).join('')}</div>` : ''}
 ${post.board === 'voice' && post.forward ? `
-      <p class="forward-line">🏛️ ${post.forward.status === '전달함' ? `스페이스 커뮤니티가 ${escapeHtml(post.forward.region)}에 이 의견을 전달했습니다.` : `스페이스 커뮤니티가 ${escapeHtml(post.forward.region)}에 전달하려고 준비 중입니다.`}</p>` : ''}${post.board === 'voice' && post.progress ? `
+      <p class="forward-line">🏛️ ${post.forward.status === '전달함' ? `스페이스 커뮤니티가 ${escapeHtml(post.forward.region)}에 이 의견을 전달했습니다.` : `스페이스 커뮤니티가 ${escapeHtml(post.forward.region)}에 전달하려고 준비 중입니다.`}</p>` : ''}${(post.board === 'voice' || post.board === 'policy') && post.progress ? `
       <div class="progress-box"><p class="progress-head"><b>${escapeHtml(post.progress.status)}</b> ${escapeHtml(post.progress.channel)}${post.progress.receipt ? ` · 접수번호 ${escapeHtml(post.progress.receipt)}` : ''} · ${escapeHtml(kstDate(post.progress.updatedAt))} 기록</p>${post.progress.answer ? `<p class="progress-answer">${escapeHtml(post.progress.answer).replace(/\n/g, '<br>')}</p>` : ''}</div>` : ''}${post.board === 'voice' ? `
       <p class="note official-note">같은 불편을 겪고 계신가요? 시청·군청이 처리하도록 <a href="https://www.epeople.go.kr" target="_blank" rel="noopener">국민신문고</a>(설치·개선 요청)나 <a href="https://www.safetyreport.go.kr" target="_blank" rel="noopener">안전신문고</a>(고장·위험 신고)에 본인 이름으로 함께 접수해 주세요. 커뮤니티 게시판의 「📮 공식 민원으로 보내기」를 누르면 내용을 복사해 드립니다.</p>` : ''}
       <div class="post-foot">

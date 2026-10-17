@@ -8,7 +8,7 @@ const BOARDS = {
   // 소통·나눔: 분류는 고르지 않아도 되고(일반 이야기), 시는 '시'로 따로 모은다.
   community: { publicRead: true, categories: ['시'], optionalCategory: true, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '우리 동네 고쳐 주세요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000, likes: true },
-  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 3000, likes: true },
+  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 20000, likes: true },
   // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
   issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
   // 칼럼·학술: 누구나 읽고, 회원만 쓴다(2026-10 전체 공개로 변경).
@@ -20,7 +20,7 @@ const JUDGMENT_REVIEW = '판결 평론';
 const REPORT_HIDE_THRESHOLD = 3;
 // 시민의 소리 '처리 경과': 글쓴이(또는 운영자)가 공식 민원 창구에 접수한 뒤 진행 상황을 적는다.
 const PROGRESS_STATUS = ['접수함', '처리 중', '답변 받음', '해결됨', '반려됨'];
-const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '기타'];
+const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '국민제안(국민신문고)', '국회 국민동의청원', '국회의원 입법 건의', '국민연금공단', '국민참여입법센터', '기타'];
 // '스페이스 커뮤니티가 대신 전달': 글쓴이가 동의하면 운영자가 법인 명의로 시·군청에 접수한다.
 const FORWARD_REGIONS = ['양산시', '김해시', '의령군', '창원시', '진주시', '부산광역시', '경상남도', '기타'];
 
@@ -410,7 +410,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         }
         const post = await updateStore(store => {
           const target = findPost(store, input.postId);
-          if (target.board !== 'voice') throw new BoardError(400, '시민의 소리 글에만 처리 경과를 적을 수 있습니다.');
+          if (target.board !== 'voice' && target.board !== 'policy') throw new BoardError(400, '시민의 소리·정책 제안 글에만 처리 경과를 적을 수 있습니다.');
           if (target.authorId !== user.id && !user.admin) throw new BoardError(403, '글쓴이만 처리 경과를 적을 수 있습니다.');
           if (input.clear === true) delete target.progress;
           else target.progress = { status, channel, receipt, answer, updatedAt: new Date(now()).toISOString(), by: user.admin && target.authorId !== user.id ? '운영자' : '글쓴이' };

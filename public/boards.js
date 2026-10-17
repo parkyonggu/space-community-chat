@@ -66,12 +66,19 @@
       card.appendChild(titleInput);
       const textarea = make('textarea');
       textarea.dataset.placeholder = `${dept.name} 관련 의견을 작성하세요`;
-      textarea.maxLength = 3000;
+      textarea.maxLength = 20000;
       const button = make('button', 'submitPolicy', '제안 등록');
       button.dataset.dept = dept.id;
       const output = make('div', 'policy-output');
       output.id = `output-${dept.id}`;
-      card.append(textarea, button, output);
+      // 긴 정책 제안도 표·소제목으로 정리할 수 있게: 표 붙여넣기 변환과 📋 표 넣기 단추
+      tablePaste(textarea);
+      const tools = make('div', 'photo-row');
+      const tableButton = make('button', 'like-btn table-add', '📋 표 넣기');
+      tableButton.type = 'button';
+      tableButton.addEventListener('click', () => openTableMaker(textarea));
+      tools.append(tableButton, make('span', 'photo-note', '소제목은 줄 앞에 ## 또는 ■ · 밑줄은 __글자__ · 2만 자까지'));
+      card.append(textarea, tools, button, output);
       grid.appendChild(card);
     });
     group.appendChild(grid);
@@ -397,7 +404,7 @@
     { id: 'safety', name: '안전신문고', url: 'https://www.safetyreport.go.kr', when: '가로등 고장, 도로 파손, 위험 시설 등 안전 신고', how: '안전신문고 앱(권장) 또는 누리집 → 신고하기 → 사진을 찍어 올리고 붙여넣기(위치가 함께 들어갑니다)' },
   ];
   const PROGRESS_STATUS = ['접수함', '처리 중', '답변 받음', '해결됨', '반려됨'];
-  const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '기타'];
+  const PROGRESS_CHANNELS = ['국민신문고', '안전신문고', '시·군청 누리집', '읍·면·동 방문/전화', '국민제안(국민신문고)', '국회 국민동의청원', '국회의원 입법 건의', '국민연금공단', '국민참여입법센터', '기타'];
   function complaintText(post) {
     const link = post.no ? `${location.origin}/post/${post.no}` : '';
     return [
@@ -442,6 +449,70 @@
     if (anchor === item) item.appendChild(panel); else anchor?.after(panel);
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+  // ---------- 정책 제안 → 공식 경로(정부·국회·공단) ----------
+  // 외부 기관은 다른 사이트가 대신 접수할 수 없으므로(본인 인증), 제출용 글을 만들어 복사해 주고 접수 화면을 연다.
+  const PROPOSAL_ROUTES = [
+    { name: '국민제안 (국민신문고)', url: 'https://www.epeople.go.kr', who: '정부 부처(예: 보건복지부)',
+      when: '제도·법령을 바꿔 달라는 정책 제안. 소관 기관이 채택 여부를 심사해 알려 줍니다.',
+      how: '로그인 → 국민제안 → 제안 신청 → 처리기관에 소관 부처(예: 보건복지부)를 고르고 붙여넣기' },
+    { name: '국회 국민동의청원', url: 'https://petitions.assembly.go.kr', who: '국회 소관 상임위원회',
+      when: '법 개정이 필요한 제안. 공개 후 30일 안에 5만 명이 동의하면 소관 상임위원회(예: 보건복지위원회)에 회부됩니다.',
+      how: '본인 인증 → 청원 등록 → 붙여넣기 → 공개되면 주소를 스페이스톡·카카오톡으로 알려 동의를 모으기' },
+    { name: '국회의원 입법 건의', url: 'https://www.assembly.go.kr', who: '소관 위원회 소속 국회의원',
+      when: '의원이 법안으로 발의해 주기를 바랄 때. 지역구 의원이나 소관 상임위원회 위원에게 보냅니다.',
+      how: '국회 누리집 → 국회의원 → 의원을 찾아 누리집·전자우편으로 붙여넣어 보내기' },
+    { name: '국민연금공단', url: 'https://www.nps.or.kr', who: '국민연금공단',
+      when: '국민연금·기초연금 운영과 관련한 개선 의견. 공단이 검토하고 보건복지부에 전달할 수 있습니다.',
+      how: '누리집 → 고객의 소리(민원·제안) → 붙여넣기' },
+    { name: '국민참여입법센터', url: 'https://opinion.lawmaking.go.kr', who: '법령을 고치는 부처',
+      when: '관련 법령의 입법예고·규제 의견을 받는 기간에 의견을 낼 때.',
+      how: '입법예고 목록에서 관련 법령(예: 기초연금법 시행령)을 찾아 의견 제출에 붙여넣기' },
+  ];
+  function proposalText(post) {
+    const plain = window.spaceRichText ? window.spaceRichText.plain(post.text || '') : String(post.text || '');
+    const link = postLink(post);
+    return [
+      `제목: ${post.title || plain.split('\n')[0].slice(0, 60)}`,
+      '',
+      plain.trim(),
+      '',
+      `※ 이 제안은 시민 소통 공간 스페이스 커뮤니티(withpluces.com) 정책 제안 게시판에서 시민 ${post.likes || 0}명의 추천을 받은 의견입니다.${link ? `\n※ 원문과 시민 의견: ${link}` : ''}`,
+    ].join('\n');
+  }
+  function proposalPanel(post, item) {
+    const existing = item.querySelector('.proposal-panel');
+    if (existing) { existing.remove(); return; }
+    const panel = make('div', 'official-panel proposal-panel');
+    panel.appendChild(make('p', 'official-lead', '게시판에만 머무르면 제도가 바뀌지 않습니다. 아래 공식 경로로 제출해 주세요. 제출용 글을 복사해 드리니 각 기관 화면에 붙여넣기만 하면 됩니다. 제출은 본인 이름(본인 인증)으로 합니다.'));
+    const preview = make('textarea', 'official-text');
+    preview.value = proposalText(post);
+    preview.rows = 8;
+    preview.setAttribute('aria-label', '제출할 제안 내용(고쳐 써도 됩니다)');
+    const status = make('p', 'official-status');
+    status.setAttribute('role', 'status');
+    const choices = make('div', 'official-choices');
+    PROPOSAL_ROUTES.forEach((route, index) => {
+      const card = make('div', 'official-card');
+      const open = make('button', 'btn btn-primary', `📋 복사하고 ${route.name} 열기`);
+      open.type = 'button';
+      open.addEventListener('click', async () => {
+        let copied = false;
+        try { await navigator.clipboard.writeText(preview.value); copied = true; } catch {
+          preview.focus(); preview.select();
+          try { copied = document.execCommand('copy'); } catch { copied = false; }
+        }
+        window.open(route.url, '_blank', 'noopener');
+        status.textContent = copied ? `복사했습니다. 열린 ${route.name} 화면의 내용 칸에 붙여넣기(Ctrl+V, 휴대폰은 길게 누르기) 하세요. 제출한 뒤 「진행 경과 적기」에 접수번호를 남겨 주세요.` : '자동 복사가 막혀 있어요. 위 내용을 길게 눌러(또는 Ctrl+A, Ctrl+C) 복사해 붙여넣어 주세요.';
+      });
+      card.append(make('strong', '', `${index + 1}. ${route.name}`), make('span', 'official-when', `받는 곳: ${route.who}`), make('span', 'official-when', route.when), make('span', 'official-how', route.how), open);
+      choices.appendChild(card);
+    });
+    const after = make('p', 'official-after', '권장 순서: ① 국민제안으로 소관 부처에 공식 제출 → ② 국회 국민동의청원을 열고 스페이스톡·카카오톡으로 동의 모으기 → ③ 보건복지위원회 위원·지역구 의원에게 입법 건의. 진행 상황은 이 글의 「진행 경과」로 모두가 볼 수 있습니다.');
+    panel.append(preview, choices, status, after);
+    item.querySelector('.label')?.after(panel);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   function progressBadge(post) {
     const box = make('div', `progress-box s-${PROGRESS_STATUS.indexOf(post.progress.status)}`);
     const head = make('div', 'progress-head');
@@ -476,7 +547,7 @@
     const answer = make('textarea');
     answer.maxLength = 800;
     answer.rows = 3;
-    answer.placeholder = '시청·군청 답변 요지 (선택). 담당 공무원 이름·연락처 등 개인정보는 적지 말아 주세요.';
+    answer.placeholder = post.board === 'policy' ? '기관·국회 답변이나 진행 요지 (선택). 담당자 이름·연락처 등 개인정보는 적지 말아 주세요.' : '시청·군청 답변 요지 (선택). 담당 공무원 이름·연락처 등 개인정보는 적지 말아 주세요.';
     answer.value = post.progress?.answer || '';
     const actions = make('div', 'progress-actions');
     const save = make('button', 'btn btn-primary', '처리 경과 저장');
@@ -495,10 +566,10 @@
       save.disabled = true;
       try {
         const result = await api('/api/board/progress', { postId: post.id, channel: channel.value, status: status.value, receipt: receipt.value, answer: answer.value, ...extra });
-        state.posts.voice = state.posts.voice.map(entry => entry.id === post.id ? result.post : entry);
-        render('voice');
-        announce('voice');
-        setStatus('voice', result.message);
+        state.posts[post.board] = state.posts[post.board].map(entry => entry.id === post.id ? result.post : entry);
+        render(post.board);
+        announce(post.board);
+        setStatus(post.board, result.message);
       } catch (error) {
         note.textContent = error.message;
         save.disabled = false;
@@ -814,7 +885,7 @@
     if (post.board === 'research' && post.category === '대법원 전원합의체 판결' && !post.hidden) item.appendChild(judgmentReviews(post));
     if (post.images?.length) item.appendChild(postPhotos(post));
     if (post.board === 'voice' && post.forward) item.appendChild(forwardBadge(post));
-    if (post.board === 'voice' && post.progress) item.appendChild(progressBadge(post));
+    if ((post.board === 'voice' || post.board === 'policy') && post.progress) item.appendChild(progressBadge(post));
     const meta = make('div', 'label');
     meta.style.display = 'flex';
     meta.style.flexWrap = 'wrap';
@@ -854,6 +925,20 @@
       }
       if ((post.mine || state.user?.admin) && state.user) {
         const progress = make('button', 'like-btn', post.progress ? '처리 경과 고치기' : '처리 경과 적기');
+        progress.type = 'button';
+        progress.addEventListener('click', () => progressForm(post, item));
+        meta.appendChild(progress);
+      }
+    }
+    // 정책 제안: 정부(국민제안)·국회(국민동의청원·의원 입법 건의)·국민연금공단 등 공식 경로로 보내고, 진행 경과를 남긴다.
+    if (post.board === 'policy' && !post.hidden) {
+      const route = make('button', 'like-btn official-btn', '🏛️ 정부·국회에 제안하기');
+      route.type = 'button';
+      route.title = '국민제안·국민동의청원·국회의원 입법 건의 등 공식 경로로 보내기';
+      route.addEventListener('click', () => proposalPanel(post, item));
+      meta.appendChild(route);
+      if ((post.mine || state.user?.admin) && state.user) {
+        const progress = make('button', 'like-btn', post.progress ? '진행 경과 고치기' : '진행 경과 적기');
         progress.type = 'button';
         progress.addEventListener('click', () => progressForm(post, item));
         meta.appendChild(progress);
@@ -964,7 +1049,7 @@
     form.appendChild(title);
     const text = make('textarea');
     text.value = post.text;
-    text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 3000 : 5000;
+    text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 20000 : 5000;
     text.setAttribute('aria-label', '글 내용');
     const status = make('p', 'form-status');
     status.setAttribute('role', 'status');
