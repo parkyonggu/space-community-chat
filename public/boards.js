@@ -1047,6 +1047,15 @@
       const history = make('details', 'post-history');
       history.appendChild(make('summary', '', `수정 전 내용 ${post.history.length}건 (운영자만 보임)`));
       post.history.slice().reverse().forEach(entry => {
+        // 글쓴이는 예전 내용을 수정 칸에 다시 불러와 고칠 수 있다(잘못 붙여넣은 수정을 되돌릴 때).
+        if (post.mine && canWrite() && !post.hidden) {
+          const row = make('div', 'post-history-restore');
+          const restore = make('button', 'like-btn', '↩ 이 내용으로 되돌려 고치기');
+          restore.type = 'button';
+          restore.addEventListener('click', () => openEditor({ ...post, title: entry.title ?? post.title, text: entry.text }, item));
+          row.append(restore, make('span', 'label', ` ${entry.text.length.toLocaleString('ko-KR')}자 · 끝부분: …${entry.text.slice(-40)}`));
+          history.appendChild(row);
+        }
         const version = make('p', '', `${new Date(entry.savedAt).toLocaleString('ko-KR')} · ${entry.title ? `${entry.title} — ` : ''}${entry.text}`);
         version.style.whiteSpace = 'pre-wrap';
         history.appendChild(version);
