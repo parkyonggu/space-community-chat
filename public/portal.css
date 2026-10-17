@@ -1103,3 +1103,5 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .tm-header input { font-weight:800; color:var(--navy); }
 .tm-status { min-height:1.2em; margin:8px 0 0; color:#c0392b; font-size:13.5px; }
 .tm-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.policy-output.form-status { margin-top:8px; font-weight:700; color:#1f6f3f; }
+.policy-output.policy-error { color:#c0392b; }

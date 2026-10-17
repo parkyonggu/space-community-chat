@@ -32,11 +32,21 @@
     return result;
   }
 
+  // 정책 제안은 부처 칸이 20개라 아래쪽 안내 줄이 보이지 않으므로, 등록을 누른 부처 칸 바로 아래에도 결과를 보여 준다.
+  let policyCard = null;
   function setStatus(board, message, isError = false) {
     const element = statusOf[board];
-    if (!element) return;
-    element.textContent = message;
-    element.dataset.error = String(isError);
+    if (element) {
+      element.textContent = message;
+      element.dataset.error = String(isError);
+    }
+    const output = board === 'policy' && policyCard?.querySelector('.policy-output');
+    if (output) {
+      output.textContent = message;
+      output.className = `policy-output form-status${isError ? ' policy-error' : ''}`;
+      output.dataset.error = String(isError);
+      output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
   function canWrite() {
@@ -79,6 +89,14 @@
       tableButton.addEventListener('click', () => openTableMaker(textarea));
       tools.append(tableButton, make('span', 'photo-note', '소제목은 줄 앞에 ## 또는 ■ · 밑줄은 __글자__ · 2만 자까지'));
       card.append(textarea, tools, button, output);
+      // 붙여넣은 글이 2만 자를 넘으면 브라우저가 뒤쪽을 잘라 버리므로 바로 알려 준다.
+      textarea.addEventListener('paste', () => setTimeout(() => {
+        if (textarea.value.length >= textarea.maxLength) {
+          output.textContent = `글이 ${textarea.maxLength.toLocaleString('ko-KR')}자를 넘어 뒤쪽이 잘렸습니다. 별첨·참고자료 부분을 빼고 본문만 붙여넣어 주세요.`;
+          output.className = 'policy-output form-status policy-error';
+          output.dataset.error = 'true';
+        }
+      }, 0));
       grid.appendChild(card);
     });
     group.appendChild(grid);
@@ -1423,9 +1441,13 @@
   categoryContainer.addEventListener('click', event => {
     const button = event.target.closest('button.submitPolicy');
     if (!button) return;
-    const textarea = button.previousElementSibling;
-    const titleInput = button.parentElement.querySelector('.post-title-input');
+    // 등록 단추와 입력칸 사이에 '표 넣기' 줄이 있으므로 같은 부처 칸 안에서 입력칸을 찾는다.
+    const card = button.closest('.policy-category') || button.parentElement;
+    const textarea = card.querySelector('textarea');
+    const titleInput = card.querySelector('.post-title-input');
+    policyCard = card;
     if (!textarea.value.trim()) { setStatus('policy', '의견을 입력해 주세요.', true); return; }
+    setStatus('policy', '등록하는 중입니다…');
     submit('policy', { category: button.dataset.dept, title: titleInput?.value || '', text: textarea.value }, () => { textarea.value = ''; if (titleInput) titleInput.value = ''; });
   });
   $('researchFilter').addEventListener('change', () => render('research'));
