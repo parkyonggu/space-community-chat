@@ -8,7 +8,7 @@ const BOARDS = {
   // 소통·나눔: 분류는 고르지 않아도 되고(일반 이야기), 시는 '시'로 따로 모은다.
   community: { publicRead: true, categories: ['시'], optionalCategory: true, title: false, max: 5000 },
   voice: { publicRead: true, categories: ['민원이 불편했어요', '우리 동네 고쳐 주세요', '이 정책, 이상해요', '우리 의원님, 이러셔도 될까요'], title: false, max: 5000, likes: true },
-  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 20000, likes: true },
+  policy: { publicRead: true, categories: POLICY_DEPARTMENTS, title: false, max: 30000, likes: true },
   // 오늘의 이슈 평론: 회원·관리자가 그날 이슈(분야)마다 평론을 쓴다. 글마다 어떤 기사에 대한 평론인지 함께 저장한다.
   issue: { publicRead: true, categories: ['정치', '경제', '국방', '국제', '사회', '문화'], title: false, max: 10000, issue: true, likes: true },
   // 칼럼·학술: 누구나 읽고, 회원만 쓴다(2026-10 전체 공개로 변경).
