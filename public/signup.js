@@ -109,6 +109,8 @@ function updateControls() {
     control.verify.disabled = authBusy || !csrfToken;
     control.logout.disabled = authBusy || !csrfToken;
     control.remove.hidden = !authUser;
+    control.rename.hidden = !authUser;
+    control.rename.disabled = authBusy || !csrfToken;
     control.admin.hidden = !authUser?.admin;
     control.remove.disabled = authBusy || !csrfToken;
   });
@@ -236,6 +238,31 @@ function addAccountControls(parent, isGuide = false) {
   admin.textContent = '뉴스레터 관리';
   admin.hidden = true;
   admin.style.textDecoration = 'none';
+  const rename = document.createElement('button');
+  rename.type = 'button';
+  rename.className = 'auth-secondary';
+  rename.textContent = '닉네임 변경';
+  rename.hidden = true;
+  rename.addEventListener('click', async () => {
+    if (!authUser || authBusy) return;
+    const next = window.prompt('새 닉네임을 입력해 주세요 (2~25자). 이미 쓴 글·댓글의 작성자 이름도 함께 바뀝니다.', authUser.nickname);
+    if (next === null) return;
+    const nickname = next.trim();
+    if (nickname === authUser.nickname) return;
+    if (nickname.length < 2 || nickname.length > 25) { authStatus(status, '닉네임은 2~25자로 입력해 주세요.', true); return; }
+    authBusy = true;
+    updateControls();
+    try {
+      const result = await authRequest('account/nickname', { nickname });
+      authUser = result.user;
+      authStatus(status, result.message);
+    } catch (error) {
+      authStatus(status, error.message, true);
+    } finally {
+      authBusy = false;
+      updateControls();
+    }
+  });
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'auth-secondary';
@@ -243,9 +270,9 @@ function addAccountControls(parent, isGuide = false) {
   remove.setAttribute('aria-haspopup', 'dialog');
   remove.setAttribute('aria-controls', 'delete-dialog');
   remove.addEventListener('click', event => openAuth(deleteDialog, event.currentTarget));
-  group.append(name, login, signup, verify, logout, admin, remove, status);
+  group.append(name, login, signup, verify, rename, logout, admin, remove, status);
   parent.appendChild(group);
-  accountControls.push({ name, login, signup, verify, logout, admin, remove, status });
+  accountControls.push({ name, login, signup, verify, rename, logout, admin, remove, status });
 }
 
 addAccountControls(document.querySelector('header .brand'));

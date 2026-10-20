@@ -98,6 +98,7 @@ export class CommunityService extends DurableObject {
       onAccountDeleted: userId => Promise.all([this.board.anonymizeUser(userId), this.community.anonymizeUser(userId),
         env.TALK ? env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null,
         env.CHAT ? env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/user-deleted', { method: 'POST', body: JSON.stringify({ userId }) }) : null]),
+      onNicknameChanged: (userId, nickname) => Promise.all([this.board.renameUser(userId, nickname), this.community.renameUser(userId, nickname)]),
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,

@@ -28,6 +28,7 @@ const adminEmails = (process.env.ADMIN_EMAILS || '').split(',');
 const authApi = createAuthApi(dataDirectory, {
   siteUrl, mailer, adminEmails,
   onAccountDeleted: userId => Promise.all([boardApi.anonymizeUser(userId), communityApi.anonymizeUser(userId)]),
+  onNicknameChanged: (userId, nickname) => Promise.all([boardApi.renameUser(userId, nickname), communityApi.renameUser(userId, nickname)]),
 });
 const communityApi = createCommunityApi(dataDirectory, { authenticate: authApi.authenticate, requireVerifiedEmail: mailer.configured });
 // 게시글 사진은 data/board-images 폴더에 파일로 보관한다.

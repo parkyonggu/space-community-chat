@@ -281,6 +281,21 @@ test('missing SMTP never pretends that verification or recovery mail was sent', 
   assert.equal((await browser.request('password/request', { email: credentials.email })).response.status, 503);
 });
 
+test('a signed-in member can change the nickname', async t => {
+  const f = await fixture(t);
+  const browser = f.client();
+  await browser.request('session');
+  await browser.request('register', credentials);
+  const guest = f.client();
+  await guest.request('session');
+  assert.equal((await guest.request('account/nickname', { nickname: '새이름' })).response.status, 401);
+  assert.equal((await browser.request('account/nickname', { nickname: 'a' })).response.status, 400);
+  const changed = await browser.request('account/nickname', { nickname: 'Richardching bak' });
+  assert.equal(changed.response.status, 200);
+  assert.equal(changed.data.user.nickname, 'Richardching bak');
+  assert.equal((await f.readStore()).users[0].nickname, 'Richardching bak');
+});
+
 test('account deletion requires the current password and removes the user, sessions and mail links', async t => {
   const f = await fixture(t, { useMailer: true });
   const browser = f.client();

@@ -131,6 +131,9 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
   }
   handleCommunityApi.legacySubscribers = async () => (await readStore()).subscribers || [];
   handleCommunityApi.clearLegacySubscribers = () => updateStore(store => { store.subscribers = []; });
+  handleCommunityApi.renameUser = (userId, nickname) => updateStore(store => {
+    for (const comment of store.comments) if (comment.authorId === userId) comment.name = nickname;
+  });
   handleCommunityApi.anonymizeUser = userId => updateStore(store => {
     for (const comment of store.comments) {
       if (comment.authorId === userId) {

@@ -35,7 +35,7 @@ function publicUser(user) {
 }
 
 function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now = Date.now, mailer, storage, rateLimit, maxDerivations = 4,
-  adminEmails = [], onAccountDeleted, onRegistered = () => {} } = {}) {
+  adminEmails = [], onAccountDeleted, onNicknameChanged, onRegistered = () => {} } = {}) {
   const admins = new Set(adminEmails.map(email => email.trim().toLowerCase()).filter(Boolean));
   const isAdmin = user => Boolean(user.emailVerifiedAt) && admins.has(user.email);
   const userView = user => ({ ...publicUser(user), admin: isAdmin(user) });
@@ -254,7 +254,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
       const isSession = pathname === '/api/auth/session';
       const isAction = ['/api/auth/register', '/api/auth/login', '/api/auth/logout',
         '/api/auth/verify/request', '/api/auth/verify/confirm', '/api/auth/password/request', '/api/auth/password/reset',
-        '/api/auth/account/delete', '/api/auth/account/find', '/api/auth/admin/members', '/api/auth/admin/reset-link'].includes(pathname);
+        '/api/auth/account/delete', '/api/auth/account/find', '/api/auth/account/nickname', '/api/auth/admin/members', '/api/auth/admin/reset-link'].includes(pathname);
       if (!isSession && !isAction) throw new AuthError(404, '요청한 기능이 없습니다.');
       if ((isSession && request.method !== 'GET') || (isAction && request.method !== 'POST')) {
         response.setHeader('Allow', isSession ? 'GET' : 'POST');
@@ -325,6 +325,30 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         }
         send(response, 200, { link: url.href, expiresInHours: 24, member: adminView({ ...target, emailVerifiedAt: target.emailVerifiedAt || (input.verify === true ? true : null) }),
           message: '재설정 링크를 만들었습니다. 24시간 동안 한 번만 쓸 수 있으니 회원에게 직접(카톡·문자) 전해 주세요.' });
+        return;
+      }
+      // 닉네임 변경: 로그인한 회원이 자기 닉네임을 바꾼다. 이미 쓴 글·댓글의 작성자 이름도 함께 바꾼다.
+      if (pathname === '/api/auth/account/nickname') {
+        const user = session.userId ? store.users.find(entry => entry.id === session.userId) : null;
+        if (!user) throw new AuthError(401, '로그인 후 닉네임을 바꿀 수 있습니다.');
+        const nickname = typeof input.nickname === 'string' ? input.nickname.trim() : '';
+        if (nickname.length < 2 || nickname.length > 25) throw new AuthError(400, '닉네임은 2~25자로 입력해 주세요.');
+        limit(`nickname:${user.id}`, 10, 60 * 60000);
+        let updated = null;
+        await updateStore(current => {
+          const target = current.users.find(entry => entry.id === user.id);
+          if (!target) throw new AuthError(409, '계정 정보를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+          target.nickname = nickname;
+          updated = target;
+        });
+        if (onNicknameChanged) {
+          try {
+            await onNicknameChanged(user.id, nickname);
+          } catch (error) {
+            console.error('Nickname sync failed:', error);
+          }
+        }
+        send(response, 200, { user: userView(updated), message: `닉네임을 「${nickname}」(으)로 바꾸었습니다.` });
         return;
       }
       if (pathname === '/api/auth/account/delete') {

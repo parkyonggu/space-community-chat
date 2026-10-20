@@ -549,6 +549,9 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
     const store = await numberedStore();
     return store.posts.filter(isPublic).sort((left, right) => right.createdAt.localeCompare(left.createdAt)).map(entry => publicView(entry, store));
   };
+  handleBoardApi.renameUser = (userId, nickname) => updateStore(store => {
+    for (const post of store.posts) if (post.authorId === userId) post.authorName = nickname;
+  });
   handleBoardApi.anonymizeUser = userId => updateStore(store => {
     for (const post of store.posts) {
       if (post.authorId === userId) {
