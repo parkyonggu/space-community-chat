@@ -77,14 +77,14 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .progress-head { margin:0; color:#245a2a; }
     .progress-answer { margin:8px 0 0; color:var(--ink); line-height:1.7; }
     .official-note { margin-top:14px; }
-    .post-body { font-size:17px; line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
+    .post-body { font-size:calc(17px * var(--fs, 1)); line-height:1.85; color:var(--ink); word-break:keep-all; overflow-wrap:anywhere; }
     .post-body p { margin:0 0 1.1em; }
-    .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:18px; line-height:2.1; }
+    .post-body.poem { font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif; font-size:calc(18px * var(--fs, 1)); line-height:2.1; }
     .post-body a { color:var(--primary); }
-    .post-body .rt-h { margin:1.6em 0 .7em; font-size:19px; line-height:1.5; padding-bottom:6px; border-bottom:2px solid var(--primary, #1d3b8a); }
+    .post-body .rt-h { margin:1.6em 0 .7em; font-size:calc(19px * var(--fs, 1)); line-height:1.5; padding-bottom:6px; border-bottom:2px solid var(--primary, #1d3b8a); }
     .post-body u { text-decoration-thickness:2px; text-underline-offset:3px; }
     .rt-table { overflow-x:auto; margin:0 0 1.2em; -webkit-overflow-scrolling:touch; }
-    .rt-table table { border-collapse:collapse; min-width:100%; font-size:15px; line-height:1.5; }
+    .rt-table table { border-collapse:collapse; min-width:100%; font-size:calc(15px * var(--fs, 1)); line-height:1.5; }
     .rt-table th, .rt-table td { border:1px solid #d6dbe6; padding:7px 10px; text-align:left; white-space:nowrap; }
     .rt-table th { background:#eef2f9; font-weight:800; }
     .rt-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
@@ -98,6 +98,9 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
     .related a:hover span:first-child { color:var(--primary); text-decoration:underline; }
     .related small { color:var(--muted); white-space:nowrap; }
     .crumbs { font-size:13.5px; }
+    .fs-tools { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin:0 0 14px; font-size:14px; color:var(--muted, #5b6478); }
+    .fs-tools button { min-width:46px; min-height:38px; padding:4px 10px; border:1px solid #c5d0f0; border-radius:8px; background:#f2f5ff; color:#1d3b8a; font-weight:800; font-size:15px; cursor:pointer; }
+    .fs-tools button[aria-pressed="true"] { background:#1d3b8a; color:#fff; border-color:#1d3b8a; }
     .crumbs a { color:#c9d0e3; text-decoration:none; font-weight:700; }
     .crumbs a:hover { color:#fff; }
   </style>
@@ -105,6 +108,7 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
 </head>
 <body>
 ${body}
+  <script>(function(){var S=[0.9,1,1.15,1.3,1.5,1.75],K='postFontScale',i=1;try{var v=parseFloat(localStorage.getItem(K));if(S.indexOf(v)>=0)i=S.indexOf(v);}catch(e){}function set(n){i=Math.max(0,Math.min(S.length-1,n));document.documentElement.style.setProperty('--fs',S[i]);var r=document.querySelector('.fs-tools [data-fs=reset]');if(r)r.setAttribute('aria-pressed',S[i]===1?'true':'false');try{localStorage.setItem(K,S[i]);}catch(e){}}set(i);document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.fs-tools [data-fs]');if(!b)return;var a=b.getAttribute('data-fs');set(a==='up'?i+1:a==='down'?i-1:1);});})();</script>
   <footer class="site-footer">
     <div class="wrap footer-inner">
       <div><p class="footer-brand">스페이스 커뮤니티 <span style="font-weight:500;font-size:13px;color:#c9d0e3">스페이스커뮤니티 · withpluces.com</span></p><p>운영: (주)위드플러시아 · 문의: <a href="mailto:dragon600120@gmail.com" style="color:#fff">dragon600120@gmail.com</a></p></div>
@@ -145,6 +149,7 @@ function renderPostPage({ post, related = [] }, siteUrl = 'https://withpluces.co
     <article class="page-card">${post.issue && /^https:\/\//.test(post.issue.link || '') ? `
       <p class="issue-ref">평론한 이슈 · ${escapeHtml(post.issue.date ? `${post.issue.date.slice(4, 6)}월 ${Number(post.issue.date.slice(6, 8))}일` : '')} ${escapeHtml(post.category || '')}<br><a href="${escapeHtml(post.issue.link)}" target="_blank" rel="noopener nofollow">${escapeHtml(post.issue.title)}</a> <small>(${escapeHtml(post.issue.source || '원문')})</small></p>` : ''}${post.about && post.about.no ? `
       <p class="issue-ref">평론한 판결<br><a href="/post/${Number(post.about.no)}">${escapeHtml(post.about.title || '판결 글')}</a></p>` : ''}
+      <div class="fs-tools" role="group" aria-label="글자 크기"><span>글자 크기</span><button type="button" data-fs="down" aria-label="글자 작게">가−</button><button type="button" data-fs="reset" aria-label="보통 크기">보통</button><button type="button" data-fs="up" aria-label="글자 크게">가+</button></div>
       <div class="post-body${post.category === '시' ? ' poem' : ''}">
 ${bodyHtml(post.text)}
       </div>${(post.images || []).filter(id => /^[0-9a-f]{32}$/.test(id)).length ? `
