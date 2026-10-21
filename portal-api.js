@@ -498,7 +498,10 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
       if (rateLimit && !rateLimit(`law-egress:${ip}`, 5, 60000, now())) { send(429, { error: '잠시 후 다시 시도해 주세요.' }); return; }
       const seen = [];
       for (let i = 0; i < 6; i += 1) {
-        try { const r = await fetchImpl(`https://api.ipify.org?format=json&n=${i}`); const d = await r.json(); if (d?.ip) seen.push(d.ip); } catch { /* 무시 */ }
+        // 법제처 서버는 IPv4로 받으므로 IPv4 주소를 따로 잰다(api4는 IPv4로만 답함).
+        for (const host of ['api4.ipify.org', 'api.ipify.org']) {
+          try { const r = await fetchImpl(`https://${host}?format=json&n=${i}`); const d = await r.json(); if (d?.ip) seen.push(d.ip); } catch { /* 무시 */ }
+        }
       }
       send(200, { ips: [...new Set(seen)], tries: seen.length });
       return;
