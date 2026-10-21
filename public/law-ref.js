@@ -62,10 +62,21 @@
     wrap.addEventListener('click', function (e) { if (e.target === wrap) done(); });
     document.addEventListener('keydown', onKey);
     close.focus();
+    // 조문을 바로 가져오지 못하면 법제처 국가법령정보센터의 해당 조문 화면으로 가는 단추를 보여 준다.
+    function fallback() {
+      body.textContent = '';
+      var lawName = button.dataset.name === '헌법' ? '대한민국헌법' : button.dataset.name;
+      var label = '제' + button.dataset.jo + '조' + (button.dataset.sub !== '0' ? '의' + button.dataset.sub : '');
+      body.appendChild(el('p', '', '이 조문은 법제처 국가법령정보센터에서 바로 볼 수 있습니다.'));
+      var a = el('a', 'law-box-go', '「' + lawName + ' ' + label + '」 원문 보기 ›');
+      a.href = 'https://www.law.go.kr/법령/' + encodeURIComponent(lawName) + '/' + encodeURIComponent(label);
+      a.target = '_blank'; a.rel = 'noopener';
+      body.appendChild(a);
+    }
     var url = '/api/portal/law?name=' + encodeURIComponent(button.dataset.name) + '&jo=' + button.dataset.jo + '&sub=' + button.dataset.sub;
     fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
       body.textContent = '';
-      if (!res.ok) { body.appendChild(el('p', 'law-box-error', res.d.error || '조문을 불러오지 못했습니다.')); return; }
+      if (!res.ok) { fallback(); return; }
       var d = res.d;
       title.textContent = d.name + ' ' + d.label + (d.title ? '(' + d.title + ')' : '');
       d.lines.forEach(function (line) {
@@ -78,7 +89,7 @@
       a.href = d.link; a.target = '_blank'; a.rel = 'noopener';
       foot.appendChild(a);
       body.appendChild(foot);
-    }).catch(function () { body.textContent = '조문을 불러오지 못했습니다. 잠시 후 다시 눌러 주세요.'; });
+    }).catch(fallback);
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('.law-ref');
@@ -97,7 +108,8 @@
     '.law-box-body{overflow:auto;padding:14px 18px 18px;font-size:calc(17px * var(--fs, 1));line-height:1.75;color:#2b3550;word-break:keep-all}' +
     '.law-box-body p{margin:0 0 10px}.law-box-body .law-sub{padding-left:1.2em}.law-box-body .law-sub2{padding-left:2.4em}' +
     '.law-box-foot{margin-top:14px!important;padding-top:10px;border-top:1px solid #e3e6ef;font-size:14px;color:#5d6680}.law-box-foot a{color:#1d4ed8}' +
-    '.law-box-error{color:#b42318}';
+    '.law-box-error{color:#b42318}' +
+    '.law-box-go{display:inline-block;margin-top:6px;padding:12px 16px;border-radius:12px;background:#1d3b8a;color:#fff!important;font-weight:800;text-decoration:none}';
   document.head.appendChild(css);
   function start() { document.querySelectorAll('.post-body, .card .body').forEach(linkify); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

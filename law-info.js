@@ -31,9 +31,9 @@ function articleLines(unit) {
   return lines;
 }
 
-function createLawInfo({ oc = '', fetchImpl = fetch } = {}) {
+function createLawInfo({ oc = '', site = 'https://withpluces.com', fetchImpl = fetch } = {}) {
   async function getJson(url) {
-    const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
+    const response = await fetchImpl(url, { headers: { Accept: 'application/json', Referer: `${site}/`, Origin: site } });
     const text = await response.text();
     if (!response.ok) throw new Error(`법령정보 서버 오류 (${response.status})`);
     try { return JSON.parse(text); } catch {
@@ -46,7 +46,10 @@ function createLawInfo({ oc = '', fetchImpl = fetch } = {}) {
     const url = `${BASE}/lawSearch.do?OC=${encodeURIComponent(oc)}&target=law&type=JSON&display=20&query=${encodeURIComponent(query)}`;
     const data = await getJson(url);
     const laws = list(data?.LawSearch?.law);
-    if (!laws.length) throw new Error(`법령 검색 응답에 결과가 없습니다: ${JSON.stringify(data).replace(new RegExp(oc, 'g'), '***').slice(0, 300)}`);
+    if (!laws.length) {
+      if (data?.result && /검증/.test(String(data.result))) throw new Error('법제처 Open API 사용자 검증 실패: 신청 정보의 서버 IP·도메인 등록을 확인해 주세요.');
+      return null;
+    }
     const exact = laws.find(law => clean(law['법령명한글']) === query) || laws.find(law => clean(law['법령명한글']).replace(/\s/g, '') === query.replace(/\s/g, ''));
     if (!exact) return null;
     return { name: clean(exact['법령명한글']), mst: String(exact['법령일련번호'] || ''), id: String(exact['법령ID'] || ''), effective: String(exact['시행일자'] || '') };
