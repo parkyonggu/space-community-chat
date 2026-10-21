@@ -139,6 +139,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
         var a = b.getAttribute('data-fs'); i = a === 'up' ? Math.min(scales.length - 1, i + 1) : a === 'down' ? Math.max(0, i - 1) : 1; apply(); }); });
     })();
   </script>
+  <script defer src="/law-ref.js"></script>
   <script src="/kakao-share.js"></script>
   <script>
     document.getElementById('share').addEventListener('click', async () => {

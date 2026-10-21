@@ -153,6 +153,7 @@ export class CommunityService extends DurableObject {
       weatherKey: env.WEATHER_API_KEY || env.POLICY_NEWS_KEY || '',
       pensionKey: env.PENSION_API_KEY || env.POLICY_NEWS_KEY || '', pensionUploadToken: env.PENSION_UPLOAD_TOKEN || '', pensionKeys: { recipt: env.PENSION_RECIPT_KEY || '', sbscrb: env.PENSION_SBSCRB_KEY || '' }, pensionUrls: { recipt: env.PENSION_RECIPT_URL || '', sbscrb: env.PENSION_SBSCRB_URL || '' },
       financeKey: env.FINLIFE_API_KEY || '', pensionSavingsKey: env.FSS_PENSION_KEY || '', farmKeys: { kamisKey: env.KAMIS_CERT_KEY || '', kamisId: env.KAMIS_CERT_ID || '', nongsaroKey: env.NONGSARO_API_KEY || '' },
+      lawOc: env.LAW_OC || '',
       molitKeys: { apt: env.MOLIT_APT_KEY || '', nrg: env.MOLIT_BLDG_KEY || '', land: env.MOLIT_LAND_KEY || '' },
       cache: { get: key => state.storage.get(key), set: (key, value) => state.storage.put(key, value) },
       onlineCount: async () => {

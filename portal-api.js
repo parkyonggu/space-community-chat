@@ -12,6 +12,7 @@ const { createPensionSavings } = require('./pension-savings');
 const { createHash } = require('node:crypto');
 const { createFarmInfo } = require('./farm-info');
 const newsIssues = require('./news-issues');
+const { createLawInfo } = require('./law-info');
 
 const DAY = 24 * 60 * 60 * 1000;
 const kstDate = timestamp => new Date(timestamp + 9 * 60 * 60 * 1000);
@@ -43,7 +44,7 @@ const RETRY_AFTER_FAILURE = 5 * 60 * 1000;
 const BENEFITS_TTL = 12 * 60 * 60 * 1000;
 const BENEFITS_PAGE = 60;
 
-function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', financeKey = '', pensionSavingsKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
+function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys = {}, policyKey = '', benefitKey = '', benefitUrl = '', weatherKey = '', financeKey = '', pensionSavingsKey = '', pensionKey = '', pensionKeys = {}, pensionUrls = {}, pensionUploadToken = '', farmKeys = {}, lawOc = '', fetchImpl = fetch, cache, now = Date.now, onlineCount = async () => null, rateLimit, authenticate } = {}) {
   const memory = new Map();
   const store = cache || { get: async key => memory.get(key), set: async (key, value) => { memory.set(key, value); } };
   const inflight = new Map();
@@ -55,6 +56,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
   const finance = createFinanceInfo({ key: financeKey, fetchImpl: (...args) => fetchImpl(...args) });
   const pensionSavings = createPensionSavings({ key: pensionSavingsKey, fetchImpl: (...args) => fetchImpl(...args) });
   const pension = createPension({ key: pensionKey, reciptKey: pensionKeys.recipt, sbscrbKey: pensionKeys.sbscrb, reciptUrl: pensionUrls.recipt, sbscrbUrl: pensionUrls.sbscrb, fetchImpl: (...args) => fetchImpl(...args) });
+  const law = createLawInfo({ oc: lawOc, fetchImpl: (...args) => fetchImpl(...args) });
   const farm = createFarmInfo({ kamisKey: farmKeys.kamisKey || '', kamisId: farmKeys.kamisId || '', nongsaroKey: farmKeys.nongsaroKey || '', fetchImpl: (...args) => fetchImpl(...args) });
 
   async function loadIndicators() {
@@ -465,6 +467,22 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     });
   }
 
+  // 조문 바로 보기: /api/portal/law?name=기초연금법&jo=8&sub=0 → 현행 조문 원문(하루 동안 저장해 두고 씀)
+  async function handleLaw(request, send) {
+    if (request.method !== 'GET') { send(405, { error: '지원하지 않는 요청 방식입니다.' }); return; }
+    const ip = request.socket?.remoteAddress || 'unknown';
+    if (rateLimit && !rateLimit(`law:${ip}`, 60, 60000, now())) { send(429, { error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    if (!law.ready) { send(503, { error: '법령정보 연결이 아직 설정되지 않았습니다.' }); return; }
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    const name = String(params.get('name') || '').trim().slice(0, 40);
+    const jo = Number(params.get('jo')), sub = Number(params.get('sub') || 0);
+    if (!/^[가-힣·\s]{2,40}$/.test(name) || !Number.isInteger(jo) || jo < 1 || jo > 9999 || !Number.isInteger(sub) || sub < 0 || sub > 99) { send(400, { error: '법령 이름과 조문 번호를 확인해 주세요.' }); return; }
+    const cacheName = `law-${name.replace(/\s/g, '')}-${jo}-${sub}`;
+    const value = await cached(cacheName, result => (result?.found ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000), () => law.article(name, jo, sub));
+    if (!value) { send(502, { error: lastErrors.get(cacheName) || '법령정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.' }); return; }
+    send(value.found ? 200 : 404, value.found ? value : { error: `「${value.name}」 ${value.label || ''}을(를) 찾지 못했습니다.`, ...value });
+  }
+
   async function handlePortalApi(request, response, pathname) {
     const send = (status, body) => {
       const payload = JSON.stringify(body);
@@ -473,6 +491,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     };
     if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual' || pathname === '/api/portal/benefits/raw') { await handleBenefits(request, send, pathname); return; }
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
+    if (pathname === '/api/portal/law') { await handleLaw(request, send); return; }
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
     if (pathname === '/api/portal/pension' || pathname.startsWith('/api/portal/pension/')) { await handlePension(request, send, pathname); return; }
     if (pathname === '/api/portal/farm' || pathname === '/api/portal/farm/raw') { await handleFarm(request, send, pathname); return; }
