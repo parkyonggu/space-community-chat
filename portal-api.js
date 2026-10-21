@@ -492,6 +492,17 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     if (pathname === '/api/portal/benefits' || pathname === '/api/portal/benefits/manual' || pathname === '/api/portal/benefits/raw') { await handleBenefits(request, send, pathname); return; }
     if (pathname === '/api/portal/weather') { await handleWeather(request, send); return; }
     if (pathname === '/api/portal/law') { await handleLaw(request, send); return; }
+    // 법제처 Open API 신청서에 적을 '서버장비 IP' 확인용: 이 서버가 바깥으로 요청할 때 쓰는 IP를 몇 번 재어 본다.
+    if (pathname === '/api/portal/law/egress') {
+      const ip = request.socket?.remoteAddress || 'unknown';
+      if (rateLimit && !rateLimit(`law-egress:${ip}`, 5, 60000, now())) { send(429, { error: '잠시 후 다시 시도해 주세요.' }); return; }
+      const seen = [];
+      for (let i = 0; i < 6; i += 1) {
+        try { const r = await fetchImpl(`https://api.ipify.org?format=json&n=${i}`); const d = await r.json(); if (d?.ip) seen.push(d.ip); } catch { /* 무시 */ }
+      }
+      send(200, { ips: [...new Set(seen)], tries: seen.length });
+      return;
+    }
     if (pathname === '/api/portal/issues' || pathname === '/api/portal/issues/admin') { await handleIssues(request, send, pathname); return; }
     if (pathname === '/api/portal/pension' || pathname.startsWith('/api/portal/pension/')) { await handlePension(request, send, pathname); return; }
     if (pathname === '/api/portal/farm' || pathname === '/api/portal/farm/raw') { await handleFarm(request, send, pathname); return; }
