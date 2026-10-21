@@ -40,7 +40,7 @@
     while (lines.length && !lines[lines.length - 1]) lines.pop();
     return lines;
   }
-  async function drawCard({ kindLabel, cardTitle, body, footer }) {
+  async function drawCard({ kindLabel, cardTitle, body, footer, more = '자세히 보기' }) {
     const W = 1080, PAD = 72, MAX_H = 1440, MIN_H = 1080;
     const canvas = document.createElement('canvas');
     canvas.width = W;
@@ -89,7 +89,7 @@
       c.font = font(bodySize, 400);
       bodyLines = wrap(c, body, width);
       const height = titleLines.length * titleSize * 1.35 + 40 + bodyLines.length * bodySize * 1.6;
-      if (height <= bottom - top || bodySize <= 30) break;
+      if (height <= bottom - top || bodySize <= 40) break;
       bodySize -= 2;
       titleSize = Math.max(48, titleSize - 2);
     }
@@ -103,7 +103,7 @@
     c.fillStyle = '#2b3550';
     c.font = font(bodySize, 400);
     const room = Math.floor((bottom - y + bodySize) / (bodySize * 1.6));
-    const shown = bodyLines.length > room ? [...bodyLines.slice(0, Math.max(1, room - 1)), '… (이어지는 내용은 「자세히 보기」에서)'] : bodyLines;
+    const shown = bodyLines.length > room ? [...bodyLines.slice(0, Math.max(1, room - 1)), `▼ 이어지는 내용은 아래 「${more}」 단추를 누르세요`] : bodyLines;
     for (const line of shown) { c.fillText(line, PAD, y); y += bodySize * 1.6; }
     // 바닥: 주소
     c.fillStyle = '#f4f5f9';
@@ -229,13 +229,20 @@
       // 정보안내처럼 본문에 이 사이트의 글 주소(/post/번호)가 있으면: 카드를 누르면 그 글이 바로 열리게 하고,
       // 그림 속에 (누를 수 없는) 주소 글자를 그리는 대신 '전체 글 읽기' 안내를 넣는다.
       const postLink = findPostLink(card?.body) || findPostLink(description);
-      if (postLink) {
+      let extraButton = null;
+      if (postLink && /\/e\/[0-9a-z-]+$/.test(String(link || ''))) {
+        // 정보안내 공유 주소(/e/번호)가 있으면: 카드와 첫 단추는 안내문 전체(/e/번호)를 열고,
+        // 둘째 단추로 본문에 걸린 글(/post/번호)을 바로 연다. (카카오톡 카드는 단추 2개까지)
+        button = '전체 내용 보기';
+        extraButton = { title: '게시글 원문 보기', link: { mobileWebUrl: postLink, webUrl: postLink } };
+        if (card) card = { ...card, more: button };
+      } else if (postLink) {
         link = postLink;
         button = '전체 글 읽기';
         const strip = value => String(value || '').split('\n').filter(line => !line.includes(postLink)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
-        if (card) card = { ...card, body: `${strip(card.body)}\n\n▶ 아래 「전체 글 읽기」를 누르면 글 전체를 볼 수 있습니다.` };
+        if (card) card = { ...card, more: button, body: `${strip(card.body)}\n\n▶ 아래 「전체 글 읽기」를 누르면 글 전체를 볼 수 있습니다.` };
         description = strip(description).replace(/\s+/g, ' ').slice(0, 120);
-      }
+      } else if (card) card = { ...card, more: button };
       const Kakao = await load();
       if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY);
       let image = { imageUrl, imageWidth: 1200, imageHeight: 630 };
@@ -270,7 +277,7 @@
       const payload = {
         objectType: 'feed',
         content: { ...text, ...image, link: target },
-        buttons: [{ title: button, link: target }],
+        buttons: [{ title: button, link: target }, ...(extraButton ? [extraButton] : [])],
       };
       Kakao.Share.sendDefault(payload);
       againBar(Kakao, payload, { title, link });

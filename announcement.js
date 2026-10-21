@@ -79,7 +79,8 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .day span { display:inline-block; padding:3px 12px; border-radius:999px; background:rgba(14,23,48,.08); font-size:12px; color:#4b5470; }
     .msg { display:flex; gap:8px; align-items:flex-start; }
     .avatar { flex:none; width:36px; height:36px; border-radius:13px; margin-top:2px; }
-    .msg-body { display:flex; flex-direction:column; max-width:min(86%,520px); min-width:0; }
+    .msg-body { display:flex; flex-direction:column; flex:1; max-width:640px; min-width:0; }
+    .msg-line .card { flex:1; min-width:0; }
     .msg-name { font-size:12.5px; color:#2b3550; margin:0 0 4px 2px; }
     .msg-line { display:flex; align-items:flex-end; gap:6px; }
     .time { flex:none; font-size:11px; color:#7a8296; }
@@ -89,13 +90,15 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .card-head strong { font-size:14px; }
     .card-head span { margin-left:auto; font-size:12px; font-weight:800; color:var(--gold); }
     .card .poster { display:block; width:100%; max-height:none; background:#f4f5f9; }
-    .card h2 { margin:0; padding:12px 14px 4px; font-size:17px; line-height:1.45; color:var(--ink); word-break:keep-all; }
-    .card .body { padding:2px 14px 8px; font-size:15px; line-height:1.7; color:var(--text); word-break:keep-all; overflow-wrap:anywhere; }
+    .card h2 { margin:0; padding:12px 14px 4px; font-size:calc(20px * var(--fs, 1)); line-height:1.45; color:var(--ink); word-break:keep-all; }
+    .card .body { padding:2px 14px 8px; font-size:calc(17px * var(--fs, 1)); line-height:1.75; color:var(--text); word-break:keep-all; overflow-wrap:anywhere; }
     .card .actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 14px; border-radius:10px; font-weight:800; font-size:14px; text-decoration:none; border:1px solid var(--line); color:var(--navy); background:#fff; cursor:pointer; font-family:inherit; }
     .btn.kakao { background:#fee500; border-color:#fee500; color:#191919; }
     .btn.gold { background:var(--gold); border-color:var(--gold); color:var(--navy); }
     .card .body a.body-link { color:#1d4ed8; text-decoration:underline; word-break:break-all; }
+    .fs-tools { display:flex; align-items:center; justify-content:flex-end; gap:6px; max-width:760px; margin:0 auto; padding:10px 12px 0; font-size:14px; color:#4b5470; }
+    .fs-tools button { min-width:52px; min-height:40px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--navy); font-weight:800; font-size:16px; font-family:inherit; cursor:pointer; }
     .bar { flex:none; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
     .bar .btn.gold { background:var(--gold); border-color:var(--gold); }
   </style>
@@ -105,6 +108,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     <a class="back" href="/chat" aria-label="스페이스톡으로">‹</a>
     <div class="room"><h1>${kind.id === 'info' ? '📊 정보안내' : '📣 모임안내'}</h1><span>스페이스 커뮤니티 소식 채널</span></div>
   </header>
+  <div class="fs-tools" role="group" aria-label="글자 크기"><span>글자 크기</span><button type="button" data-fs="down">가−</button><button type="button" data-fs="reset">보통</button><button type="button" data-fs="up">가+</button></div>
   <main class="messages">
     <div class="day"><span>${escapeHtml(dayText)}</span></div>
     <div class="msg">
@@ -125,6 +129,16 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     </div>
   </main>
   <nav class="bar"><a class="btn gold" href="/chat">스페이스톡에서 받아 보기</a><a class="btn" href="/">커뮤니티 홈</a></nav>
+  <script>
+    (function () {
+      var scales = [0.9, 1, 1.15, 1.3, 1.5, 1.75], key = 'postFontScale', i = 1;
+      try { var saved = parseFloat(localStorage.getItem(key)); if (scales.indexOf(saved) >= 0) i = scales.indexOf(saved); } catch (e) {}
+      function apply() { document.documentElement.style.setProperty('--fs', scales[i]); try { localStorage.setItem(key, scales[i]); } catch (e) {} }
+      apply();
+      document.querySelectorAll('[data-fs]').forEach(function (b) { b.addEventListener('click', function () {
+        var a = b.getAttribute('data-fs'); i = a === 'up' ? Math.min(scales.length - 1, i + 1) : a === 'down' ? Math.max(0, i - 1) : 1; apply(); }); });
+    })();
+  </script>
   <script src="/kakao-share.js"></script>
   <script>
     document.getElementById('share').addEventListener('click', async () => {
