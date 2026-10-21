@@ -268,7 +268,7 @@ export class ChatRoom extends DurableObject {
     if (url.pathname === '/internal/announcement-edit' && request.method === 'POST') {
       const { id, text } = await request.json().catch(() => ({}));
       const body = typeof text === 'string' ? text.trim() : '';
-      if (!announcement.ID.test(String(id || '')) || !announcement.kindOf(body) || body.length > 2000) return json({ error: 'invalid' }, 400);
+      if (!announcement.ID.test(String(id || '')) || !announcement.kindOf(body) || body.length > 20000) return json({ error: 'invalid' }, 400);
       const record = await this.ctx.storage.get(`a:${id}`);
       if (record) await this.ctx.storage.put(`a:${id}`, { ...record, text: body, editedAt: Date.now() });
       const key = squareKeyOf(id);
@@ -508,7 +508,7 @@ export default {
         const { record } = await response.json().catch(() => ({}));
         const html = record ? announcement.renderAnnouncementPage(record, env.SITE_URL || url.origin) : null;
         if (!html) return new Response('<!doctype html><meta charset="utf-8"><title>안내를 찾을 수 없습니다</title><p style="font-family:sans-serif;padding:24px">삭제되었거나 없는 안내입니다. <a href="/">스페이스 커뮤니티 홈</a>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-        return new Response(request.method === 'HEAD' ? null : html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
+        return new Response(request.method === 'HEAD' ? null : html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
       }
       // 게시글 개별 페이지와 검색엔진 지도(글이 올라오면 자동으로 늘어난다)
       const postMatch = /^\/post\/(\d{1,9})\/?$/.exec(url.pathname);

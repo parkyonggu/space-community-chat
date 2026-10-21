@@ -234,9 +234,10 @@ export class ChatService extends DurableObject {
           if (link && this.env.CHAT) {
             const text = result.message.text.replace(/\n*자세히 보기·카카오톡 공유: \S+\s*$/, '').replace(/\n*안내장 사진: \S+\s*$/, '');
             try {
-              await this.env.CHAT.get(this.env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/announcement-edit', {
+              const synced = await this.env.CHAT.get(this.env.CHAT.idFromName('public-chat-v1')).fetch('https://internal.invalid/internal/announcement-edit', {
                 method: 'POST', body: JSON.stringify({ id: link[1], text }),
               });
+              if (!synced.ok) console.error('Announcement source edit rejected:', synced.status);
             } catch (error) { console.error('Announcement source edit failed:', error); }
           }
           return json({ message: result.message });
