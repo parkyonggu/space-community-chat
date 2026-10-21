@@ -46,6 +46,7 @@ function createLawInfo({ oc = '', fetchImpl = fetch } = {}) {
     const url = `${BASE}/lawSearch.do?OC=${encodeURIComponent(oc)}&target=law&type=JSON&display=20&query=${encodeURIComponent(query)}`;
     const data = await getJson(url);
     const laws = list(data?.LawSearch?.law);
+    if (!laws.length) throw new Error(`법령 검색 응답에 결과가 없습니다: ${JSON.stringify(data).replace(new RegExp(oc, 'g'), '***').slice(0, 300)}`);
     const exact = laws.find(law => clean(law['법령명한글']) === query) || laws.find(law => clean(law['법령명한글']).replace(/\s/g, '') === query.replace(/\s/g, ''));
     if (!exact) return null;
     return { name: clean(exact['법령명한글']), mst: String(exact['법령일련번호'] || ''), id: String(exact['법령ID'] || ''), effective: String(exact['시행일자'] || '') };

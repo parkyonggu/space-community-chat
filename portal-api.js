@@ -477,7 +477,7 @@ function createPortalApi({ ecosKey = '', rebKey = '', molitKey = '', molitKeys =
     const name = String(params.get('name') || '').trim().slice(0, 40);
     const jo = Number(params.get('jo')), sub = Number(params.get('sub') || 0);
     if (!/^[가-힣·\s]{2,40}$/.test(name) || !Number.isInteger(jo) || jo < 1 || jo > 9999 || !Number.isInteger(sub) || sub < 0 || sub > 99) { send(400, { error: '법령 이름과 조문 번호를 확인해 주세요.' }); return; }
-    const cacheName = `law-${name.replace(/\s/g, '')}-${jo}-${sub}`;
+    const cacheName = `law2-${name.replace(/\s/g, '')}-${jo}-${sub}`;
     const value = await cached(cacheName, result => (result?.found ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000), () => law.article(name, jo, sub));
     if (!value) { send(502, { error: lastErrors.get(cacheName) || '법령정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.' }); return; }
     send(value.found ? 200 : 404, value.found ? value : { error: `「${value.name}」 ${value.label || ''}을(를) 찾지 못했습니다.`, ...value });
