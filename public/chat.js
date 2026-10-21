@@ -635,8 +635,15 @@
       const save = make('button', 'btn navy block', '고친 내용 저장');
       save.type = 'button';
       save.addEventListener('click', async () => {
-        const text = input.value.trim();
+        let text = input.value.trim();
         if (!text) { toast('내용을 적어 주세요.'); return; }
+        // 모임안내·초청장·정보안내는 맨 앞의 [정보안내] 같은 표시가 있어야 카드·카톡 공유·공유 화면이 유지된다.
+        // 표시를 지웠거나 그 위에 다른 줄을 넣었으면 표시를 맨 앞으로 되돌린다(그 다음 줄이 제목).
+        const kind = ANNOUNCE_KINDS.find(entry => base.trim().startsWith(entry.tag));
+        if (kind && !text.startsWith(kind.tag)) {
+          text = `${kind.tag}\n${text.split(kind.tag).join('').replace(/^\s+/, '')}`;
+          toast(`맨 앞의 ${kind.tag} 표시를 되살렸어요. 표시 바로 다음 줄이 제목이 됩니다.`);
+        }
         save.disabled = true;
         try {
           const result = await api(`/api/chat/rooms/${state.current}/messages/${message.id}/edit`, { method: 'POST', body: { text: `${text}${trailer}` } });
