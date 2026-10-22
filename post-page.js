@@ -110,6 +110,7 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
 ${body}
   <script>(function(){var S=[0.9,1,1.15,1.3,1.5,1.75],K='postFontScale',i=1;try{var v=parseFloat(localStorage.getItem(K));if(S.indexOf(v)>=0)i=S.indexOf(v);}catch(e){}function set(n){i=Math.max(0,Math.min(S.length-1,n));document.documentElement.style.setProperty('--fs',S[i]);var r=document.querySelector('.fs-tools [data-fs=reset]');if(r)r.setAttribute('aria-pressed',S[i]===1?'true':'false');try{localStorage.setItem(K,S[i]);}catch(e){}}set(i);document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.fs-tools [data-fs]');if(!b)return;var a=b.getAttribute('data-fs');set(a==='up'?i+1:a==='down'?i-1:1);});})();</script>
   <script defer src="/law-ref.js"></script>
+  <script defer src="/agency-links.js"></script>
   <footer class="site-footer">
     <div class="wrap footer-inner">
       <div><p class="footer-brand">스페이스 커뮤니티 <span style="font-weight:500;font-size:13px;color:#c9d0e3">스페이스커뮤니티 · withpluces.com</span></p><p>운영: (주)위드플러시아 · 문의: <a href="mailto:dragon600120@gmail.com" style="color:#fff">dragon600120@gmail.com</a></p></div>

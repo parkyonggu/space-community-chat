@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>스페이스커뮤니티 (withpluces.com) | 시민 소통·시민의 소리·정책 제안</title>
+  <title>스페이스커뮤니티 (withpluces.com) | 국민의 소통·국민의 소리·정책 제안</title>
   <meta name="description" content="스페이스커뮤니티(withpluces.com)는 시민 누구나 일상을 나누고, 행정에서 겪은 불편을 사실에 기반해 이야기하며, 정부 정책에 의견과 대안을 제안하는 열린 공론장입니다. 소통·나눔 광장, 시민의 소리, 부처별 정책 제안 게시판, 매주 월요일 아침 7시 경제·정책 브리핑 '스페이스 레터'(무료 구독), 회원끼리 대화방을 만드는 '스페이스 톡'을 운영합니다.">
   <link rel="canonical" href="https://withpluces.com/">
   <meta name="naver-site-verification" content="153af3ebdc42b9c0258c046e51ca6b607860a9b5" />
   <meta property="og:url" content="https://withpluces.com/">
-  <meta property="og:title" content="스페이스커뮤니티 (withpluces.com) | 시민 소통·시민의 소리·정책 제안">
+  <meta property="og:title" content="스페이스커뮤니티 (withpluces.com) | 국민의 소통·국민의 소리·정책 제안">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="스페이스 커뮤니티">
   <meta property="og:description" content="스페이스커뮤니티(withpluces.com)는 시민 누구나 일상을 나누고, 행정에서 겪은 불편을 사실에 기반해 이야기하며, 정부 정책에 의견과 대안을 제안하는 열린 공론장입니다.">
@@ -809,5 +809,6 @@
 const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput"); function sendMessage(){const message=chatInput.value.trim();if(message){socket.emit("chat message",message);chatInput.value="";}} document.getElementById("sendBtn").addEventListener("click",sendMessage);chatInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessage();}});socket.on("chat message",message=>{const item=document.createElement("div");item.className="chat-message";item.textContent=message;chatBox.appendChild(item);chatBox.scrollTop=chatBox.scrollHeight;});
   </script>
   <a class="talk-fab" href="/chat" aria-label="스페이스 톡 열기"><span aria-hidden="true">💬</span><span>스페이스 톡</span></a>
+  <script defer src="/agency-links.js"></script>
 </body>
 </html>
