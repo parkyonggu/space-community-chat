@@ -12,10 +12,14 @@ const KINDS = [
 const ID = /^\d{10,15}-[a-z0-9]{6,16}$/;
 
 const kindOf = text => KINDS.find(kind => typeof text === 'string' && text.trim().startsWith(kind.tag)) || null;
+// 보통메시지: 스페이스톡 '💬 보통메시지' 채널 글의 공유 주소(/e/번호) 페이지에만 쓰는 종류.
+// kindOf에는 넣지 않는다(광장의 [표시] 글이 모임안내 채널로 가는 규칙은 그대로 두기 위해).
+const GENERAL = { tag: '[보통메시지]', id: 'general', label: '💬 보통메시지', image: '/share/announcement.png' };
+const pageKindOf = text => kindOf(text) || (typeof text === 'string' && text.trim().startsWith(GENERAL.tag) ? GENERAL : null);
 
 // 첫 줄(표시 뒤)을 제목, 나머지를 본문으로 나눈다.
 function parse(text) {
-  const kind = kindOf(text);
+  const kind = pageKindOf(text);
   if (!kind) return null;
   const lines = text.trim().slice(kind.tag.length).split('\n').map(line => line.trim());
   while (lines.length && !lines[0]) lines.shift();
@@ -94,6 +98,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .card .body { padding:2px 14px 8px; font-size:calc(17px * var(--fs, 1)); line-height:1.75; color:var(--text); word-break:keep-all; overflow-wrap:anywhere; }
     .card .actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px 12px; }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 14px; border-radius:10px; font-weight:800; font-size:14px; text-decoration:none; border:1px solid var(--line); color:var(--navy); background:#fff; cursor:pointer; font-family:inherit; }
+    .btn.naver { background:#03c75a; border-color:#03c75a; color:#fff; }
     .btn.kakao { background:#fee500; border-color:#fee500; color:#191919; }
     .btn.gold { background:var(--gold); border-color:var(--gold); color:var(--navy); }
     .card .body a.body-link { color:#1d4ed8; text-decoration:underline; word-break:break-all; }
@@ -121,7 +126,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
             ${poster ? `<a href="${escapeHtml(poster)}" target="_blank" rel="noopener"><img class="poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)} 안내장"></a>` : ''}
             <h2>${escapeHtml(title)}</h2>
             <div class="body">${bodyHtml}</div>
-            <div class="actions">${postUrl ? `<a class="btn gold" href="${escapeHtml(postUrl)}">📖 전체 글 읽기</a>` : ''}<button class="btn kakao" type="button" id="share">카카오톡으로 공유</button></div>
+            <div class="actions">${postUrl ? `<a class="btn gold" href="${escapeHtml(postUrl)}">📖 전체 글 읽기</a>` : ''}<a class="btn naver" href="https://share.naver.com/web/shareView?url=${encodeURIComponent(url)}&title=${encodeURIComponent(`${kind.label} ${title}`)}" target="_blank" rel="noopener" title="네이버 블로그·카페·밴드로 공유">N 네이버 블로그·카페</a><button class="btn kakao" type="button" id="share">카카오톡으로 공유</button></div>
           </article>
           <span class="time">${escapeHtml(timeText)}</span>
         </div>
@@ -156,4 +161,4 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
 </html>`;
 }
 
-module.exports = { KINDS, ID, kindOf, parse, renderAnnouncementPage };
+module.exports = { KINDS, GENERAL, ID, kindOf, parse, renderAnnouncementPage };
