@@ -2,6 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomBytes, randomUUID, createHash, scrypt, timingSafeEqual } = require('node:crypto');
 const { promisify } = require('node:util');
+const guard = require('./content-guard.js');
 
 const deriveKey = promisify(scrypt);
 const passwordParameters = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
@@ -35,7 +36,7 @@ function publicUser(user) {
 }
 
 function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now = Date.now, mailer, storage, rateLimit, maxDerivations = 4,
-  adminEmails = [], onAccountDeleted, onNicknameChanged, onRegistered = () => {} } = {}) {
+  adminEmails = [], onAccountDeleted, onNicknameChanged, onRegistered = () => {}, onBlocked } = {}) {
   const admins = new Set(adminEmails.map(email => email.trim().toLowerCase()).filter(Boolean));
   const isAdmin = user => Boolean(user.emailVerifiedAt) && admins.has(user.email);
   const userView = user => ({ ...publicUser(user), admin: isAdmin(user) });
@@ -333,6 +334,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         if (!user) throw new AuthError(401, '로그인 후 닉네임을 바꿀 수 있습니다.');
         const nickname = typeof input.nickname === 'string' ? input.nickname.trim() : '';
         if (nickname.length < 2 || nickname.length > 25) throw new AuthError(400, '닉네임은 2~25자로 입력해 주세요.');
+        guard.enforce({ where: '닉네임 변경', user: { ...user, admin: false }, parts: [nickname], makeError: message => new AuthError(400, message), report: onBlocked });
         limit(`nickname:${user.id}`, 10, 60 * 60000);
         let updated = null;
         await updateStore(current => {
@@ -450,6 +452,7 @@ function createAuthApi(dataDirectory, { siteUrl = 'https://withpluces.com', now 
         if (nickname.length < 2 || nickname.length > 25 || input.terms !== true || input.privacy !== true) {
           throw new AuthError(400, '닉네임 2~25자와 필수 동의 항목을 확인해 주세요.');
         }
+        guard.enforce({ where: '회원가입 닉네임', user: { nickname }, parts: [nickname], makeError: message => new AuthError(400, message), report: onBlocked });
         const salt = randomBytes(16).toString('hex');
         const key = await passwordKey(password, salt);
         user = {

@@ -944,6 +944,25 @@
       });
       meta.appendChild(notify);
     }
+    // 운영자만: 이 글을 본문까지 운영자 슬랙 채널(#사이트-알림)로 보낸다.
+    if (state.user?.admin && !post.hidden) {
+      const slack = make('button', 'like-btn slack-send-btn', '📤 슬랙으로 보내기');
+      slack.type = 'button';
+      slack.title = '제목·글쓴이·본문·글 주소를 운영자 슬랙 채널로 보냅니다 (운영자에게만 보임)';
+      slack.addEventListener('click', async () => {
+        slack.disabled = true;
+        try {
+          await api('/api/board/slack', { postId: post.id });
+          slack.textContent = '✓ 슬랙으로 보냈어요';
+          setTimeout(() => { slack.textContent = '📤 슬랙으로 보내기'; slack.disabled = false; }, 4000);
+        } catch (error) {
+          slack.textContent = '📤 슬랙으로 보내기';
+          slack.disabled = false;
+          alert(error.message);
+        }
+      });
+      meta.appendChild(slack);
+    }
     if (post.board === 'voice' && !post.hidden) {
       const official = make('button', 'like-btn official-btn', '📮 공식 민원으로 보내기');
       official.type = 'button';

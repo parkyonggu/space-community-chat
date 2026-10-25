@@ -1,5 +1,6 @@
 // 스페이스 톡: 단체 대화방·1:1 대화의 저장과 규칙 (Durable Object SQLite 위에서 동작, 테스트에서는 node:sqlite로 동작)
 const { randomUUID, randomBytes } = require('node:crypto');
+const guard = require('./content-guard.js');
 
 const DAY = 24 * 60 * 60 * 1000;
 const RETENTION_DAYS = 90;
@@ -22,7 +23,7 @@ class ChatError extends Error {
 const code = (bytes = 9) => randomBytes(bytes).toString('base64url');
 const clean = (value, max) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
-function createChatCore(sql, { now = Date.now } = {}) {
+function createChatCore(sql, { now = Date.now, onBlocked } = {}) {
   const all = (query, ...params) => [...sql.exec(query, ...params)];
   const one = (query, ...params) => all(query, ...params)[0] || null;
   const run = (query, ...params) => { sql.exec(query, ...params); };
@@ -260,6 +261,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
       if (room.kind === 'channel') throw new ChatError(403, '이 방은 소식을 받아 보는 채널이라 글을 쓸 수 없습니다.');
       if (room.kind === 'dm' && members(room.id).length < 2) throw new ChatError(409, '상대가 대화방을 나가서 메시지를 보낼 수 없습니다.');
       let body = typeof text === 'string' ? text.trim() : '';
+      guard.enforce({ where: '스페이스 톡', user, parts: [body], makeError: message => new ChatError(400, message), report: onBlocked });
       if (imageId) {
         const image = one('SELECT id FROM chat_images WHERE id = ? AND room_id = ? AND user_id = ?', String(imageId), room.id, user.id);
         if (!image) throw new ChatError(400, '사진을 다시 올려 주세요.');
@@ -287,6 +289,7 @@ function createChatCore(sql, { now = Date.now } = {}) {
       const own = row.user_id === user.id;
       const official = !row.user_id && room.kind === 'channel' && Boolean(user.admin);
       if (!own && !official) throw new ChatError(403, '내가 보낸 메시지만 고칠 수 있습니다.');
+      guard.enforce({ where: '스페이스 톡 수정', user, parts: [typeof text === 'string' ? text : ''], makeError: message => new ChatError(400, message), report: onBlocked });
       if (own && now() - Date.parse(row.created_at) > SENDER_EDIT_WINDOW) throw new ChatError(403, '보낸 지 24시간이 지난 메시지는 고칠 수 없습니다. 새 메시지로 보내 주세요.');
       const limit = official ? 20000 : MAX_TEXT;
       const body = typeof text === 'string' ? text.trim() : '';

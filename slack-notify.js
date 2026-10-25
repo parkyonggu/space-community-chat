@@ -35,6 +35,18 @@ function createSlackNotifier({ webhookUrl: rawUrl = '', siteUrl = 'https://withp
   return {
     ready,
     send,
+    // 자동으로 막은 글(불법 도박·음란·불법 금융 광고 등): 운영자가 계정 정지를 판단할 수 있게 알린다.
+    blocked: ({ where, category, reason, nickname, text } = {}) => send(`🚫 *자동 차단* · ${escape(clip(where, 30))} · ${escape(clip(category, 30))} (${escape(clip(reason, 40))})\n*${escape(clip(nickname, 40))}*: ${escape(clip(text, 200))}`),
+    // 운영자가 스페이스 톡의 글(정책브리핑·소식·대화)을 「슬랙으로 보내기」로 옮긴 것. 줄바꿈은 그대로 둔다.
+    forward: ({ room, text, by } = {}) => send(`📤 *스페이스 톡 → 슬랙* · ${escape(clip(room, 60))}${by ? ` (보낸 사람 ${escape(clip(by, 40))})` : ''}\n${escape(String(text ?? '').replace(/\r/g, '').trim().slice(0, 2800))}`),
+    // 운영자가 게시판 글(정책 제안 등)을 「슬랙으로 보내기」로 본문까지 보낸 것. 긴 글은 앞부분만 보내고 전체 보기 링크를 붙인다.
+    postFull: post => {
+      const link = post?.no ? `${site}/post/${post.no}` : `${site}/#latest-section`;
+      const body = String(post?.text || '').replace(/\r/g, '').trim();
+      const shown = body.length > 2800 ? `${body.slice(0, 2800)}…\n(이하 생략 — 전체 ${body.length.toLocaleString('ko-KR')}자)` : body;
+      const title = clip(post?.title || body.split('\n')[0], 120);
+      return send(`📤 *게시판 → 슬랙* · ${escape(BOARD_NAMES[post?.board] || post?.board || '게시판')}\n*${escape(title)}* — ${escape(clip(post?.authorName, 40))}\n\n${escape(shown)}\n\n<${link}|전체 보기>`);
+    },
     signup: user => send(`🙋 *새 회원가입* · ${escape(clip(user?.nickname, 40))}${user?.email ? ` (${escape(maskEmail(user.email))})` : ''}`),
     comment: comment => send(`💬 *새 댓글* · 독자 소통 공간\n*${escape(clip(comment?.name, 40))}*: ${escape(clip(comment?.text, 200))}\n<${site}/#reader-section|댓글 보러 가기>`),
     post: post => {
@@ -44,6 +56,8 @@ function createSlackNotifier({ webhookUrl: rawUrl = '', siteUrl = 'https://withp
     },
     talkRoom: (user, room) => send(`🗨️ *스페이스 톡 새 대화방* · ${escape(clip(room?.name, 60))} — 만든 사람 ${escape(clip(user?.nickname, 40))}`),
     talkJoin: (user, room, { guest = false } = {}) => send(`➕ *스페이스 톡 입장* · ${escape(clip(user?.nickname, 40))}${guest ? ' (손님)' : ''} → ${escape(clip(room?.name, 60))} (초대 링크)`),
+    // 양산 주민감사청구 제보: 대상·분야·제목만 알린다(원문은 운영자 화면에서)
+    auditTip: tip => send(`🔍 *주민감사청구 제보* · ${escape(clip(tip?.agency, 40))} · ${escape(clip(tip?.field, 20))}\n*${escape(clip(tip?.title, 80))}* — ${escape(clip(tip?.authorName, 40))}\n<${site}/#audit-section|운영자 화면에서 보기>`),
     share: ({ title, url } = {}) => {
       const link = String(url || '');
       if (!link.startsWith(site)) return Promise.resolve(false);

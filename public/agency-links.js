@@ -12,7 +12,9 @@ var SITES = [
   { icon: '🏞️', name: '경상남도', desc: '경남 도정 소식', url: 'https://www.gyeongnam.go.kr/index.gyeong', group: '지역' },
   { icon: '🗳️', name: '경상남도 도민참여', desc: '도민제안·참여 플랫폼', url: 'https://www.gyeongnam.go.kr/gn1st/index.gyeong?contentsSid=3769', group: '지역' },
   { icon: '🌉', name: '양산시', desc: '양산 시정·민원', url: 'https://www.yangsan.go.kr/', group: '지역' },
+  { icon: '🏛️', name: '대한민국 국회', desc: '법률안·국회의원·회의 정보', url: 'https://www.assembly.go.kr/', group: '참여' },
   { icon: '✍️', name: '국회 국민동의청원', desc: '청원 찬성·등록', url: 'https://petitions.assembly.go.kr/', group: '참여' },
+  { icon: '🔍', name: '주민e직접', desc: '주민감사청구·조례청구 전자서명', url: 'https://www.juminegov.go.kr/', group: '참여' },
   { icon: '📮', name: '국민신문고', desc: '민원·제안 신청', url: 'https://www.epeople.go.kr/', group: '참여' },
   { icon: '⚖️', name: '국민참여입법센터', desc: '입법예고 의견 내기', url: 'https://opinion.lawmaking.go.kr/', group: '참여' },
   { icon: '👴', name: '대한노인회', desc: '어르신 단체 소식', url: 'https://koreapeople.or.kr/', group: '단체' },
@@ -24,24 +26,22 @@ var SITES = [
   if (!footer) return;
   var css = document.createElement('style');
   css.textContent =
-    '.agency-strip{background:linear-gradient(135deg,#16224a 0%,#1d3b8a 100%);border-top:4px solid #f5b941;padding:20px 0 16px}' +
+    '.agency-strip{background:linear-gradient(135deg,#16224a 0%,#1d3b8a 100%);border-top:4px solid #f5b941;padding:8px 0 6px}' +
     '.agency-strip .agency-in{max-width:1180px;margin:0 auto;padding:0 16px}' +
-    '.agency-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}' +
-    '.agency-head h2{margin:0;font-size:18px;font-weight:800;color:#fff}' +
-    '.agency-head h2::before{content:"";display:inline-block;width:6px;height:18px;margin-right:8px;border-radius:3px;background:#f5b941;vertical-align:-2px}' +
-    '.agency-head button{min-height:38px;padding:0 14px;border:0;border-radius:10px;background:#f5b941;color:#0e1730;font-weight:800;font-size:15px;cursor:pointer}' +
+    '.agency-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}' +
+    '.agency-head h2{margin:0;font-size:15px;line-height:1.3;font-weight:800;color:#fff}' +
+    '.agency-head h2::before{content:"";display:inline-block;width:5px;height:15px;margin-right:8px;border-radius:3px;background:#f5b941;vertical-align:-2px}' +
     '.agency-view{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}' +
     '.agency-view::-webkit-scrollbar{display:none}' +
-    '.agency-track{display:flex;gap:12px;width:max-content;padding:2px 2px 6px}' +
-    '.agency-card{--c:#1d3b8a;--t:#eaf0ff;display:flex;align-items:center;gap:10px;min-width:210px;max-width:250px;padding:12px 14px;border-radius:14px;background:#fff;color:#0e1730;text-decoration:none;border-top:5px solid var(--c);box-shadow:0 4px 12px rgba(0,0,0,.18);transition:transform .15s}' +
+    '.agency-track{display:flex;gap:12px;width:max-content;padding:2px 2px 4px}' +
+    '.agency-card{--c:#1d3b8a;--t:#eaf0ff;display:flex;align-items:center;gap:9px;min-width:200px;max-width:250px;padding:7px 12px;border-radius:12px;background:#fff;color:#0e1730;text-decoration:none;border-top:4px solid var(--c);box-shadow:0 4px 12px rgba(0,0,0,.18);transition:transform .15s}' +
     '.agency-card:hover,.agency-card:focus-visible{transform:translateY(-2px);outline:3px solid #f5b941;outline-offset:2px}' +
-    '.agency-card .ic{flex:none;width:42px;height:42px;border-radius:12px;background:var(--t);display:grid;place-items:center;font-size:22px}' +
-    '.agency-card strong{display:block;font-size:16px;line-height:1.3;color:#0e1730}' +
-    '.agency-card small{display:block;margin-top:2px;font-size:13.5px;color:var(--c);font-weight:700}' +
+    '.agency-card .ic{flex:none;width:34px;height:34px;border-radius:10px;background:var(--t);display:grid;place-items:center;font-size:19px}' +
+    '.agency-card strong{display:block;font-size:15px;line-height:1.25;color:#0e1730}' +
+    '.agency-card small{display:block;margin-top:1px;font-size:13px;line-height:1.3;color:var(--c);font-weight:700}' +
     '.agency-card.g-복지{--c:#1d4ed8;--t:#e3ecff}.agency-card.g-일{--c:#0f766e;--t:#dcf5f1}.agency-card.g-지역{--c:#15803d;--t:#e1f6e6}' +
     '.agency-card.g-참여{--c:#b7791f;--t:#fff3d6}.agency-card.g-단체{--c:#c2410c;--t:#ffe9dc}' +
-    '.agency-note{margin:6px 0 0;font-size:12.5px;color:#c9d0e3}' +
-    '@media (prefers-reduced-motion: reduce){.agency-head button{display:none}}';
+    '.agency-note{margin:2px 0 0;font-size:12px;color:#c9d0e3}' ;
   document.head.appendChild(css);
 
   var section = document.createElement('section');
@@ -53,9 +53,7 @@ var SITES = [
   head.className = 'agency-head';
   var h2 = document.createElement('h2');
   h2.textContent = '자주 찾는 기관 바로가기';
-  var toggle = document.createElement('button');
-  toggle.type = 'button';
-  head.appendChild(h2); head.appendChild(toggle);
+  head.appendChild(h2);
   var view = document.createElement('div');
   view.className = 'agency-view';
   var track = document.createElement('div');
@@ -87,12 +85,9 @@ var SITES = [
   section.appendChild(inner);
   footer.parentNode.insertBefore(section, footer);
 
-  // 천천히 옆으로 흐르기. 마우스·손가락을 올리거나 「멈춤」을 누르면 멈춘다. 손가락으로 밀어 넘길 수도 있다.
+  // 천천히 옆으로 흐르기. 마우스·손가락을 올리면 멈춘다. 손가락으로 밀어 넘길 수도 있다.
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var paused = reduce, hover = false, touchUntil = 0, pos = 0, last = 0;
-  function label() { toggle.textContent = paused ? '▶ 움직이기' : '⏸ 멈춤'; toggle.setAttribute('aria-pressed', paused ? 'true' : 'false'); }
-  label();
-  toggle.addEventListener('click', function () { paused = !paused; label(); });
   view.addEventListener('mouseenter', function () { hover = true; });
   view.addEventListener('mouseleave', function () { hover = false; });
   view.addEventListener('focusin', function () { hover = true; });

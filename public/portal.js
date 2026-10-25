@@ -21,7 +21,9 @@
     if (text !== undefined && text !== null) element.textContent = text;
     return element;
   };
-  const state = { feed: 'all', search: '', user: null, online: null };
+  // page: '지금 올라온 글' 쪽 번호(한 쪽 5개). 서버가 보낸 첫 화면(/?page=N)과 같은 쪽에서 시작한다.
+  const state = { feed: 'all', search: '', user: null, online: null, page: Number(new URLSearchParams(location.search).get('page')) || 1 };
+  const FEED_PAGE_SIZE = 5;
 
   // ---------- helpers ----------
   function timeAgo(iso) {
@@ -107,21 +109,63 @@
     } else if (state.feed !== 'all') {
       items = items.filter(post => post.board === state.feed);
     }
-    return items.slice(0, state.search ? 30 : 8);
+    return items;
   }
+  // 페이지 번호(post-page.js의 게시판 목록 페이지와 같은 모양): 처음·끝 쪽과 지금 쪽 앞뒤 2쪽
+  const feedPager = $('feed-pager');
+  function feedPageUrl(number) {
+    if (state.search) return '#latest-section';
+    if (state.feed !== 'all') return `/board/${state.feed}${number > 1 ? `?page=${number}` : ''}`;
+    return `/${number > 1 ? `?page=${number}` : ''}#latest-section`;
+  }
+  function renderFeedPager(page, pages) {
+    if (pages <= 1) { feedPager.replaceChildren(); return; }
+    const link = (number, label, rel) => {
+      const anchor = make('a', '', label);
+      anchor.href = feedPageUrl(number);
+      anchor.dataset.page = number;
+      if (rel) anchor.rel = rel;
+      else anchor.setAttribute('aria-label', `${number}쪽`);
+      return anchor;
+    };
+    const numbers = [...new Set([1, page - 2, page - 1, page, page + 1, page + 2, pages])].filter(number => number >= 1 && number <= pages);
+    const parts = [];
+    if (page > 1) parts.push(link(page - 1, '‹ 이전', 'prev'));
+    numbers.forEach((number, index) => {
+      if (index && number - numbers[index - 1] > 1) parts.push(make('span', 'gap', '…'));
+      if (number === page) { const current = make('span', '', String(number)); current.setAttribute('aria-current', 'page'); parts.push(current); }
+      else parts.push(link(number, String(number)));
+    });
+    if (page < pages) parts.push(link(page + 1, '다음 ›', 'next'));
+    feedPager.replaceChildren(...parts);
+  }
+  feedPager.addEventListener('click', event => {
+    const anchor = event.target.closest('a[data-page]');
+    if (!anchor || event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+    event.preventDefault();
+    state.page = Number(anchor.dataset.page);
+    renderFeed();
+    const top = $('feed-title').getBoundingClientRect().top;
+    if (top < 0) $('feed-title').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
   function renderFeed() {
     const ready = Boolean(window.spaceBoards);
     if (!ready) return;
-    const items = feedItems();
+    const all = feedItems();
+    const pages = Math.max(1, Math.ceil(all.length / FEED_PAGE_SIZE));
+    // 게시판 글을 다 불러오기 전에는 쪽 수가 모자랄 수 있어, 고른 쪽(state.page)은 그대로 두고 보여 줄 쪽만 맞춘다.
+    const page = Math.min(Math.max(1, Math.floor(state.page) || 1), pages);
+    const items = all.slice((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE);
+    renderFeedPager(page, pages);
     if (!items.length) {
       feedList.replaceChildren(make('li', 'feed-empty', state.search ? `‘${state.search}’에 맞는 글이 없습니다.` : '아직 올라온 글이 없습니다. 첫 이야기를 남겨 주세요!'));
       return;
     }
     // 새로 올라온 글은 잠깐 빛나게, 탭을 바꿨을 때는 위에서부터 차례로 나타나게 한다
     const seen = feedList.dataset.ids ? new Set(feedList.dataset.ids.split(',')) : null;
-    const sameTab = feedList.dataset.tab === `${state.feed}|${state.search}`;
+    const sameTab = feedList.dataset.tab === `${state.feed}|${state.search}|${page}`;
     feedList.dataset.ids = items.map(post => post.id).join(',');
-    feedList.dataset.tab = `${state.feed}|${state.search}`;
+    feedList.dataset.tab = `${state.feed}|${state.search}|${page}`;
     feedList.replaceChildren(...items.map((post, index) => {
       const item = make('li', 'feed-item');
       if (!sameTab) { item.classList.add('enter'); item.style.setProperty('--i', index); }
@@ -154,6 +198,7 @@
   }
   document.querySelectorAll('[data-feed]').forEach(chip => chip.addEventListener('click', () => {
     state.feed = chip.dataset.feed;
+    state.page = 1;
     clearSearch(false);
     document.querySelectorAll('[data-feed]').forEach(other => other.setAttribute('aria-selected', String(other === chip)));
     $('feed-more').textContent = state.feed === 'all' ? '소통·나눔 광장에서 글쓰기 ›' : `${BOARD_LABEL[state.feed]} 전체 보기 ›`;
@@ -163,6 +208,7 @@
 
   // ---------- search ----------
   function clearSearch(render = true) {
+    if (state.search) state.page = 1;
     state.search = '';
     $('searchInput').value = '';
     $('search-note').replaceChildren();
@@ -319,13 +365,14 @@
     const number = keyword.match(/^(?:#|no\.?\s*|글\s*번호\s*)?(\d{1,7})$/i);
     if (number) { window.location.href = `/post/${Number(number[1])}`; return; }
     state.search = keyword;
+    state.page = 1;
     $('feed-title').textContent = '검색 결과';
     $('feed-title').classList.add('searching');
     document.querySelectorAll('[data-feed]').forEach(chip => chip.setAttribute('aria-selected', 'false'));
     renderFeed();
     const count = feedItems().length;
     const note = $('search-note');
-    note.replaceChildren(`‘${keyword}’ 검색 결과 ${count}건${count >= 30 ? ' (최근 30건)' : ''} `);
+    note.replaceChildren(`‘${keyword}’ 검색 결과 ${count}건 `);
     const reset = make('button', 'more-link', '검색 지우기');
     reset.type = 'button';
     reset.addEventListener('click', () => clearSearch());

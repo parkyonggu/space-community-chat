@@ -14,6 +14,9 @@ const EVENT_CHANNEL_NAME = '📣 모임안내';
 // 정보안내 채널: 운영자가 광장채팅에서 '📊 정보안내'로 올린 글(주간 시장분석 등)
 const INFO_CHANNEL = 'channel-info-announcements';
 const INFO_CHANNEL_NAME = '📊 정보안내';
+// 보통메시지 채널: 운영자가 광장채팅에서 '💬 보통메시지'로 고른 글(모임 외의 일반 전달). 그림 카드 없이 글자 그대로 보낸다.
+const GENERAL_CHANNEL = 'channel-general-messages';
+const GENERAL_CHANNEL_NAME = '💬 보통메시지';
 // 모임안내 채널 글의 보낸 사람 이름(화면에는 로고와 함께 보인다)
 const EVENT_SENDER = '스페이스 커뮤니티';
 const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -22,7 +25,7 @@ const json = (body, status = 200, extra = {}) => Response.json(body, { status, h
 export class ChatService extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.core = createChatCore(ctx.storage.sql);
+    this.core = createChatCore(ctx.storage.sql, { onBlocked: entry => this.later(() => this.slack.blocked(entry)) });
     ctx.storage.sql.exec('UPDATE chat_messages SET nickname = ? WHERE room_id = ? AND user_id IS NULL AND nickname IN (?, ?)',
       EVENT_SENDER, EVENT_CHANNEL, '광장채팅 운영자', '스페이스톡');
     this.limits = new Map();
@@ -139,6 +142,25 @@ export class ChatService extends DurableObject {
         this.core.meta(key, '1');
         this.deliver(result, { id: null });
         return json({ ok: true, subscribers: result.memberIds.length, channel: channelName });
+      }
+      if (path === '/internal/general-message' && request.method === 'POST') {
+        const { sourceId, text, sender } = await request.json();
+        if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
+        if (typeof text !== 'string' || !text.trim() || text.length > 2200) throw new ChatError(400, '보낼 글이 없거나 너무 깁니다.');
+        const key = `general-message:${sourceId}`;
+        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        // 보통메시지 채널을 처음 쓸 때 모임안내 구독자를 함께 받아 보게 한다(한 번만).
+        if (!this.core.meta('general-channel-seeded')) {
+          this.core.copyChannelMembers(EVENT_CHANNEL, GENERAL_CHANNEL, GENERAL_CHANNEL_NAME);
+          this.core.meta('general-channel-seeded', '1');
+        }
+        if (sender && typeof sender.id === 'string' && sender.id) {
+          try { this.core.subscribeChannel({ id: sender.id, nickname: String(sender.nickname || '운영자').slice(0, 40) }, GENERAL_CHANNEL, GENERAL_CHANNEL_NAME); } catch (error) { console.error('Sender subscribe failed:', error); }
+        }
+        const result = this.core.postToChannel(GENERAL_CHANNEL, { nickname: EVENT_SENDER, roomName: GENERAL_CHANNEL_NAME, text: text.trim() });
+        this.core.meta(key, '1');
+        this.deliver(result, { id: null });
+        return json({ ok: true, subscribers: result.memberIds.length, channel: GENERAL_CHANNEL_NAME });
       }
       if (path === '/internal/user-deleted') {
         const { userId } = await request.json();
@@ -303,6 +325,22 @@ export class ChatService extends DurableObject {
       if (first === 'channel' && method === 'GET') return json(this.core.channel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME));
       if (first === 'channel' && id === 'subscribe' && method === 'POST') {
         const room = this.core.subscribeChannel(user, POLICY_CHANNEL, POLICY_CHANNEL_NAME);
+        return json({ room });
+      }
+      // 운영자 전용: 스페이스 톡 글을 운영자 슬랙 채널로 보낸다.
+      if (first === 'slack' && method === 'POST') {
+        if (!user.admin) throw new ChatError(403, '운영자만 슬랙으로 보낼 수 있습니다.');
+        if (!this.slack.ready) throw new ChatError(503, '슬랙이 연결되어 있지 않습니다(SLACK_WEBHOOK_URL).');
+        const input = await body();
+        const text = typeof input.text === 'string' ? input.text.trim() : '';
+        if (!text || text.length > 6000) throw new ChatError(400, '보낼 글이 없거나 너무 깁니다.');
+        this.limit(`slack-forward:${user.id}`, 30, 60 * 60 * 1000);
+        await this.slack.forward({ room: String(input.room || '스페이스 톡'), text, by: user.nickname });
+        return json({ ok: true });
+      }
+      if (first === 'general-channel' && method === 'GET') return json(this.core.channel(user, GENERAL_CHANNEL, GENERAL_CHANNEL_NAME));
+      if (first === 'general-channel' && id === 'subscribe' && method === 'POST') {
+        const room = this.core.subscribeChannel(user, GENERAL_CHANNEL, GENERAL_CHANNEL_NAME);
         return json({ room });
       }
       if (first === 'event-channel' && method === 'GET') return json(this.core.channel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME));

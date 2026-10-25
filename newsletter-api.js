@@ -747,7 +747,26 @@ function createNewsletterApi(dataDirectory, {
 
   handleNewsletterApi.processQueue = processQueue;
   handleNewsletterApi.generateWeekly = generateWeekly;
+  // 지난 레터 페이지(withpluces.com/letter/발행일)용: 발송을 마친 레터 전체, 최신순
+  handleNewsletterApi.publicLetters = async () => {
+    const store = await readStore();
+    const done = store.campaigns.filter(entry => entry.kind === 'newsletter' && entry.status === 'done')
+      .map(entry => ({ id: entry.id, subject: entry.subject, sentAt: entry.finishedAt || entry.createdAt, html: renderMarkup(entry.body).html }));
+    return withLetterSlugs(done);
+  };
   return handleNewsletterApi;
 }
 
-module.exports = { createNewsletterApi, renderMarkup };
+// 레터 주소 이름: 한국 시간 발행일(2026-10-26). 같은 날 두 번째 레터부터 -2, -3을 붙인다.
+// 오래된 레터부터 매겨서, 나중에 레터가 늘어도 이미 알려진 주소는 바뀌지 않는다.
+function withLetterSlugs(letters) {
+  const counts = new Map();
+  return [...letters].sort((left, right) => left.sentAt.localeCompare(right.sentAt)).map(letter => {
+    const day = new Date(Date.parse(letter.sentAt) + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const count = (counts.get(day) || 0) + 1;
+    counts.set(day, count);
+    return { ...letter, slug: count === 1 ? day : `${day}-${count}` };
+  }).reverse();
+}
+
+module.exports = { createNewsletterApi, renderMarkup, withLetterSlugs };

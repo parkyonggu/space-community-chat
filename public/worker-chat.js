@@ -17,7 +17,9 @@ announcementOption.hidden = true;
 const announcementKind = document.createElement('select');
 announcementKind.disabled = true;
 announcementKind.setAttribute('aria-label', '글 종류');
-for (const [value, label] of [['', '보통 메시지'], ...ANNOUNCE_KINDS.map(kind => [kind.tag, `${kind.label} (스페이스톡 구독자에게도 전송)`])]) {
+// 'general' = 💬 보통메시지: 모임안내가 아닌 일반 전달. 표시를 붙이지 않고 스페이스톡 '💬 보통메시지' 채널로 글자 그대로 보낸다.
+const GENERAL_FORWARD = 'general';
+for (const [value, label] of [['', '광장에만 올리기 (스페이스톡 전달 안 함)'], [GENERAL_FORWARD, '💬 보통메시지 (스페이스톡 구독자에게도 전송)'], ...ANNOUNCE_KINDS.map(kind => [kind.tag, `${kind.label} (스페이스톡 구독자에게도 전송)`])]) {
   const option = document.createElement('option');
   option.value = value;
   option.textContent = label;
@@ -98,7 +100,7 @@ async function choosePhoto(file) {
     cancel.addEventListener('click', clearPhoto);
     photoPreview.replaceChildren(thumb, note, cancel);
     photoPreview.hidden = false;
-    chatStatus.textContent = isAdmin && announcementKind.value
+    chatStatus.textContent = isAdmin && announcementKind.value && announcementKind.value !== GENERAL_FORWARD
       ? '안내장 사진이 붙었습니다. 입력칸 첫 줄에 제목을 적고 「전송」을 누르면 사진과 글이 하나의 안내장으로 올라가고 스페이스톡에도 전달됩니다.'
       : '사진이 붙었습니다. 글을 함께 적고 「전송」을 누르면 한 번에 올라갑니다. 광장 사진은 누구나 볼 수 있어요.';
     chatStatus.dataset.error = 'false';
@@ -126,8 +128,9 @@ async function sendPhoto() {
     let text = chatInput.value.trim().slice(0, 1990);
     // 운영자가 모임안내·초청장을 골랐으면 사진도 안내장으로 보낸다(첫 줄 = 제목).
     const chosen = isAdmin ? announcementKind.value : '';
-    if (chosen && !announcementOf(text)) text = `${chosen}\n${text || ANNOUNCE_KINDS.find(kind => kind.tag === chosen).label.replace(/^\S+\s/, '')}`;
-    chatSocket.send(JSON.stringify({ text, image: result.id }));
+    const general = chosen === GENERAL_FORWARD;
+    if (chosen && !general && !announcementOf(text)) text = `${chosen}\n${text || ANNOUNCE_KINDS.find(kind => kind.tag === chosen).label.replace(/^\S+\s/, '')}`;
+    chatSocket.send(JSON.stringify({ text, image: result.id, ...(general ? { forward: GENERAL_FORWARD } : {}) }));
     announcementKind.value = '';
     chatInput.value = '';
     clearPhoto();
@@ -652,7 +655,7 @@ function updateChatInput(signedIn) {
   announcementOption.hidden = !isAdmin;
   announcementKind.disabled = !isAdmin || !canSend;
   if (!isAdmin) announcementKind.value = '';
-  chatInput.placeholder = canSend ? (isAdmin ? '메시지 입력 · 모임안내·초청장·정보안내는 위에서 종류를 고르고 첫 줄에 제목을 적으세요' : '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.') :
+  chatInput.placeholder = canSend ? (isAdmin ? '메시지 입력 · 스페이스톡에도 보내려면 위에서 💬 보통메시지나 모임안내·초청장·정보안내를 고르세요' : '메시지를 입력하세요. 여러 줄로 작성할 수 있습니다.') :
     signedIn ? '이메일 인증을 완료하면 채팅을 보낼 수 있습니다.' : '로그인한 회원만 채팅을 보낼 수 있습니다. 대화는 누구나 볼 수 있습니다.';
 }
 
@@ -688,7 +691,7 @@ function connectChat() {
       return;
     }
     if (result.type === 'forwarded') {
-      chatStatus.textContent = `스페이스톡 「${result.channel || '📣 모임안내'}」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}. 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.`;
+      chatStatus.textContent = `스페이스톡 「${result.channel || '📣 모임안내'}」 채널로 보냈습니다${result.subscribers ? ` (구독자 ${result.subscribers}명)` : ''}.${result.general ? '' : ' 글 아래 「카카오톡으로 공유」로 카카오톡에도 보낼 수 있어요.'}`;
       chatStatus.dataset.error = 'false';
       return;
     }
@@ -760,7 +763,8 @@ function sendChat() {
     return;
   }
   const chosen = isAdmin ? announcementKind.value : '';
-  if (chosen && !announcementOf(text)) text = `${chosen}\n${text}`;
+  const general = chosen === GENERAL_FORWARD;
+  if (chosen && !general && !announcementOf(text)) text = `${chosen}\n${text}`;
   if (text.length > 2000) {
     chatStatus.textContent = `글이 너무 깁니다(${text.length.toLocaleString('ko-KR')}자). 광장 채팅은 2,000자까지 보낼 수 있어요. 긴 글은 게시판에 올린 뒤 그 글의 「📊 정보안내로 알리기」 버튼을 눌러 요약과 주소만 보내 주세요.`;
     chatStatus.dataset.error = 'true';
@@ -771,7 +775,7 @@ function sendChat() {
     chatStatus.dataset.error = 'true';
     return;
   }
-  chatSocket.send(JSON.stringify({ text }));
+  chatSocket.send(JSON.stringify({ text, ...(general ? { forward: GENERAL_FORWARD } : {}) }));
   chatInput.value = '';
   announcementKind.value = '';
 }

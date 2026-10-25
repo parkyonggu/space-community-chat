@@ -10,6 +10,8 @@ import policyNews from '../policy-news.js';
 import postPage from '../post-page.js';
 import androidApp from '../android-app.js';
 import slackNotify from '../slack-notify.js';
+import audit from '../audit-api.js';
+import guard from '../content-guard.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -90,7 +92,12 @@ export class CommunityService extends DurableObject {
       const job = Promise.resolve().then(task).catch(error => console.error('Slack notify failed:', error.message));
       if (typeof state.waitUntil === 'function') state.waitUntil(job);
     };
+    // 자동 차단한 글(게시판·댓글·닉네임)을 운영자 슬랙으로 알린다.
+    const onBlocked = entry => this.later(() => this.slack.blocked(entry));
     this.rateLimit = rateLimit;
+    // 양산 주민감사청구 제보: 제보 원문은 운영자만 본다. 공개 현황에는 운영자가 다듬은 제목·요약만 나간다.
+    sql.exec('CREATE TABLE IF NOT EXISTS audit_tips (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)');
+    this.sql = sql;
     this.auth = auth.createAuthApi('/private', {
       siteUrl: env.SITE_URL,
       mailer,
@@ -102,13 +109,13 @@ export class CommunityService extends DurableObject {
       storage: new SqlStore(state, 'auth', ['users', 'sessions', 'mailTokens']),
       rateLimit,
       maxDerivations: 1,
-      onRegistered: user => this.later(() => this.slack.signup(user)),
+      onBlocked, onRegistered: user => this.later(() => this.slack.signup(user)),
     });
     const requireVerifiedEmail = Boolean(mailer);
     this.community = community.createCommunityApi('/private', {
       storage: new SqlStore(state, 'community', ['comments', 'subscribers']), rateLimit,
       authenticate: this.auth.authenticate, requireVerifiedEmail,
-      onComment: comment => this.later(() => this.slack.comment(comment)),
+      onComment: comment => this.later(() => this.slack.comment(comment)), onBlocked,
     });
     // 게시글 사진: 글 데이터와 따로 SQLite에 보관한다(사진 한 장당 1.5MB 이하).
     sql.exec('CREATE TABLE IF NOT EXISTS board_images (id TEXT PRIMARY KEY, type TEXT NOT NULL, data BLOB NOT NULL, user_id TEXT, post_id TEXT, created_at INTEGER NOT NULL)');
@@ -125,7 +132,8 @@ export class CommunityService extends DurableObject {
     this.board = board.createBoardApi('/private', {
       storage: new SqlStore(state, 'board', ['posts', 'likes', 'reports']), rateLimit,
       authenticate: this.auth.authenticate, requireVerifiedEmail, images: boardImages, siteUrl: env.SITE_URL || 'https://withpluces.com',
-      onPost: post => this.later(() => this.slack.post(post)),
+      onPost: post => this.later(() => this.slack.post(post)), onBlocked,
+      onSlack: this.slack.ready ? post => this.slack.postFull(post) : undefined,
       notify: async (userId, { subject, text }) => {
         const to = mailer ? await this.auth.emailOf(userId) : null;
         if (to) await mailer.send({ to, subject, text });
@@ -161,6 +169,65 @@ export class CommunityService extends DurableObject {
         return (await response.json()).online;
       },
     });
+  }
+
+  // ---------- 양산 주민감사청구 (지방자치법 제21조) ----------
+  auditTips(where = '', ...args) {
+    return [...this.sql.exec(`SELECT * FROM audit_tips ${where} ORDER BY created_at DESC LIMIT 300`, ...args)]
+      .map(row => ({ ...JSON.parse(row.data), id: row.id, userId: row.user_id, createdAt: row.created_at, updatedAt: row.updated_at }));
+  }
+  async auditApi(request, source, body, pathname) {
+    try {
+      const method = request.method;
+      // 누구나: 운영자가 공개한 진행 현황
+      if (pathname === '/api/audit/cases' && method === 'GET') {
+        return json({ cases: this.auditTips().filter(tip => tip.published).map(audit.publicCase), statuses: audit.STATUSES });
+      }
+      const write = method !== 'GET';
+      const { user, error } = await this.auth.authenticate(source, { csrf: write });
+      if (error) return json({ error: error.message }, error.status);
+      if (!user) return json({ error: '로그인한 회원만 이용할 수 있습니다.' }, 401);
+      if (pathname === '/api/audit/mine' && method === 'GET') return json({ tips: this.auditTips('WHERE user_id = ?', user.id).map(audit.ownTip) });
+      if (pathname === '/api/audit/tips' && method === 'POST') {
+        if (this.requireVerifiedEmail && !user.emailVerified) return json({ error: '이메일 인증을 마친 회원만 제보할 수 있습니다.' }, 403);
+        const allowed = await this.rateLimit(`audit-tip:${user.id}`, 3, 24 * 60 * 60 * 1000, Date.now());
+        if (!allowed) return json({ error: '제보는 하루 3건까지 보낼 수 있습니다. 내일 다시 보내 주세요.' }, 429);
+        let input = {};
+        try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { return json({ error: '요청 내용을 확인해 주세요.' }, 400); }
+        const blocked = !user.admin && guard.check(...Object.values(input || {}).filter(value => typeof value === 'string'));
+        if (blocked) {
+          this.later(() => this.slack.blocked({ where: '주민감사청구 제보', category: blocked.category, reason: blocked.reason, nickname: user.nickname, text: String(input.title || '') }));
+          return json({ error: guard.MESSAGE(blocked) }, 400);
+        }
+        const tip = { ...audit.normalizeTip(input), authorName: user.nickname, status: audit.STATUSES[0], memo: '', published: false, publicTitle: '', publicSummary: '' };
+        const now = Date.now();
+        const id = `${now}-${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
+        this.sql.exec('INSERT INTO audit_tips VALUES (?, ?, ?, ?, ?)', id, user.id, JSON.stringify(tip), now, now);
+        this.later(() => this.slack.auditTip(tip));
+        return json({ ok: true, id }, 201);
+      }
+      if (!user.admin) return json({ error: '운영자만 볼 수 있습니다.' }, 403);
+      if (pathname === '/api/audit/tips' && method === 'GET') {
+        // 보관 기간: '종결'된 제보는 마지막 처리 후 3년이 지나면 지운다(제보 양식에 알린 대로).
+        this.sql.exec('DELETE FROM audit_tips WHERE updated_at < ? AND json_extract(data, \'$.status\') = ?', Date.now() - 3 * 365 * 24 * 60 * 60 * 1000, '종결');
+        return json({ tips: this.auditTips(), statuses: audit.STATUSES });
+      }
+      const match = /^\/api\/audit\/tips\/(\d{10,15}-[0-9a-f]{10})$/.exec(pathname);
+      if (match && method === 'POST') {
+        const row = [...this.sql.exec('SELECT data FROM audit_tips WHERE id = ?', match[1])][0];
+        if (!row) return json({ error: '없는 제보입니다.' }, 404);
+        let input = {};
+        try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { return json({ error: '요청 내용을 확인해 주세요.' }, 400); }
+        const tip = { ...JSON.parse(row.data), ...audit.normalizeReview(input) };
+        this.sql.exec('UPDATE audit_tips SET data = ?, updated_at = ? WHERE id = ?', JSON.stringify(tip), Date.now(), match[1]);
+        return json({ ok: true });
+      }
+      return json({ error: '요청한 기능이 없습니다.' }, 404);
+    } catch (failure) {
+      if (failure instanceof audit.AuditError) return json({ error: failure.message }, failure.status);
+      console.error('Audit API failed:', failure);
+      return json({ error: '처리 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.' }, 500);
+    }
   }
 
   async alarm() {
@@ -212,6 +279,9 @@ export class CommunityService extends DurableObject {
     if (pathname === '/internal/public-posts') {
       return json({ posts: await this.board.publicPosts() });
     }
+    if (pathname === '/internal/letters') {
+      return json({ letters: await this.newsletter.publicLetters() });
+    }
     if (pathname === '/internal/chat-identity') {
       const { user } = await this.auth.authenticate(source);
       const canSend = Boolean(user && (!this.requireVerifiedEmail || user.emailVerified));
@@ -231,6 +301,7 @@ export class CommunityService extends DurableObject {
       this.later(() => this.slack.share({ title: String(input.title || '').slice(0, 200), url: String(input.url || '').slice(0, 500) }));
       return json({ ok: true, configured: true });
     }
+    if (pathname === '/api/audit' || pathname.startsWith('/api/audit/')) return this.auditApi(request, source, body, pathname);
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
       pathname.startsWith('/api/newsletter') || pathname.startsWith('/api/admin/newsletter') || pathname.startsWith('/n/') ? this.newsletter :
@@ -386,6 +457,16 @@ export class ChatRoom extends DurableObject {
     // 사진: 먼저 /api/board/image?purpose=chat 으로 올린 사진 번호만 받는다(사진만 보내도 된다).
     const image = typeof input?.image === 'string' && /^[0-9a-f]{32}$/.test(input.image) ? input.image : '';
     if ((!text && !image) || text.length > 2000) { error('채팅은 1~2,000자로 입력해 주세요.'); return; }
+    // 불법 도박·음란·불법 금융 광고 등은 광장에 올리지 않는다(운영자 글은 제외).
+    const blocked = !window.admin && guard.check(text);
+    if (blocked) {
+      if (this.env.SLACK_WEBHOOK_URL) {
+        const slack = slackNotify.createSlackNotifier({ webhookUrl: this.env.SLACK_WEBHOOK_URL, siteUrl: this.env.SITE_URL || 'https://withpluces.com' });
+        this.ctx.waitUntil(slack.blocked({ where: '광장 채팅', category: blocked.category, reason: blocked.reason, nickname: window.name, text }).catch(() => {}));
+      }
+      error(guard.MESSAGE(blocked));
+      return;
+    }
     const now = Date.now();
     if (now - window.start >= 60000) window = { ...window, start: now, count: 0 };
     window.count += 1;
@@ -414,6 +495,25 @@ export class ChatRoom extends DurableObject {
       } catch (failure) {
         console.error('Announcement forward failed:', failure);
         socket.send(JSON.stringify({ type: 'forward-error', error: `스페이스톡 안내 채널로 보내지 못했습니다: ${failure.message}` }));
+      }
+    } else if (window.admin && input?.forward === 'general') {
+      // 운영자가 '💬 보통메시지'로 고른 글: 스페이스톡 '💬 보통메시지' 채널로 글자 그대로 보낸다(그림 카드 없이, 사진은 주소 한 줄).
+      try {
+        if (!this.env.TALK) throw new Error('스페이스톡이 연결되어 있지 않습니다.');
+        const site = this.env.SITE_URL || 'https://withpluces.com';
+        const photo = image ? `\n\n사진 보기: ${site}/api/board/image?id=${image}` : '';
+        // 카카오톡 공유 카드가 열 주소(/e/번호)를 모임안내처럼 만들어 둔다.
+        await this.ctx.storage.put(`a:${stored.id}`, { id: stored.id, text: `${announcement.GENERAL.tag}\n${text || '사진'}`, at: now, ...(image ? { image } : {}) });
+        const link = `${site}/e/${stored.id}`;
+        const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/general-message', {
+          method: 'POST', body: JSON.stringify({ sourceId: stored.id, text: `${text || '(사진)'}${photo}\n\n자세히 보기·카카오톡 공유: ${link}`, sender: window.uid ? { id: window.uid, nickname: window.name } : null }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        socket.send(JSON.stringify({ type: 'forwarded', id: stored.id, subscribers: result.subscribers || 0, channel: result.channel || '💬 보통메시지', general: true }));
+      } catch (failure) {
+        console.error('General message forward failed:', failure);
+        socket.send(JSON.stringify({ type: 'forward-error', error: `스페이스톡 보통메시지 채널로 보내지 못했습니다: ${failure.message}` }));
       }
     }
   }
@@ -462,6 +562,12 @@ async function postDailyBriefing(env) {
   await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/channel-post', { method: 'POST', body: JSON.stringify({ text, day }) });
 }
 
+const communityStub = env => env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1'));
+const publicPosts = async env => (await (await communityStub(env).fetch('https://internal.invalid/internal/public-posts')).json()).posts;
+const publicLetters = async env => (await (await communityStub(env).fetch('https://internal.invalid/internal/letters')).json()).letters;
+const htmlPage = (request, html, status = 200, maxAge = 300) => new Response(request.method === 'HEAD' ? null : html, { status,
+  headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': `public, max-age=${maxAge}`, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' } });
+
 export default {
   async scheduled(event, env, ctx) {
     if (event.cron === DAILY_BRIEFING_CRON) {
@@ -477,7 +583,8 @@ export default {
       const url = new URL(request.url);
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
-          url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/') || url.pathname === '/api/notify/share') {
+          url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/') || url.pathname === '/api/notify/share' ||
+          url.pathname.startsWith('/api/audit/')) {
         if (url.pathname === '/api/notify/share' && request.headers.get('Origin') !== env.SITE_URL) return json({ ok: true });
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
@@ -525,8 +632,31 @@ export default {
         return new Response(JSON.stringify(androidApp.assetLinks(env)), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' } });
       }
       if (url.pathname === '/sitemap.xml') {
-        const { posts } = await (await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch('https://internal.invalid/internal/public-posts')).json();
-        return new Response(postPage.renderSitemap(posts, env.SITE_URL || url.origin), { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600' } });
+        const [posts, letters] = await Promise.all([publicPosts(env), publicLetters(env)]);
+        return new Response(postPage.renderSitemap(posts, env.SITE_URL || url.origin, undefined, { letters }), { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600' } });
+      }
+      const readable = request.method === 'GET' || request.method === 'HEAD';
+      // 게시판 목록(한 페이지 5개, ?page=N)
+      const boardMatch = /^\/board\/([a-z]+)\/?$/.exec(url.pathname);
+      if (boardMatch && readable) {
+        const siteUrl = env.SITE_URL || url.origin;
+        const pageParam = url.searchParams.get('page');
+        const page = pageParam === null ? 1 : /^[1-9]\d{0,4}$/.test(pageParam) ? Number(pageParam) : 0;
+        const html = postPage.LIST_BOARDS.includes(boardMatch[1]) && page
+          ? postPage.renderBoardPage({ board: boardMatch[1], posts: await publicPosts(env), page }, siteUrl) : null;
+        return html ? htmlPage(request, html) : htmlPage(request, postPage.renderMissingPage(404, siteUrl, '게시판이나 페이지를 찾을 수 없습니다. 커뮤니티 홈에서 찾아 주세요.'), 404);
+      }
+      // 지난 스페이스 레터: 목록 /letter, 한 호 /letter/발행일. 예전 주소 /letter?id=…는 새 주소로 옮긴다.
+      const letterMatch = /^\/letter(?:\/([0-9]{4}-[0-9]{2}-[0-9]{2}(?:-[0-9]{1,2})?)?)?\/?$/.exec(url.pathname);
+      if (letterMatch && readable) {
+        const siteUrl = env.SITE_URL || url.origin;
+        const letters = await publicLetters(env);
+        const legacyId = url.searchParams.get('id');
+        const letter = letterMatch[1] ? letters.find(entry => entry.slug === letterMatch[1]) : legacyId ? letters.find(entry => entry.id === legacyId) : null;
+        if (!letterMatch[1] && legacyId && letter) return Response.redirect(`${siteUrl}/letter/${letter.slug}`, 301);
+        if (!letterMatch[1] && !legacyId) return htmlPage(request, postPage.renderLetterList(letters, siteUrl));
+        if (!letter) return htmlPage(request, postPage.renderMissingPage(404, siteUrl, '레터를 찾을 수 없습니다. 지난 레터 목록에서 찾아 주세요.'), 404);
+        return htmlPage(request, postPage.renderLetterPage({ letter, letters }, siteUrl), 200, 3600);
       }
       if (url.pathname.startsWith('/api/')) return json({ error: '요청한 기능이 없습니다.' }, 404);
       if (url.pathname === '/ws/chat') {
@@ -543,6 +673,18 @@ export default {
         if (identity.user?.id) forwarded.headers.set('X-Chat-User-Id', String(identity.user.id));
         forwarded.headers.set('X-Chat-Admin', identity.user?.admin ? '1' : '0');
         return await env.CHAT.get(env.CHAT.idFromName('public-chat-v1')).fetch(forwarded);
+      }
+      // 첫 화면: 최신 공개 글 5개(?page=N이면 N쪽)와 페이지 번호를 처음 받는 HTML에 링크로 넣어 둔다(검색엔진용). 불러오지 못하면 원래 화면 그대로.
+      if ((url.pathname === '/' || url.pathname === '/index.html') && request.method === 'GET') {
+        const response = await env.ASSETS.fetch(request);
+        if (response.status !== 200 || !(response.headers.get('Content-Type') || '').includes('text/html')) return response;
+        const html = await response.text();
+        const posts = await publicPosts(env).catch(error => { console.error('Home latest posts failed:', error); return []; });
+        const headers = new Headers(response.headers);
+        headers.delete('Content-Length');
+        headers.delete('ETag');
+        const page = /^[1-9]\d{0,4}$/.test(url.searchParams.get('page') || '') ? Number(url.searchParams.get('page')) : 1;
+        return new Response(postPage.injectLatestPosts(html, posts, page), { status: 200, headers });
       }
       return await env.ASSETS.fetch(request);
     } catch (error) {

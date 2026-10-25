@@ -61,6 +61,7 @@
       <a href="#issue-panel" class="nav-issue">🗞️ 오늘의 이슈</a>
       <a href="#eco-panel" class="nav-eco">📈 경제지표</a>
       <a href="#benefit-panel" class="nav-benefit">🏘️ 우리동네 혜택</a>
+      <a href="#audit-section" class="nav-audit">🔍 주민감사청구</a>
       <a href="#newsletter-section">스페이스 레터</a>
       <a href="#guide-section">이용 안내</a>
     </nav>
@@ -449,6 +450,7 @@
           <ul class="feed-list" id="feed-list" aria-live="polite">
             <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
           </ul>
+          <nav class="feed-pager" id="feed-pager" aria-label="지금 올라온 글 페이지"></nav>
           <div class="feed-foot">
             <span class="search-note" id="search-note"></span>
             <button type="button" class="more-link" id="feed-more">소통·나눔 광장에서 글쓰기 ›</button>
@@ -483,6 +485,102 @@
     </section>
 
     <div class="shared-sections">
+      <section id="audit-section" data-view-of="audit" class="surface audit-section" aria-labelledby="audit-title">
+        <div class="section-head"><div><div class="eyebrow">CITIZEN AUDIT · YANGSAN</div><h2 id="audit-title">양산 주민감사청구</h2></div><span class="tag">지방자치법 제21조</span></div>
+        <p class="audit-owner">이 공간은 <b>사단법인 한국주민감사청구 시민협의회 경남 양산시 지부</b>(지부장 박용구)가 지부 활동으로 운영합니다. 스페이스 커뮤니티 운영사와는 별개의 활동입니다.</p>
+        <div class="audit-contact" aria-label="양산시 지부 연락처">
+          <div class="ac-name"><span class="ac-org">사단법인 한국주민감사청구 시민협의회</span><b>경남 양산시 지부장 박용구</b><small>경영학석사 · 법학박사과정</small></div>
+          <ul class="ac-list">
+            <li><span>사무실</span>경남 양산시 주남로 288 산학관 301호</li>
+            <li><span>전화</span><a href="tel:010-2500-5900">010-2500-5900</a></li>
+            <li><span>이메일</span><a href="mailto:guranty@naver.com">guranty@naver.com</a></li>
+            <li class="ac-lab"><span>부속</span><b>주민법률지원연구소</b> — 주민 민원 접수 · 법률 무료 상담</li>
+          </ul>
+        </div>
+        <p class="intro">양산시의 사무처리가 법령을 어기거나 공익을 현저히 해친다고 보이면, 주민은 연대서명으로 상급 기관에 감사를 청구할 수 있습니다. 제보를 보내 주시면 지부가 사실을 확인하고, 청구가 필요하면 서명을 함께 모읍니다.</p>
+
+        <nav class="audit-tabs" aria-label="주민감사청구 메뉴">
+          <button type="button" class="chip" data-audit="guide" aria-selected="true">제도 안내</button>
+          <button type="button" class="chip" data-audit="tip" aria-selected="false">✍️ 제보하기</button>
+          <button type="button" class="chip" data-audit="cases" aria-selected="false">진행 현황</button>
+          <button type="button" class="chip" data-audit="mine" aria-selected="false">내 제보</button>
+          <button type="button" class="chip" data-audit="admin" aria-selected="false" hidden>운영자 검토</button>
+        </nav>
+
+        <div class="audit-pane" data-audit-pane="guide">
+          <div class="audit-facts">
+            <div><b>누가</b><span>양산시 주민 중 18세 이상 선거권자. 양산시 조례로 정한 인원(법상 150명 이내) 이상이 함께 서명합니다.</span></div>
+            <div><b>어디에</b><span>시·군의 감사청구는 <strong>경상남도지사</strong>에게 냅니다.</span></div>
+            <div><b>무엇을</b><span>법령을 어기거나 공익을 현저히 해친다고 인정되는 양산시의 사무처리</span></div>
+            <div><b>언제까지</b><span>그 사무처리가 있었던 날이나 끝난 날부터 <strong>3년</strong> 안</span></div>
+          </div>
+          <h3 class="audit-h">청구할 수 없는 사항</h3>
+          <ul class="audit-list">
+            <li>수사나 재판에 관여하게 되는 사항</li>
+            <li>개인의 사생활을 침해할 우려가 있는 사항</li>
+            <li>다른 기관이 이미 감사했거나 감사 중인 사항(새로운 사항이 드러난 경우 등은 예외)</li>
+            <li>같은 사항으로 주민소송이 진행 중이거나 판결이 확정된 사항</li>
+          </ul>
+          <h3 class="audit-h">지부와 함께하는 절차</h3>
+          <ol class="audit-steps">
+            <li><b>제보</b><span>이 화면의 「제보하기」로 보냅니다. 원문은 지부장만 봅니다.</span></li>
+            <li><b>사실 확인</b><span>지부가 자료를 모으고 필요하면 정보공개청구를 합니다.</span></li>
+            <li><b>청구 결정</b><span>요건을 따져 감사청구서를 씁니다.</span></li>
+            <li><b>연대서명</b><span>행정안전부 「주민e직접」에서 전자서명을 모읍니다.</span></li>
+            <li><b>청구·결과 공개</b><span>경상남도에 청구하고, 진행과 결과를 「진행 현황」에 알립니다.</span></li>
+          </ol>
+          <div class="audit-cta">
+            <a class="btn-audit" href="https://www.juminegov.go.kr/" target="_blank" rel="noopener">주민e직접 바로가기 (전자서명) ↗</a>
+            <button type="button" class="btn-audit gold" data-audit-go="tip">✍️ 제보하기</button>
+          </div>
+          <p class="source">근거: 지방자치법 제21조(주민의 감사 청구). 법령과 양산시 조례의 최신 내용은 국가법령정보센터(law.go.kr)에서 확인하세요.</p>
+        </div>
+
+        <div class="audit-pane" data-audit-pane="tip" hidden>
+          <p class="audit-login" hidden>로그인하고 이메일 인증을 마친 회원만 제보할 수 있습니다. 제보 원문과 제보자는 지부장(운영자)만 봅니다.</p>
+          <form id="audit-form" class="audit-form" novalidate>
+            <div class="audit-row">
+              <label>대상 기관<select name="agency" required></select></label>
+              <label>분야<select name="field" required></select></label>
+            </div>
+            <label>제목<input name="title" maxlength="80" required placeholder="예: ○○공원 정비공사 쪼개기 수의계약 의혹"></label>
+            <label>무엇이 문제인가요? (사실관계)
+              <textarea name="facts" rows="8" maxlength="3000" required placeholder="누가 · 언제 · 어디서 · 무엇을 · 어떻게 했는지, 직접 보거나 확인한 사실 위주로 적어 주세요. 추측이나 개인에 대한 비난은 빼 주세요."></textarea>
+              <small class="audit-count" data-count-for="facts">0 / 3,000자</small>
+            </label>
+            <div class="audit-row">
+              <label>언제 있었던 일인가요?<input name="when" maxlength="40" required placeholder="예: 2025년 3월~6월"></label>
+              <label>이미 해 본 조치<select name="prior"></select></label>
+            </div>
+            <label>근거 자료 주소 (선택 · 한 줄에 하나, 5개까지)
+              <textarea name="evidence" rows="3" maxlength="1500" placeholder="https://... (공고문, 기사, 정보공개 결과 등)"></textarea>
+            </label>
+            <fieldset class="audit-checks">
+              <label><input type="checkbox" name="sign"> <span>감사청구가 추진되면 연대서명에 참여하겠습니다. (양산시 거주 18세 이상)</span></label>
+              <label><input type="checkbox" name="contact"> <span>지부장이 회원 이메일로 연락해도 됩니다.</span></label>
+              <label><input type="checkbox" name="pledge" required> <span><b>(필수)</b> 직접 보거나 확인한 사실에 근거해 작성했으며, 특정인을 비방할 목적이 아닙니다.</span></label>
+              <label><input type="checkbox" name="privacy" required> <span><b>(필수)</b> 제보 처리를 위해 닉네임·제보 내용을 수집·이용하는 데 동의합니다. 제보는 처리가 끝난 뒤 3년간 보관하고 삭제합니다.</span></label>
+            </fieldset>
+            <button type="submit" class="btn-audit gold">제보 보내기</button>
+            <p class="form-status" id="audit-status" role="status"></p>
+          </form>
+        </div>
+
+        <div class="audit-pane" data-audit-pane="cases" hidden>
+          <p class="intro">지부가 확인을 거쳐 공개한 사안입니다. 제보자와 제보 원문은 공개하지 않습니다.</p>
+          <ul class="audit-cases" id="audit-cases"><li class="feed-empty">불러오는 중입니다.</li></ul>
+        </div>
+
+        <div class="audit-pane" data-audit-pane="mine" hidden>
+          <ul class="audit-cases" id="audit-mine"><li class="feed-empty">로그인하면 내가 보낸 제보와 처리 상태를 볼 수 있습니다.</li></ul>
+        </div>
+
+        <div class="audit-pane" data-audit-pane="admin" hidden>
+          <p class="intro">운영자만 보는 화면입니다. 상태를 바꾸고, 공개할 사안은 공개용 제목·요약을 따로 적어 「진행 현황」에 올립니다(제보 원문은 공개되지 않음).</p>
+          <div id="audit-admin"></div>
+        </div>
+      </section>
+
       <section id="reader-section" data-view-of="guide" class="surface" aria-labelledby="reader-title">
         <div class="section-head"><div><div class="eyebrow">READER COMMUNITY</div><h2 id="reader-title">독자 소통 공간</h2></div><span id="reader-comment-count" class="tag">댓글 불러오는 중</span></div>
         <p class="intro">사이트 운영에 대한 의견이나 질문을 정중하고 건설적인 언어로 남겨주세요. 댓글은 모든 방문자에게 공개되며, 작성은 로그인한 회원만 할 수 있습니다. 개인정보를 적지 마세요.</p>
@@ -810,5 +908,6 @@ const socket=io(),chatBox=document.getElementById("chatBox"),chatInput=document.
   </script>
   <a class="talk-fab" href="/chat" aria-label="스페이스 톡 열기"><span aria-hidden="true">💬</span><span>스페이스 톡</span></a>
   <script defer src="/agency-links.js"></script>
+  <script defer src="/audit.js"></script>
 </body>
 </html>

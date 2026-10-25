@@ -162,6 +162,11 @@ test('posts get numbers for /post/번호; research is public, hidden posts are n
   assert.equal((await api.publicPost(3)).status, 200);
   assert.equal((await api.publicPost(4)).status, 410);
   assert.equal((await api.publicPost(99)).status, 404);
+  // 숨김 글은 게시판 목록·sitemap에도 나오지 않는다(시민의 소리는 숨김 글뿐이라 빈 게시판)
+  const postPage = require('./post-page');
+  assert.match(postPage.renderBoardPage({ board: 'voice', posts: list }), /아직 올라온 글이 없습니다/);
+  assert.ok(!postPage.renderSitemap(list).includes('/post/4<'));
+  assert.ok(!postPage.renderSitemap(list).includes('/board/voice<'));
 });
 
 test('every board accepts an optional title; research requires one', async t => {

@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
+const guard = require('./content-guard.js');
 
 class ApiError extends Error {
   constructor(status, message) {
@@ -9,7 +10,7 @@ class ApiError extends Error {
   }
 }
 
-function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, onComment = () => {} } = {}) {
+function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, onComment = () => {}, onBlocked } = {}) {
   const filePath = path.join(dataDirectory, 'community.json');
   let pendingWrite = Promise.resolve();
   const requestWindows = new Map();
@@ -111,6 +112,7 @@ function createCommunityApi(dataDirectory, { storage, rateLimit, authenticate, r
         if (!name || name.length > 40 || !text || text.length > 2000) {
           throw new ApiError(400, '닉네임 1~40자, 댓글 1~2,000자를 입력해 주세요.');
         }
+        guard.enforce({ where: '독자 댓글', user: author || { name }, parts: [name, text], makeError: message => new ApiError(400, message), report: onBlocked });
         const comment = { id: randomUUID(), name, text, createdAt: new Date().toISOString(), ...(author ? { authorId: author.id } : {}) };
         await updateStore(store => {
           store.comments.unshift(comment);

@@ -4,7 +4,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { createServer } = require('node:http');
-const { createNewsletterApi, renderMarkup } = require('./newsletter-api');
+const { createNewsletterApi, renderMarkup, withLetterSlugs } = require('./newsletter-api');
 
 const admin = { id: 'u-admin', email: 'admin@example.com', nickname: '운영자', emailVerified: true, admin: true };
 const member = { id: 'u-member', email: 'member@example.com', nickname: '회원', emailVerified: true, admin: false };
@@ -35,7 +35,7 @@ async function fixture(t, options = {}) {
   const get = (route, user) => fetch(origin + route, { redirect: 'manual', headers: user ? { 'x-test-user': user } : {} });
   const tokenFrom = (message, kind) => message.text.match(new RegExp(`${kind}=([a-f0-9]{48})`))[1];
   return { directory, sent, mailer, post, get, tokenFrom, legacy: () => legacy,
-    advance: ms => { clock += ms; }, now: () => clock, generate: options => handler.generateWeekly(options), restart: () => { handler = createNewsletterApi(directory, config); },
+    advance: ms => { clock += ms; }, now: () => clock, generate: options => handler.generateWeekly(options), letters: () => handler.publicLetters(), restart: () => { handler = createNewsletterApi(directory, config); },
     drain: async () => { let result; do { result = await handler.processQueue(); } while (result.more && result.delay < 3600000); return result; },
     process: () => handler.processQueue() };
 }
@@ -335,6 +335,10 @@ test('weekly draft uses ECOS figures and community highlights, blocks unfinished
   const letter = (await (await f.get(`/api/newsletter/archive?id=${archive.letters[0].id}`)).json()).letter;
   assert.match(letter.html, /<strong>KOSPI<\/strong>/);
   assert.equal((await f.get('/api/newsletter/archive?id=00000000-0000-0000-0000-000000000000')).status, 404);
+  const published = await f.letters();
+  assert.deepEqual(published.map(entry => [entry.id, entry.subject]), [[archive.letters[0].id, draft.subject]]);
+  assert.match(published[0].slug, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(published[0].html, /<strong>KOSPI<\/strong>/);
 
   // scheduling can be cancelled
   assert.equal((await f.post('/api/admin/newsletter/send', { subject: 's2', body: 'b2', schedule: 'monday' }, 'admin')).status, 201);
@@ -447,4 +451,11 @@ test('mail diagnostics: per-subscriber confirmation result and admin test-to wit
   assert.equal(bad.ok, false);
   assert.match(bad.message, /E_TEST: fail/);
   assert.equal((await f.post('/api/admin/newsletter/test-to', { email: 'me@example.net' }, 'member')).status, 403);
+});
+
+test('letter addresses use the KST send date and stay stable when a second letter goes out the same day', () => {
+  const first = withLetterSlugs([{ id: 'a', sentAt: '2026-10-25T22:00:00.000Z' }, { id: 'b', sentAt: '2026-10-19T01:00:00.000Z' }]);
+  assert.deepEqual(first.map(entry => [entry.id, entry.slug]), [['a', '2026-10-26'], ['b', '2026-10-19']]);
+  const later = withLetterSlugs([{ id: 'a', sentAt: '2026-10-25T22:00:00.000Z' }, { id: 'b', sentAt: '2026-10-19T01:00:00.000Z' }, { id: 'c', sentAt: '2026-10-26T05:00:00.000Z' }]);
+  assert.deepEqual(later.map(entry => [entry.id, entry.slug]), [['c', '2026-10-26-2'], ['a', '2026-10-26'], ['b', '2026-10-19']]);
 });

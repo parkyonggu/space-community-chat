@@ -210,3 +210,12 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 .meta .edited { color:#8a93a8; font-size:11px; }
 .edit-text { width:100%; min-height:110px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:inherit; font-size:15px; line-height:1.6; margin:4px 0 10px; resize:vertical; }
 .account-line { margin:0 0 10px; padding:8px 12px; border-radius:10px; background:#f3f5fa; font-size:13.5px; color:var(--ink); }
+
+/* 긴 글 접기·펼치기 (「더 보기」) */
+.fold-wrap { display:block; }
+.fold-text { white-space:pre-wrap; overflow-wrap:anywhere; }
+.fold-text.folded { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:8; line-clamp:8; overflow:hidden; }
+.fold-toggle { display:block; margin:6px 0 0; padding:2px 0; border:0; background:none; color:#1d3fbf; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+.fold-toggle:focus-visible { outline:2px solid #1d3fbf; outline-offset:2px; border-radius:4px; }
+.msg-share { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(14,23,48,.1); white-space:normal; }
+.msg-share .btn { min-height:34px; padding:0 12px; font-size:13.5px; }

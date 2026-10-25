@@ -162,6 +162,14 @@ a { color:var(--primary); }
 .feed-new { flex:none; color:#fff; background:var(--up); font-size:10.5px; font-weight:800; border-radius:5px; padding:0 5px; line-height:17px; }
 .feed-empty { padding:36px 0; text-align:center; color:var(--muted); }
 .feed-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:4px 20px 14px; flex-wrap:wrap; }
+/* 지금 올라온 글: 한 페이지 5개, 페이지 번호(/board/... 목록 페이지와 같은 모양) */
+.feed-pager { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; padding:12px 20px 6px; }
+.feed-pager:empty { display:none; }
+.feed-pager a, .feed-pager span { display:inline-flex; align-items:center; justify-content:center; min-width:40px; min-height:40px; padding:0 11px; border-radius:10px; font-weight:800; font-size:15px; text-decoration:none; }
+.feed-pager a { color:#1d3b8a; background:#f2f5ff; border:1px solid #c5d0f0; }
+.feed-pager a:hover { background:#e3e9fb; }
+.feed-pager span[aria-current] { color:#fff; background:#1d3b8a; }
+.feed-pager .gap { color:var(--muted); min-width:auto; padding:0 2px; }
 .search-note { font-size:13.5px; color:var(--muted); }
 .skeleton { height:18px; border-radius:6px; margin:16px 0; background:linear-gradient(90deg,#eef0f6,#f7f8fb,#eef0f6); background-size:200% 100%; animation:shimmer 1.2s infinite linear; }
 @keyframes shimmer { from { background-position:200% 0; } to { background-position:-200% 0; } }
@@ -1108,3 +1116,61 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .policy-status { margin:8px 0 0; font-weight:700; color:#1f6f3f; min-height:0; }
 .policy-status:empty { display:none; }
 .policy-status.policy-error { color:#c0392b; }
+
+/* ---------- 양산 주민감사청구 ---------- */
+.audit-owner { margin:0 0 10px; padding:10px 14px; border-left:4px solid #f5b941; background:#fff8e6; border-radius:8px; font-size:14px; line-height:1.6; color:#5a4300; }
+.audit-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 16px; }
+.audit-facts { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; }
+.audit-facts > div { padding:12px 14px; border:1px solid var(--line); border-top:4px solid var(--navy); border-radius:12px; background:#fff; }
+.audit-facts b { display:block; margin-bottom:4px; font-size:15px; color:var(--navy); }
+.audit-facts span { font-size:14px; line-height:1.6; }
+.audit-h { margin:20px 0 8px; font-size:17px; }
+.audit-list { margin:0; padding-left:20px; line-height:1.8; font-size:14.5px; }
+.audit-steps { counter-reset:step; list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.audit-steps li { counter-increment:step; display:grid; grid-template-columns:34px 1fr; column-gap:10px; align-items:start; }
+.audit-steps li::before { content:counter(step); grid-row:span 2; width:30px; height:30px; border-radius:50%; background:var(--navy); color:#fff; display:grid; place-items:center; font-weight:800; }
+.audit-steps b { font-size:15px; }
+.audit-steps span { font-size:14px; color:var(--muted); line-height:1.55; }
+.audit-cta { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 8px; }
+.btn-audit { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 16px; border-radius:10px; border:1px solid var(--navy); background:var(--navy); color:#fff; font-weight:800; font-size:14.5px; text-decoration:none; cursor:pointer; }
+.btn-audit.gold { background:#f5b941; border-color:#f5b941; color:#0e1730; }
+.btn-audit:disabled { opacity:.55; cursor:not-allowed; }
+.audit-login { padding:10px 14px; border-radius:8px; background:#eef2ff; color:#1d3b8a; font-size:14px; }
+.audit-form { display:grid; gap:12px; }
+.audit-form label { display:grid; gap:5px; font-size:14px; font-weight:700; color:var(--ink, #0e1730); }
+.audit-form input:not([type="checkbox"]), .audit-form select, .audit-form textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:inherit; font-weight:400; font-size:15px; background:#fff; }
+.audit-form textarea { resize:vertical; line-height:1.6; }
+.audit-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+.audit-count { justify-self:end; font-weight:400; color:var(--muted); }
+.audit-checks { margin:0; padding:12px 14px; border:1px solid var(--line); border-radius:10px; display:grid; gap:8px; }
+.audit-form .audit-checks label, .audit-form .audit-inline { display:flex; gap:8px; align-items:flex-start; font-weight:400; line-height:1.5; }
+.audit-checks input, .audit-inline input { margin-top:3px; width:18px; height:18px; flex:none; }
+.audit-cases { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.audit-case { padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:#fff; display:grid; gap:4px; }
+.audit-case p { margin:2px 0; font-size:14px; line-height:1.6; white-space:pre-wrap; }
+.audit-case-head { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.audit-meta { font-size:12.5px; color:var(--muted); }
+.audit-badge { padding:2px 9px; border-radius:999px; font-size:12px; font-weight:800; background:#e3e8f5; color:#1d3b8a; }
+.audit-badge.s1, .audit-badge.s2 { background:#fff3d6; color:#8a5a00; }
+.audit-badge.s3, .audit-badge.s4 { background:#e1f6e6; color:#15803d; }
+.audit-badge.s5 { background:#eceff3; color:#4b5563; }
+.audit-admin-card { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:#fff; }
+.audit-admin-card summary { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 14px; cursor:pointer; }
+.audit-admin-card > :not(summary) { margin:0 14px 14px; }
+.audit-dl { display:grid; grid-template-columns:90px 1fr; gap:6px 10px; font-size:14px; }
+.audit-dl dt { font-weight:800; color:var(--muted); }
+.audit-dl dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+.audit-review { padding-top:12px; border-top:1px dashed var(--line); }
+@media (max-width:560px) { .audit-dl { grid-template-columns:1fr; } }
+
+/* 양산시 지부 연락처(명함 정보) */
+.audit-contact { display:flex; flex-wrap:wrap; gap:10px 24px; align-items:flex-start; margin:0 0 14px; padding:12px 16px; border:1px solid #e6dcc0; border-radius:12px; background:#fff; }
+.audit-contact .ac-name { display:flex; flex-direction:column; gap:2px; min-width:220px; }
+.audit-contact .ac-org { font-size:12.5px; font-weight:700; color:#8a6a1f; }
+.audit-contact .ac-name b { font-size:16px; color:#0e1730; }
+.audit-contact .ac-name small { font-size:13px; color:#5b6478; }
+.audit-contact .ac-list { list-style:none; margin:0; padding:0; display:grid; gap:4px; font-size:14px; line-height:1.5; color:#2b3550; }
+.audit-contact .ac-list span { display:inline-block; min-width:52px; margin-right:6px; font-size:12.5px; font-weight:800; color:#8a6a1f; }
+.audit-contact .ac-list a { color:#1d3fbf; font-weight:700; text-decoration:none; }
+.audit-contact .ac-lab { margin-top:2px; padding-top:6px; border-top:1px dashed #e6dcc0; }
+@media (max-width:600px) { .audit-contact { padding:10px 12px; } .audit-contact .ac-list { font-size:13.5px; } }

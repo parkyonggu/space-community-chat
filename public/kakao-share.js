@@ -278,6 +278,9 @@
         objectType: 'feed',
         content: { ...text, ...image, link: target },
         buttons: [{ title: button, link: target }, ...(extraButton ? [extraButton] : [])],
+        // 공유 대상 선택 화면: 친구·채팅방을 한 번에 최대 10곳까지 고르게 한다(JS SDK 2.8.0 이상).
+        // 카카오가 이 앱에 '공유 대상 선택 화면 설정' 권한을 주어야 적용되며, 권한이 없으면 카카오 기본값으로 열린다.
+        pickerSettings: { type: 'default', limit: 10 },
       };
       Kakao.Share.sendDefault(payload);
       againBar(Kakao, payload, { title, link });

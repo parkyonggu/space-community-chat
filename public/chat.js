@@ -107,9 +107,12 @@
     return fragment;
   }
   // 운영자 소식 채널(모임안내·정보안내): 스페이스 커뮤니티 로고로 보낸다
-  const NOTICE_CHANNELS = ['channel-event-announcements', 'channel-info-announcements'];
+  const NOTICE_CHANNELS = ['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages'];
+  // 글 아래에 카카오톡·문자 공유 단추를 다는 소식 채널(정책브리핑 포함). 글이 접혀 있어도 단추는 늘 보인다.
+  const POLICY_CHANNEL_ID = 'channel-policy-briefing';
+  const SHARE_CHANNELS = [...NOTICE_CHANNELS, POLICY_CHANNEL_ID];
   function avatar(name, key, small = false) {
-    if (['channel-event-announcements', 'channel-info-announcements'].includes(key)) {
+    if (['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages'].includes(key)) {
       const image = make('img', `avatar${small ? ' small' : ''}`);
       image.src = '/icons/icon-192.png';
       image.alt = '';
@@ -191,6 +194,107 @@
       await shareText(title, info.link);
     })();
   }
+  // 긴 글은 처음엔 몇 줄만 보여 주고 「더 보기」로 펼친다(휴대폰에서 화면이 글로 꽉 차지 않게).
+  const FOLD_LINES = 8;
+  function foldText(text, className = '') {
+    const value = String(text || '');
+    const content = make('span', `fold-text${className ? ` ${className}` : ''}`);
+    content.appendChild(linkify(value));
+    // 휴대폰 말풍선 한 줄에 한글 약 16자가 들어간다. 그보다 확실히 짧으면 접지 않는다.
+    if (value.split('\n').length <= FOLD_LINES && value.length <= FOLD_LINES * 16) return content;
+    content.classList.add('folded');
+    const holder = make('span', 'fold-wrap');
+    const toggle = make('button', 'fold-toggle', '더 보기 ▾');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.addEventListener('click', event => {
+      event.stopPropagation();
+      const open = content.classList.toggle('folded') === false;
+      toggle.textContent = open ? '접기 ▴' : '더 보기 ▾';
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    toggle.addEventListener('dblclick', event => event.stopPropagation());
+    holder.append(content, toggle);
+    // 화면에 그려진 뒤 실제로 8줄을 넘지 않으면(넓은 PC 화면 등) 접기 단추를 뗀다.
+    requestAnimationFrame(() => {
+      if (!holder.isConnected || !content.classList.contains('folded')) return;
+      if (content.scrollHeight <= content.clientHeight + 2) { content.classList.remove('folded'); toggle.remove(); }
+    });
+    return holder;
+  }
+  // 운영자 전용: 이 글을 운영자 슬랙 채널(#사이트-알림)로 보낸다. 끝의 공유 주소 줄은 떼고 보낸다.
+  async function sendToSlack(message) {
+    const info = !message.userId ? announcementOf(message.text) : null;
+    // 모임안내·초청장·정보안내: 종류·제목·본문·안내장 주소로 정리해서 보낸다.
+    const shown = info ? `${info.kind.label} ${info.title}${info.body ? `\n\n${info.body}` : ''}${info.poster ? `\n\n안내장 사진: ${info.poster}` : ''}${info.link ? `\n\n자세히 보기: ${info.link}` : ''}` :
+      SHARE_CHANNELS.includes(state.room?.id) && !message.userId ? plainNotice(message.text).shown : message.text;
+    const text = message.userId ? `${message.nickname || ''}: ${shown}` : shown;
+    try {
+      await api('/api/chat/slack', { method: 'POST', body: { room: state.room?.name || '스페이스 톡', text } });
+      toast('슬랙으로 보냈어요.');
+    } catch (error) { toast(error.message); }
+  }
+  // 문자(SMS)로 보내기: 휴대폰은 문자 앱을 글이 채워진 채로 열고, PC는 글을 복사한다.
+  function sendSms(text) {
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) { location.href = `sms:?&body=${encodeURIComponent(text)}`; return; }
+    copyText(text).then(ok => { if (ok) toast('복사했어요. 휴대폰 문자에 붙여넣기 하세요.'); });
+  }
+  // 운영자 소식 채널의 글자 메시지(💬 보통메시지 등) 아래: 카카오톡·문자로 바로 전달하는 단추
+  // 보통메시지 글: 끝의 공유 주소 줄(/e/번호)을 떼어 내고 제목(첫 줄)·본문으로 나눈다.
+  function plainNotice(text) {
+    const value = String(text || '');
+    const link = SHARE_LINE.exec(value)?.[1] || '';
+    const shown = value.replace(SHARE_LINE, '').trim();
+    const lines = shown.split('\n');
+    const title = (lines.shift() || '').trim().slice(0, 80) || '스페이스 커뮤니티 소식';
+    return { link, shown, title, body: lines.join('\n').trim() };
+  }
+  function forwardActions(message) {
+    const policy = state.room?.id === POLICY_CHANNEL_ID;
+    const roomName = state.room?.name || (policy ? '📰 오늘의 정책브리핑' : '💬 보통메시지');
+    const info = plainNotice(message.text);
+    // 공유 카드를 누르면 열 주소: 보통메시지는 글마다 만든 /e/번호, 정책브리핑은 홈페이지 정책브리핑 칸.
+    info.link = info.link || `${location.origin}/${policy ? '#policy-panel' : ''}`;
+    if (policy) {
+      // 카드 그림에는 누를 수 없는 긴 원문 주소 줄을 빼고 제목·요약만 싣는다.
+      info.body = info.body.split('\n').filter(line => !/^\s*https?:\/\/\S+\s*$/.test(line) && !line.startsWith('다른 정책 소식은'))
+        .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    const smsText = policy ? `${info.title}\n\n${info.body}\n\n전체 보기: ${info.link}` :
+      `${info.shown}\n\n— 스페이스 커뮤니티 ${roomName}\n${info.link}`;
+    const actions = make('div', 'msg-share');
+    const kakao = make('button', 'btn kakao', '카카오톡으로 공유');
+    kakao.type = 'button';
+    kakao.title = '카카오톡 친구·단톡방을 골라 바로 보내기 (모임안내와 같은 카드)';
+    kakao.addEventListener('click', async event => {
+      event.stopPropagation();
+      kakao.disabled = true;
+      try {
+        // 모임안내·정보안내와 같은 방식: 카카오톡 공식 공유 카드(글 전체를 그린 그림 + 「자세히 보기」)로 바로 보낸다.
+        if (window.spaceKakaoShare && await window.spaceKakaoShare({
+          title: info.title.startsWith('📰') ? info.title : `${roomName} ${info.title}`, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
+          imageUrl: `${location.origin}/share/announcement.png`, link: info.link,
+          card: { kindLabel: roomName, cardTitle: info.title, body: info.body },
+        })) return;
+        await shareText(smsText);
+      } finally { kakao.disabled = false; }
+    });
+    const sms = make('button', 'btn', '문자로 보내기');
+    sms.type = 'button';
+    sms.title = '문자 앱을 글이 채워진 채로 엽니다';
+    sms.addEventListener('click', event => { event.stopPropagation(); sendSms(smsText); });
+    const buttons = [kakao, sms];
+    if (state.me?.admin) {
+      const slack = make('button', 'btn', '📤 슬랙으로');
+      slack.type = 'button';
+      slack.title = '운영자 슬랙 채널로 보내기 (운영자에게만 보임)';
+      slack.addEventListener('click', event => { event.stopPropagation(); sendToSlack(message); });
+      buttons.push(slack);
+    }
+    for (const button of buttons) button.addEventListener('dblclick', event => event.stopPropagation());
+    actions.append(...buttons);
+    return actions;
+  }
   function announcementCard(message, info) {
     const card = make('div', 'bubble announce-card');
     const head = make('div', 'announce-head');
@@ -210,8 +314,8 @@
     }
     card.appendChild(make('strong', 'announce-title', info.title));
     if (info.body) {
-      const body = make('p', 'announce-body');
-      body.appendChild(linkify(info.body));
+      const body = make('div', 'announce-body');
+      body.appendChild(foldText(info.body));
       card.appendChild(body);
     }
     const actions = make('div', 'announce-actions');
@@ -226,6 +330,15 @@
       open.target = '_blank';
       open.rel = 'noopener';
       actions.appendChild(open);
+    }
+    // 운영자만: 이 안내를 운영자 슬랙 채널로 보낸다.
+    if (state.me?.admin) {
+      const slack = make('button', 'btn', '📤 슬랙으로');
+      slack.type = 'button';
+      slack.title = '운영자 슬랙 채널로 보내기 (운영자에게만 보임)';
+      slack.addEventListener('click', event => { event.stopPropagation(); sendToSlack(message); });
+      slack.addEventListener('dblclick', event => event.stopPropagation());
+      actions.appendChild(slack);
     }
     card.appendChild(actions);
     return card;
@@ -298,9 +411,11 @@
   function channelCard(channel) {
     const eventChannel = channel.roomId === 'channel-event-announcements';
     const infoChannel = channel.roomId === 'channel-info-announcements';
+    const generalChannel = channel.roomId === 'channel-general-messages';
     const item = make('li', 'channel-card');
     const description = eventChannel ?
       '스페이스 커뮤니티가 보내는 모임안내·초청장을 받아 봐요. 카카오톡으로 바로 공유할 수 있고, 새 소식 알림도 받을 수 있어요.' :
+      generalChannel ? '모임안내가 아닌 운영자의 일반 소식·전달 사항을 받아 봐요. 그림 카드 없이 글로 바로 읽을 수 있어요.' :
       infoChannel ? '주간 시장분석처럼 운영자가 정리한 정보를 받아 봐요. 지수가 왜 오르고 내렸는지 쉽게 풀어 드려요(투자 권유 아님).' :
       '매일 아침 7시 30분, 정부 부처의 전날 정책뉴스에서 가장 중요한 테마를 골라 보내 드려요. 새 소식 알림도 받을 수 있어요.';
     item.append(make('strong', '', channel.name), make('p', '', `${description}${channel.subscribers ? ` (${channel.subscribers}명 받아 보는 중)` : ''}`));
@@ -309,11 +424,11 @@
     join.addEventListener('click', async () => {
       join.disabled = true;
       try {
-        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : infoChannel ? '/api/chat/info-channel/subscribe' : '/api/chat/channel/subscribe';
+        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : generalChannel ? '/api/chat/general-channel/subscribe' : infoChannel ? '/api/chat/info-channel/subscribe' : '/api/chat/channel/subscribe';
         const { room } = await api(endpoint, { method: 'POST', body: {} });
         channel.subscribed = true;
         await loadRooms();
-        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : infoChannel ? '구독했어요. 운영자의 정보안내(시장분석 등)가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
+        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : generalChannel ? '구독했어요. 운영자의 보통메시지가 이 방으로 전달됩니다.' : infoChannel ? '구독했어요. 운영자의 정보안내(시장분석 등)가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
         location.hash = `room=${room.id}`;
       } catch (error) { toast(error.message); join.disabled = false; }
     });
@@ -321,12 +436,12 @@
     return item;
   }
   async function loadRooms() {
-    const [{ rooms }, channel, eventChannel, infoChannel] = await Promise.all([
+    const [{ rooms }, channel, eventChannel, generalChannel, infoChannel] = await Promise.all([
       api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null), api('/api/chat/event-channel').catch(() => null),
-      api('/api/chat/info-channel').catch(() => null),
+      api('/api/chat/general-channel').catch(() => null), api('/api/chat/info-channel').catch(() => null),
     ]);
     state.rooms = rooms;
-    state.channels = [channel, eventChannel, infoChannel].filter(Boolean);
+    state.channels = [channel, eventChannel, generalChannel, infoChannel].filter(Boolean);
     renderRooms();
   }
   $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
@@ -482,7 +597,10 @@
       bubble = announcementCard(message, announcementOf(message.text));
     } else {
       bubble = make('div', 'bubble');
-      bubble.appendChild(linkify(message.text));
+      const notice = message.kind === 'text' && !message.userId && SHARE_CHANNELS.includes(state.room?.id);
+      // 보통메시지는 끝의 공유 주소 줄을 화면에서 감추고, 아래 단추로 보낸다.
+      bubble.appendChild(foldText(notice ? plainNotice(message.text).shown : message.text));
+      if (notice) bubble.appendChild(forwardActions(message));
     }
     if (!message.deletedAt && !message.pending) {
       bubble.tabIndex = 0;
@@ -605,8 +723,15 @@
       if (message.kind === 'text') add('카카오톡으로 보내기', () => {
         closeSheet();
         if (announcementOf(message.text)) shareAnnouncement(message.text);
+        else if (!message.userId && SHARE_CHANNELS.includes(state.room?.id)) forwardActions(message).querySelector('.kakao').click();
         else shareText(`${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서 (${message.nickname || ''})`);
       });
+      if (message.kind === 'text') add('문자로 보내기', () => {
+        closeSheet();
+        const info = announcementOf(message.text);
+        sendSms(info ? `${info.kind.label} ${info.title}${info.body ? `\n\n${info.body}` : ''}${info.link ? `\n\n${info.link}` : ''}` : `${message.text}\n\n— 스페이스 톡 '${state.room.name}'에서`);
+      });
+      if (message.kind === 'text' && state.me.admin) add('📤 슬랙으로 보내기 (운영자)', () => { closeSheet(); sendToSlack(message); });
       if (message.kind === 'text') add('게시판에 옮겨 쓰기 (소통·나눔 등)', () => moveToBoard(message.text));
       if (message.kind === 'text' && (state.room.isOwner || state.room.kind === 'dm' || state.me.admin)) add('공지로 등록', async () => { if (await saveNotice(state.current, message.text)) closeSheet(); });
       if (!mine && !state.me.guest && state.room.kind === 'group' && message.userId) add(`${message.nickname}님과 1:1 대화`, () => { closeSheet(); startDm({ userId: message.userId }); });

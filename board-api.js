@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
+const guard = require('./content-guard.js');
 
 const POLICY_DEPARTMENTS = ['economy', 'industry', 'finance', 'sme', 'education', 'culture', 'welfare', 'labor', 'gender',
   'environment', 'foreign', 'unification', 'defense', 'science', 'landtransport', 'agriculture', 'ocean', 'safety', 'justice', 'personnel'];
@@ -49,7 +50,7 @@ function createMemoryImageStore() {
   };
 }
 
-function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200, images = createMemoryImageStore(), notify = async () => {}, onPost = () => {}, siteUrl = 'https://withpluces.com' } = {}) {
+function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requireVerifiedEmail = false, now = Date.now, listLimit = 200, images = createMemoryImageStore(), notify = async () => {}, onPost = () => {}, onBlocked, onSlack, siteUrl = 'https://withpluces.com' } = {}) {
   if (typeof authenticate !== 'function') throw new Error('Board API requires an authenticate function');
   const filePath = path.join(dataDirectory, 'board.json');
   let writes = Promise.resolve();
@@ -296,7 +297,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         send(response, 200, { posts: posts.map(post => view(post, store, user)) });
         return;
       }
-      const actions = ['/api/board/posts', '/api/board/edit', '/api/board/like', '/api/board/report', '/api/board/moderate', '/api/board/progress', '/api/board/forward', '/api/board/forward-mark'];
+      const actions = ['/api/board/posts', '/api/board/edit', '/api/board/slack', '/api/board/like', '/api/board/report', '/api/board/moderate', '/api/board/progress', '/api/board/forward', '/api/board/forward-mark'];
       if (!actions.includes(pathname)) throw new BoardError(404, '요청한 기능이 없습니다.');
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -322,6 +323,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         if (title.length > 120) throw new BoardError(400, '제목은 120자 이내로 입력해 주세요.');
         const body = text(input.text);
         if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
+        guard.enforce({ where: `게시판 글(${board})`, user, parts: [title, body], makeError: message => new BoardError(400, message), report: onBlocked });
         limit(`board-post:${user.id}`, 10, 10 * 60000);
         let about = null;
         if (input.about !== undefined && input.about !== null && input.about !== '') {
@@ -366,6 +368,7 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
           if (title.length > 120) throw new BoardError(400, '제목은 120자 이내로 입력해 주세요.');
           const body = text(input.text);
           if (!body || body.length > rules.max) throw new BoardError(400, `내용을 1~${rules.max.toLocaleString('ko-KR')}자로 입력해 주세요.`);
+          guard.enforce({ where: '게시판 글 수정', user, parts: [title, body], makeError: message => new BoardError(400, message), report: onBlocked });
           const sameImages = !nextImages || nextImages.join() === (target.images || []).join();
           if (body === target.text && title === (target.title || '') && category === target.category && sameImages) throw new BoardError(400, '바뀐 내용이 없습니다.');
           if (nextImages) {
@@ -382,6 +385,16 @@ function createBoardApi(dataDirectory, { storage, rateLimit, authenticate, requi
         return;
       }
 
+      // 운영자 전용: 게시판 글(정책 제안 등)을 본문까지 운영자 슬랙 채널로 보낸다.
+      if (pathname === '/api/board/slack') {
+        if (!user.admin) throw new BoardError(403, '운영자만 슬랙으로 보낼 수 있습니다.');
+        if (typeof onSlack !== 'function') throw new BoardError(503, '슬랙이 연결되어 있지 않습니다.');
+        limit(`board-slack:${user.id}`, 30, 60 * 60000);
+        const post = findPost(await readStore(), input.postId);
+        await onSlack({ board: post.board, title: post.title, text: post.text, authorName: post.authorName, no: post.no });
+        send(response, 200, { ok: true });
+        return;
+      }
       if (pathname === '/api/board/like') {
         limit(`board-like:${user.id}`, 60, 60000);
         const result = await updateStore(store => {
