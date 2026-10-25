@@ -536,6 +536,20 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 
 /* ---------- 우리 동네 신청 혜택 ---------- */
 .bf-lead { margin:-4px 0 12px; color:var(--text); font-size:14.5px; line-height:1.6; }
+.bf-basic { margin:0 0 18px; padding:14px; border-radius:14px; background:linear-gradient(135deg,#16224a,#1d3b8a); border-top:4px solid #f5b941; }
+.bf-basic h3 { margin:0 0 10px; color:#fff; font-size:17px; }
+.bf-basic h3 small { margin-left:6px; font-size:13px; font-weight:600; color:#f5b941; }
+.bf-basic-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+.bf-card { --c:#1d4ed8; background:#fff; border-radius:12px; border-top:5px solid var(--c); padding:12px 14px; color:#0e1730; }
+.bf-card.c-nps { --c:#1d4ed8; } .bf-card.c-basic { --c:#b7791f; } .bf-card.c-life { --c:#15803d; }
+.bf-card h4 { margin:0 0 6px; font-size:16.5px; color:var(--c); }
+.bf-card p { margin:4px 0; font-size:14.5px; line-height:1.6; }
+.bf-card p b { color:#0e1730; margin-right:4px; }
+.bf-card a[href^="tel:"] { font-weight:800; color:var(--c); }
+.bf-card-btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.bf-card-btns a { display:inline-flex; align-items:center; min-height:38px; padding:0 12px; border-radius:10px; font-weight:800; font-size:14px; text-decoration:none; background:var(--c); color:#fff; }
+.bf-card-btns a + a { background:#fff; color:var(--c); border:1px solid var(--c); }
+.bf-basic .source { color:#c9d0e3; margin:10px 0 0; font-size:12.5px; }
 .bf-filters { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
 .bf-filters .chip { min-height:34px; padding:5px 12px; font-size:13.5px; }
 .bf-filters .chip small { margin-left:4px; opacity:.75; font-weight:700; }
