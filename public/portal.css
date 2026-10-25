@@ -549,6 +549,16 @@ textarea:disabled, input:disabled, select:disabled { background:#f3f4f8; color:#
 .bf-card-btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .bf-card-btns a { display:inline-flex; align-items:center; min-height:38px; padding:0 12px; border-radius:10px; font-weight:800; font-size:14px; text-decoration:none; background:var(--c); color:#fff; }
 .bf-card-btns a + a { background:#fff; color:var(--c); border:1px solid var(--c); }
+.bf-check { margin:10px 0 4px; border:1px solid #cfe6d3; border-radius:10px; background:#f3fbf4; }
+.bf-check summary { cursor:pointer; padding:10px 12px; font-weight:800; color:#15803d; font-size:15px; }
+.bf-check-row { display:flex; flex-wrap:wrap; gap:10px; padding:0 12px; }
+.bf-check-row label { font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.bf-check-row select, .bf-check-row input { min-height:40px; font-size:16px; padding:0 8px; border:1px solid #b9cfbd; border-radius:8px; }
+.bf-check-row input { width:6.5em; }
+.bf-check-help, .bf-check-note { margin:6px 12px !important; font-size:13px !important; color:#4b5470; }
+.bf-check-out { list-style:none; margin:6px 12px; padding:0; }
+.bf-check-out li { padding:6px 8px; margin:4px 0; border-radius:8px; font-size:14.5px; background:#fff; border:1px solid #e3e6ef; }
+.bf-check-out li.ok { border-color:#15803d; background:#e5f4e4; font-weight:700; }
 .bf-basic .source { color:#c9d0e3; margin:10px 0 0; font-size:12.5px; }
 .bf-filters { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
 .bf-filters .chip { min-height:34px; padding:5px 12px; font-size:13.5px; }

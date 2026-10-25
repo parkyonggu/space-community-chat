@@ -2254,3 +2254,35 @@
 
   if (window.spaceBoards) renderBoards();
 })();
+
+// 기초생활보장 수급 자격 간이 확인: 보건복지부 「수급자 선정기준」(2026년) 가구원 수별 금액(원)과 비교한다.
+(function () {
+  var box = document.getElementById('lc-check');
+  if (!box) return;
+  var LIMITS = {
+    1: [820556, 1025695, 1230834, 1282119],
+    2: [1343773, 1679717, 2015660, 2099646],
+    3: [1714892, 2143614, 2572337, 2679518],
+    4: [2078316, 2597895, 3117474, 3247369],
+    5: [2418150, 3022688, 3627225, 3778360],
+    6: [2737905, 3422381, 4106857, 4277976]
+  };
+  var NAMES = ['생계급여', '의료급여', '주거급여', '교육급여(초·중·고 학생이 있는 가구)'];
+  var size = document.getElementById('lc-size'), income = document.getElementById('lc-income'), out = document.getElementById('lc-out');
+  function won(n) { return n.toLocaleString('ko-KR') + '원'; }
+  function render() {
+    out.textContent = '';
+    var raw = income.value.trim();
+    if (raw === '') return;
+    var monthly = Math.max(0, Number(raw)) * 10000;
+    LIMITS[size.value].forEach(function (limit, i) {
+      var li = document.createElement('li');
+      var ok = monthly <= limit;
+      li.className = ok ? 'ok' : '';
+      li.textContent = (ok ? '✔ ' : '✖ ') + NAMES[i] + ' — 기준 월 ' + won(limit) + (ok ? ' 이하: 신청해 볼 수 있습니다' : ' 초과');
+      out.appendChild(li);
+    });
+  }
+  size.addEventListener('change', render);
+  income.addEventListener('input', render);
+})();
