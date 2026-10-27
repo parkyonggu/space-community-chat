@@ -1085,6 +1085,9 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .market-read span { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .market-read b { font-size:15.5px; }
 .market-read small { color:var(--muted); font-size:12.5px; }
+.market-all { margin:0 0 6px; text-align:right; font-size:13.5px; }
+.market-all a { color:#b07d12; font-weight:700; text-decoration:none; }
+.market-read small.latest { color:#0e1730; font-weight:700; font-size:13.5px; }
 .market-read .go { margin-left:auto; font-size:20px; color:#b07d12; }
 .market-read:hover, .market-read:focus-visible { box-shadow:0 6px 18px rgba(14,23,48,.08); transform:translateY(-1px); }
 

@@ -705,7 +705,7 @@
   // ---------- '이번 주 시장분석 읽기': 칼럼·학술 게시판을 시장분석 글만 보이게 열어 준다 ----------
   document.querySelectorAll('[data-research-filter]').forEach(link => link.addEventListener('click', () => {
     const filter = $('researchFilter');
-    if (!filter) return;
+    if (!filter || !link.dataset.researchFilter) return;
     filter.value = link.dataset.researchFilter;
     filter.dispatchEvent(new Event('change'));
   }));
@@ -2285,4 +2285,19 @@
   }
   size.addEventListener('change', render);
   income.addEventListener('input', render);
+})();
+
+// 「주식시장 주간동향분석」 바로가기: 칼럼·학술 게시판의 가장 최근 '시장분석' 글 제목을 보여 주고, 누르면 그 글을 바로 연다.
+(function () {
+  var card = document.getElementById('market-read'), latest = document.getElementById('market-latest');
+  if (!card || !latest) return;
+  fetch('/api/board?board=research', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+    var post = data && (data.posts || []).find(function (p) { return p.category === '시장분석' && p.no; });
+    if (!post) return;
+    var d = new Date(post.createdAt);
+    latest.textContent = '최근: ' + (post.title || '주간동향분석') + (isNaN(d) ? '' : ' (' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 게시)');
+    latest.className = 'latest';
+    card.href = '/post/' + post.no;
+    card.removeAttribute('data-research-filter');
+  }).catch(function () { /* 목록을 못 불러오면 기본 안내 그대로 */ });
 })();
