@@ -21,7 +21,9 @@ svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.2;
 
 .bar { display:flex; align-items:center; gap:6px; padding:calc(10px + var(--safe-top)) 10px 10px 14px; background:var(--navy); color:#fff; min-height:58px; flex:none; }
 .bar h1 { flex:1; margin:0; font-size:19px; font-weight:800; letter-spacing:-.02em; }
+.bar-home { display:flex; flex-direction:column; align-items:center; gap:1px; color:var(--gold); text-decoration:none; font-size:11px; font-weight:800; line-height:1; }
 .bar-home img { display:block; border-radius:9px; border:2px solid var(--gold); }
+.home-link { flex:none; display:inline-flex; align-items:center; min-height:34px; padding:0 10px; border-radius:9px; background:var(--gold); color:var(--navy); font-weight:800; font-size:14px; text-decoration:none; }
 .icon { display:inline-grid; place-items:center; width:44px; height:44px; border:0; border-radius:12px; background:transparent; color:inherit; }
 .icon:hover { background:rgba(255,255,255,.1); }
 .room-bar { padding-left:4px; }
