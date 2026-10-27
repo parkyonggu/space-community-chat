@@ -560,6 +560,10 @@ async function postDailyBriefing(env) {
   if (!text) return;
   const day = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/channel-post', { method: 'POST', body: JSON.stringify({ text, day }) });
+  // 운영자 슬랙에도 같은 브리핑을 보낸다(웹훅이 없으면 건너뜀). 실패해도 스페이스톡 게시에는 영향 없음.
+  try {
+    await slackNotify.createSlackNotifier({ webhookUrl: env.SLACK_WEBHOOK_URL || '', siteUrl: env.SITE_URL || 'https://withpluces.com' }).dailyBriefing(text);
+  } catch (error) { console.error('Daily briefing Slack failed:', error.message); }
 }
 
 const communityStub = env => env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1'));

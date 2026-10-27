@@ -47,6 +47,8 @@ function createSlackNotifier({ webhookUrl: rawUrl = '', siteUrl = 'https://withp
       const title = clip(post?.title || body.split('\n')[0], 120);
       return send(`📤 *게시판 → 슬랙* · ${escape(BOARD_NAMES[post?.board] || post?.board || '게시판')}\n*${escape(title)}* — ${escape(clip(post?.authorName, 40))}\n\n${escape(shown)}\n\n<${link}|전체 보기>`);
     },
+    // 매일 아침 정책브리핑(스페이스톡 정책브리핑 채널에 올린 것과 같은 글)을 운영자 슬랙에도 보낸다.
+    dailyBriefing: text => send(`📰 *오늘의 정책브리핑* (스페이스 톡 정책브리핑 채널과 같은 내용)\n${escape(String(text ?? '').replace(/\r/g, '').trim().slice(0, 2800))}`),
     signup: user => send(`🙋 *새 회원가입* · ${escape(clip(user?.nickname, 40))}${user?.email ? ` (${escape(maskEmail(user.email))})` : ''}`),
     comment: comment => send(`💬 *새 댓글* · 독자 소통 공간\n*${escape(clip(comment?.name, 40))}*: ${escape(clip(comment?.text, 200))}\n<${site}/#reader-section|댓글 보러 가기>`),
     post: post => {
