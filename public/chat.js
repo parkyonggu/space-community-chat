@@ -246,7 +246,10 @@
     const link = SHARE_LINE.exec(value)?.[1] || '';
     const shown = value.replace(SHARE_LINE, '').trim();
     const lines = shown.split('\n');
-    const title = (lines.shift() || '').trim().slice(0, 80) || '스페이스 커뮤니티 소식';
+    let first = (lines.shift() || '').trim();
+    // 첫 줄이 긴 문단이면 앞부분만 제목으로 쓰고, 문단은 본문에 그대로 둔다(카드·자세히 보기에서 글이 잘리지 않게).
+    if (first.length > 60) { lines.unshift(first); first = `${first.slice(0, 40).trim()}…`; }
+    const title = first.slice(0, 80) || '스페이스 커뮤니티 소식';
     return { link, shown, title, body: lines.join('\n').trim() };
   }
   function forwardActions(message) {

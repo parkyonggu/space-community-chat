@@ -23,7 +23,13 @@ function parse(text) {
   if (!kind) return null;
   const lines = text.trim().slice(kind.tag.length).split('\n').map(line => line.trim());
   while (lines.length && !lines[0]) lines.shift();
-  const title = (lines.shift() || kind.label.replace(/^\S+\s/, '')).slice(0, 80);
+  let first = lines.shift() || kind.label.replace(/^\S+\s/, '');
+  // 첫 줄이 제목이 아니라 긴 문단이면(60자 넘음), 앞부분만 제목으로 쓰고 문단 전체는 본문에 그대로 남긴다(글이 잘려 보이지 않게).
+  if (first.length > 60) {
+    lines.unshift(first);
+    first = `${first.slice(0, 40).trim()}…`;
+  }
+  const title = first.slice(0, 80);
   const body = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   return { kind, title, body };
 }
