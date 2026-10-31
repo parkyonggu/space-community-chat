@@ -2301,3 +2301,18 @@
     card.removeAttribute('data-research-filter');
   }).catch(function () { /* 목록을 못 불러오면 기본 안내 그대로 */ });
 })();
+
+// 「주간·월간 시장동향 브리핑」 단추: 가장 최근 브리핑 제목을 보여 주고, 누르면 그 브리핑을 바로 연다.
+(function () {
+  var weekly = document.getElementById('brief-weekly');
+  if (!weekly) return;
+  fetch('/api/briefing/latest', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+    if (!data) return;
+    [['weekly', 'brief-weekly'], ['monthly', 'brief-monthly']].forEach(function (pair) {
+      var item = data[pair[0]], link = document.getElementById(pair[1]), small = document.getElementById(pair[1] + '-latest');
+      if (!item || !link || !small) return;
+      link.href = item.path;
+      small.textContent = '최근: ' + item.title;
+    });
+  }).catch(function () { /* 기본 안내 그대로 */ });
+})();

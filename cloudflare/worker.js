@@ -691,6 +691,16 @@ export default {
           ? postPage.renderBoardPage({ board: boardMatch[1], posts: await publicPosts(env), page }, siteUrl) : null;
         return html ? htmlPage(request, html) : htmlPage(request, postPage.renderMissingPage(404, siteUrl, '게시판이나 페이지를 찾을 수 없습니다. 커뮤니티 홈에서 찾아 주세요.'), 404);
       }
+      // 홈 화면 '주간·월간 시장동향 브리핑' 단추용: 가장 최근 브리핑의 제목·기간만 알려 준다.
+      if (url.pathname === '/api/briefing/latest' && request.method === 'GET') {
+        const pick = async kind => {
+          const { others } = await (await communityStub(env).fetch(`https://internal.invalid/internal/briefing?${new URLSearchParams({ kind, slug: '' })}`)).json();
+          const top = (others || [])[0];
+          return top ? { title: top.title, slug: top.slug, publishedAt: top.publishedAt, path: `/briefing/${kind}/${top.slug}` } : null;
+        };
+        const [weekly, monthly] = await Promise.all([pick('weekly'), pick('monthly')]);
+        return Response.json({ weekly, monthly }, { headers: { 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' } });
+      }
       // 시장동향 브리핑 전문: 주간 /briefing/weekly(/2026-10-30), 월간 /briefing/monthly(/2026-10)
       const briefingMatch = /^\/briefing\/(weekly|monthly)(?:\/(\d{4}-\d{2}(?:-\d{2})?))?\/?$/.exec(url.pathname);
       if ((briefingMatch || url.pathname === '/briefing' || url.pathname === '/briefing/') && readable) {

@@ -1201,3 +1201,12 @@ body[data-view="home"] .info-box > .tab-pane:not(.tab-off) { display:flex; flex-
 .audit-contact .ac-list a { color:#1d3fbf; font-weight:700; text-decoration:none; }
 .audit-contact .ac-lab { margin-top:2px; padding-top:6px; border-top:1px dashed #e6dcc0; }
 @media (max-width:600px) { .audit-contact { padding:10px 12px; } .audit-contact .ac-list { font-size:13.5px; } }
+.briefing-links { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin:10px 0 6px; }
+.briefing-link { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:14px; text-decoration:none; color:#fff; background:linear-gradient(120deg,#16224a,#1d3b8a); border-top:4px solid #f5b941; box-shadow:0 4px 12px rgba(14,23,48,.15); }
+.briefing-link.monthly { background:linear-gradient(120deg,#1d3b8a,#16224a); }
+.briefing-link > span:first-child { font-size:24px; }
+.briefing-link span { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.briefing-link b { font-size:16px; }
+.briefing-link small { color:#f5d58a; font-size:13px; font-weight:700; }
+.briefing-link .go { margin-left:auto; font-size:22px; color:#f5b941; }
+.briefing-link:hover, .briefing-link:focus-visible { transform:translateY(-1px); outline:3px solid #f5b941; outline-offset:2px; }
