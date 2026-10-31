@@ -85,7 +85,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .top .room h1 { margin:0; font-size:17px; font-weight:800; }
     .top .room span { display:block; font-size:12px; color:#b9c2dd; }
     .top .room { flex:1; }
-    .top a.home { flex:none; display:inline-flex; align-items:center; min-height:36px; padding:0 12px; border-radius:10px; background:var(--gold); color:var(--navy); font-weight:800; font-size:14px; text-decoration:none; }
+    .top a.home { flex:none; display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border-radius:12px; background:var(--gold); color:#0e1730; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.35); font-weight:900; font-size:16px; letter-spacing:-.02em; white-space:nowrap; text-decoration:none; }
     .messages { flex:1; width:100%; max-width:760px; margin:0 auto; padding:12px 12px 20px; }
     .day { text-align:center; margin:8px 0 14px; }
     .day span { display:inline-block; padding:3px 12px; border-radius:999px; background:rgba(14,23,48,.08); font-size:12px; color:#4b5470; }
@@ -114,13 +114,14 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
     .fs-tools button { min-width:52px; min-height:40px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--navy); font-weight:800; font-size:16px; font-family:inherit; cursor:pointer; }
     .bar { flex:none; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
     .bar .btn.gold { background:var(--gold); border-color:var(--gold); }
+    .bar .btn.home-big { min-height:48px; padding:0 20px; font-size:17px; font-weight:900; background:var(--navy); color:#fff; border:2px solid var(--gold); box-shadow:0 2px 8px rgba(14,23,48,.25); }
   </style>
 </head>
 <body>
   <header class="top">
     <a class="back" href="/chat" aria-label="스페이스톡으로">‹</a>
-    <div class="room"><h1>${kind.id === 'info' ? '📊 정보안내' : '📣 모임안내'}</h1><span>스페이스 커뮤니티 소식 채널</span></div>
-    <a class="home" href="/" aria-label="스페이스 커뮤니티 홈으로">🏠 홈</a>
+    <div class="room"><h1>${kind.id === 'info' ? '📊 정보안내' : kind.id === 'general' ? '💬 보통메시지' : '📣 모임안내'}</h1><span>스페이스 커뮤니티 소식 채널</span></div>
+    <a class="home" href="/" aria-label="스페이스 커뮤니티 홈으로">🏠 커뮤니티 홈</a>
   </header>
   <div class="fs-tools" role="group" aria-label="글자 크기"><span>글자 크기</span><button type="button" data-fs="down">가−</button><button type="button" data-fs="reset">보통</button><button type="button" data-fs="up">가+</button></div>
   <main class="messages">
@@ -142,7 +143,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
       </div>
     </div>
   </main>
-  <nav class="bar"><a class="btn gold" href="/chat">스페이스톡에서 받아 보기</a><a class="btn" href="/">커뮤니티 홈</a></nav>
+  <nav class="bar"><a class="btn home-big" href="/">🏠 커뮤니티 홈으로 가기</a><a class="btn gold" href="/chat">스페이스톡에서 받아 보기</a></nav>
   <script>
     (function () {
       var scales = [0.9, 1, 1.15, 1.3, 1.5, 1.75], key = 'postFontScale', i = 1;
