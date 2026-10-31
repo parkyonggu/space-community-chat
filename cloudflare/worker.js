@@ -174,6 +174,8 @@ export class CommunityService extends DurableObject {
             });
           } catch (error) { console.error('Market briefing talk post failed:', error.message); }
         }
+        // 운영자 슬랙에도 새 브리핑을 알린다(웹훅이 없으면 건너뜀).
+        if (!saved.updated) this.later(() => this.slack.marketBriefing({ kind: saved.kind, title: saved.title, summary: saved.summary, url }));
         return { updated: saved.updated, url };
       },
     });
