@@ -37,6 +37,7 @@ const PAGE_STYLE = `<style>
     .briefing-source { margin:0 0 18px; padding:10px 14px; border-radius:10px; background:#f4f6fb; color:#26324a; font-size:14.5px; line-height:1.6; }
     .briefing-source strong { color:#1d3b8a; }
     .briefing-note { margin:26px 0 0; padding:14px 16px; border-radius:10px; background:#fff8e6; border:1px solid #f3dca2; color:#5b4a1d; font-size:14px; line-height:1.7; }
+    .share-btn.talk { background:#0e1730; color:#f5b941; border:2px solid #f5b941; text-decoration:none; }
     .briefing-kinds { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
     .briefing-kinds a, .briefing-kinds span { display:inline-flex; align-items:center; min-height:36px; padding:0 14px; border-radius:999px; font-weight:800; font-size:14px; text-decoration:none; }
     .briefing-kinds a { color:#fff; border:1px solid rgba(255,255,255,.35); }
@@ -86,7 +87,7 @@ function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluc
 ${richText.toHtml(report.body)}
       </div>
       <p class="briefing-note">${escapeHtml(NOTE)}</p>
-      <div class="share-row"><span class="share-label">함께 보기</span><button type="button" class="share-btn kakao" data-share-kakao>카카오톡 공유</button><button type="button" class="share-btn copy" data-share-copy>주소 복사</button></div>
+      <div class="share-row"><span class="share-label">함께 보기</span><button type="button" class="share-btn kakao" data-share-kakao>카카오톡 공유</button><a class="share-btn naver" href="https://share.naver.com/web/shareView?url=${encodeURIComponent(url)}&title=${encodeURIComponent(report.title)}" target="_blank" rel="noopener" title="네이버 블로그·카페·밴드로 공유">N 네이버 블로그·카페</a><a class="share-btn talk" href="/chat">💬 스페이스톡에서 받아 보기</a><button type="button" class="share-btn copy" data-share-copy>주소 복사</button></div>
       <div class="letter-cta"><a class="btn btn-primary" href="/#newsletter-section">이메일로 받아 보기</a><a class="btn btn-outline" href="${pathOf(report.kind)}">${info.name} 전체 보기</a></div>
     </article>${list.length ? `
     <section class="page-card related" aria-labelledby="related-title" style="margin-top:16px">

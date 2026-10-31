@@ -165,7 +165,16 @@ export class CommunityService extends DurableObject {
       send: input => this.newsletter.autoBriefing({ ...input, audience: autoAudience }),
       publish: async input => {
         const saved = this.briefings.upsert(input);
-        return { updated: saved.updated, url: `${env.SITE_URL || 'https://withpluces.com'}${saved.path}` };
+        const url = `${env.SITE_URL || 'https://withpluces.com'}${saved.path}`;
+        // 새 브리핑이면 스페이스톡 '📈 시장동향 브리핑' 채널에 요약과 전문 주소를 자동으로 보낸다(같은 브리핑은 한 번만).
+        if (!saved.updated && env.TALK) {
+          try {
+            await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/market-briefing', {
+              method: 'POST', body: JSON.stringify({ kind: saved.kind, slug: saved.slug, title: saved.title, summary: saved.summary, url }),
+            });
+          } catch (error) { console.error('Market briefing talk post failed:', error.message); }
+        }
+        return { updated: saved.updated, url };
       },
     });
     this.portal = portal.createPortalApi({

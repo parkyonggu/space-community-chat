@@ -17,6 +17,9 @@ const INFO_CHANNEL_NAME = '📊 정보안내';
 // 보통메시지 채널: 운영자가 광장채팅에서 '💬 보통메시지'로 고른 글(모임 외의 일반 전달). 그림 카드 없이 글자 그대로 보낸다.
 const GENERAL_CHANNEL = 'channel-general-messages';
 const GENERAL_CHANNEL_NAME = '💬 보통메시지';
+// 시장동향 브리핑 채널: 사이트에 주간·월간 시장동향 브리핑이 새로 게시되면 요약과 전문 주소를 자동으로 보낸다.
+const MARKET_CHANNEL = 'channel-market-briefing';
+const MARKET_CHANNEL_NAME = '📈 시장동향 브리핑';
 // 모임안내 채널 글의 보낸 사람 이름(화면에는 로고와 함께 보인다)
 const EVENT_SENDER = '스페이스 커뮤니티';
 const sha256 = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -142,6 +145,23 @@ export class ChatService extends DurableObject {
         this.core.meta(key, '1');
         this.deliver(result, { id: null });
         return json({ ok: true, subscribers: result.memberIds.length, channel: channelName });
+      }
+      if (path === '/internal/market-briefing' && request.method === 'POST') {
+        const { kind, slug, title, summary, url } = await request.json();
+        if (!['weekly', 'monthly'].includes(kind) || !/^\d{4}-\d{2}(-\d{2})?$/.test(String(slug || '')) || !/^https:\/\/\S+\/briefing\/(weekly|monthly)\/\S+$/.test(String(url || ''))) throw new ChatError(400, '브리핑 정보가 올바르지 않습니다.');
+        const key = `market-briefing:${kind}:${slug}`;
+        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        // 처음 쓸 때 정보안내 채널 구독자를 함께 받아 보게 한다(한 번만).
+        if (!this.core.meta('market-channel-seeded')) {
+          this.core.copyChannelMembers(INFO_CHANNEL, MARKET_CHANNEL, MARKET_CHANNEL_NAME);
+          this.core.meta('market-channel-seeded', '1');
+        }
+        const label = kind === 'monthly' ? '📅 월간' : '📈 주간';
+        const text = `${label} ${String(title || '').slice(0, 120)}\n${String(summary || '').slice(0, 400)}\n\n전문 보기: ${url}\n\n※ 투자 권유가 아닌 시장 정보입니다.`;
+        const result = this.core.postToChannel(MARKET_CHANNEL, { nickname: EVENT_SENDER, roomName: MARKET_CHANNEL_NAME, text });
+        this.core.meta(key, '1');
+        this.deliver(result, { id: null });
+        return json({ ok: true, subscribers: result.memberIds.length, channel: MARKET_CHANNEL_NAME });
       }
       if (path === '/internal/general-message' && request.method === 'POST') {
         const { sourceId, text, sender } = await request.json();
@@ -345,6 +365,11 @@ export class ChatService extends DurableObject {
       }
       if (first === 'event-channel' && method === 'GET') return json(this.core.channel(user, EVENT_CHANNEL, EVENT_CHANNEL_NAME));
       if (first === 'info-channel' && method === 'GET') return json(this.core.channel(user, INFO_CHANNEL, INFO_CHANNEL_NAME));
+      if (first === 'market-channel' && method === 'GET') return json(this.core.channel(user, MARKET_CHANNEL, MARKET_CHANNEL_NAME));
+      if (first === 'market-channel' && id === 'subscribe' && method === 'POST') {
+        const room = this.core.subscribeChannel(user, MARKET_CHANNEL, MARKET_CHANNEL_NAME);
+        return json({ room });
+      }
       if (first === 'info-channel' && id === 'subscribe' && method === 'POST') {
         const room = this.core.subscribeChannel(user, INFO_CHANNEL, INFO_CHANNEL_NAME);
         return json({ room });

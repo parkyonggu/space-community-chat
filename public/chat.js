@@ -107,12 +107,12 @@
     return fragment;
   }
   // 운영자 소식 채널(모임안내·정보안내): 스페이스 커뮤니티 로고로 보낸다
-  const NOTICE_CHANNELS = ['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages'];
+  const NOTICE_CHANNELS = ['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages', 'channel-market-briefing'];
   // 글 아래에 카카오톡·문자 공유 단추를 다는 소식 채널(정책브리핑 포함). 글이 접혀 있어도 단추는 늘 보인다.
   const POLICY_CHANNEL_ID = 'channel-policy-briefing';
   const SHARE_CHANNELS = [...NOTICE_CHANNELS, POLICY_CHANNEL_ID];
   function avatar(name, key, small = false) {
-    if (['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages'].includes(key)) {
+    if (['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages', 'channel-market-briefing'].includes(key)) {
       const image = make('img', `avatar${small ? ' small' : ''}`);
       image.src = '/icons/icon-192.png';
       image.alt = '';
@@ -257,7 +257,8 @@
     const roomName = state.room?.name || (policy ? '📰 오늘의 정책브리핑' : '💬 보통메시지');
     const info = plainNotice(message.text);
     // 공유 카드를 누르면 열 주소: 보통메시지는 글마다 만든 /e/번호, 정책브리핑은 홈페이지 정책브리핑 칸.
-    info.link = info.link || `${location.origin}/${policy ? '#policy-panel' : ''}`;
+    const briefingUrl = /https?:\/\/\S+\/briefing\/(?:weekly|monthly)\/\S+/.exec(message.text || '')?.[0];
+    info.link = info.link || briefingUrl || `${location.origin}/${policy ? '#policy-panel' : ''}`;
     if (policy) {
       // 카드 그림에는 누를 수 없는 긴 원문 주소 줄을 빼고 제목·요약만 싣는다.
       info.body = info.body.split('\n').filter(line => !/^\s*https?:\/\/\S+\s*$/.test(line) && !line.startsWith('다른 정책 소식은'))
@@ -415,8 +416,9 @@
     const eventChannel = channel.roomId === 'channel-event-announcements';
     const infoChannel = channel.roomId === 'channel-info-announcements';
     const generalChannel = channel.roomId === 'channel-general-messages';
+    const marketChannel = channel.roomId === 'channel-market-briefing';
     const item = make('li', 'channel-card');
-    const description = eventChannel ?
+    const description = marketChannel ? '매주 토요일·매월 1일 아침, 주간·월간 시장동향 브리핑의 요약과 전문 주소를 자동으로 받아 봐요(투자 권유 아님).' : eventChannel ?
       '스페이스 커뮤니티가 보내는 모임안내·초청장을 받아 봐요. 카카오톡으로 바로 공유할 수 있고, 새 소식 알림도 받을 수 있어요.' :
       generalChannel ? '모임안내가 아닌 운영자의 일반 소식·전달 사항을 받아 봐요. 그림 카드 없이 글로 바로 읽을 수 있어요.' :
       infoChannel ? '주간 시장분석처럼 운영자가 정리한 정보를 받아 봐요. 지수가 왜 오르고 내렸는지 쉽게 풀어 드려요(투자 권유 아님).' :
@@ -427,11 +429,11 @@
     join.addEventListener('click', async () => {
       join.disabled = true;
       try {
-        const endpoint = eventChannel ? '/api/chat/event-channel/subscribe' : generalChannel ? '/api/chat/general-channel/subscribe' : infoChannel ? '/api/chat/info-channel/subscribe' : '/api/chat/channel/subscribe';
+        const endpoint = marketChannel ? '/api/chat/market-channel/subscribe' : eventChannel ? '/api/chat/event-channel/subscribe' : generalChannel ? '/api/chat/general-channel/subscribe' : infoChannel ? '/api/chat/info-channel/subscribe' : '/api/chat/channel/subscribe';
         const { room } = await api(endpoint, { method: 'POST', body: {} });
         channel.subscribed = true;
         await loadRooms();
-        toast(eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : generalChannel ? '구독했어요. 운영자의 보통메시지가 이 방으로 전달됩니다.' : infoChannel ? '구독했어요. 운영자의 정보안내(시장분석 등)가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
+        toast(marketChannel ? '구독했어요. 새 시장동향 브리핑이 이 방으로 전달됩니다.' : eventChannel ? '구독했어요. 운영자의 모임안내가 이 방으로 전달됩니다.' : generalChannel ? '구독했어요. 운영자의 보통메시지가 이 방으로 전달됩니다.' : infoChannel ? '구독했어요. 운영자의 정보안내(시장분석 등)가 이 방으로 전달됩니다.' : '구독했어요. 매일 아침 7시 30분에 정책브리핑이 이 방으로 옵니다.');
         location.hash = `room=${room.id}`;
       } catch (error) { toast(error.message); join.disabled = false; }
     });
@@ -439,12 +441,12 @@
     return item;
   }
   async function loadRooms() {
-    const [{ rooms }, channel, eventChannel, generalChannel, infoChannel] = await Promise.all([
+    const [{ rooms }, channel, eventChannel, generalChannel, infoChannel, marketChannel] = await Promise.all([
       api('/api/chat/rooms'), api('/api/chat/channel').catch(() => null), api('/api/chat/event-channel').catch(() => null),
-      api('/api/chat/general-channel').catch(() => null), api('/api/chat/info-channel').catch(() => null),
+      api('/api/chat/general-channel').catch(() => null), api('/api/chat/info-channel').catch(() => null), api('/api/chat/market-channel').catch(() => null),
     ]);
     state.rooms = rooms;
-    state.channels = [channel, eventChannel, generalChannel, infoChannel].filter(Boolean);
+    state.channels = [channel, marketChannel, eventChannel, generalChannel, infoChannel].filter(Boolean);
     renderRooms();
   }
   $('room-filter').addEventListener('input', event => { state.filter = event.target.value.trim(); renderRooms(); });
