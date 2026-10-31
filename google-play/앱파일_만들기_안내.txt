@@ -1,0 +1,51 @@
+[스페이스 커뮤니티 안드로이드 앱 파일(.aab) 만들기 — PWABuilder]
+
+※ 아래 1~2번 전에 최신 코드를 먼저 배포해 주세요 (npx wrangler deploy).
+   새 아이콘·앱 연결 확인 파일 주소가 이 배포에 들어 있습니다.
+
+1. 사이트 점검
+   ① https://www.pwabuilder.com 접속
+   ② 주소 칸에 https://withpluces.com 입력 → [Start]
+   ③ 점수 화면이 나오면 [Package For Stores] 누르기
+
+2. Android 패키지 만들기
+   ① [Android] → [Generate Package]
+   ② 옵션(Options)에서 아래처럼 입력합니다. 나머지는 그대로 두세요.
+      - Package ID: com.withpluces.community   ← 반드시 이대로 (나중에 바꿀 수 없음)
+      - App name: 스페이스 커뮤니티
+      - Launcher name: 스페이스 커뮤니티
+      - App version: 1.0.0 / App version code: 1
+      - Host: withpluces.com / Start URL: /
+      - Theme color: #0E1730 / Background color: #F4F5F9
+      - Status bar color: #0E1730
+      - Notification delegation: 켜기 (앱에서도 알림을 받게)
+      - Signing key: [Create new] (새 서명 키 만들기)
+        · Key full name: (주)위드플러시아 / Organization: (주)위드플러시아 / Country: KR
+   ③ [Download Package] → zip 파일을 받아 압축을 풉니다.
+
+3. 받은 파일 보관 (아주 중요)
+   - 스페이스커뮤니티.aab (또는 app-release-bundle.aab) → Play Console에 올릴 파일
+   - signing.keystore, signing-key-info.txt → 앱 서명 키와 비밀번호
+     ★ 이 두 파일을 잃어버리면 앱을 업데이트할 수 없습니다.
+       USB·클라우드 등 두 곳 이상에 보관하고, 아무에게도 보내지 마세요. (채팅에도 올리지 마세요)
+   - assetlinks.json → 안에 있는 "sha256_cert_fingerprints" 값(AB:CD:…)이 필요합니다.
+
+4. Play Console에 올리기
+   ① Play Console → 앱 만들기 (앱 이름: 스페이스 커뮤니티, 기본 언어: 한국어, 앱/무료)
+   ② 테스트 → 비공개 테스트 → 트랙 만들기 → 새 버전 만들기
+   ③ 'Google Play 앱 서명' 사용 동의 → .aab 파일 올리기 → 저장
+   ④ 테스터 목록(이메일 12명 이상) 등록 → 검토 후 출시
+
+5. 앱 연결 확인 (주소창 없애기)
+   ① Play Console → 테스트 및 출시 → 설정 → 앱 무결성 → 앱 서명
+      '앱 서명 키 인증서'의 SHA-256 값을 복사합니다.
+   ② 3번 assetlinks.json 안의 SHA-256 값(업로드 키)도 준비합니다.
+   ③ 터미널에서 (두 값을 쉼표로 이어서 입력):
+        cd C:\스페이스커뮤니티\space-community-chat
+        npx wrangler secret put ANDROID_CERT_SHA256
+      → 값 입력 예: AA:BB:...:FF, 11:22:...:99
+   ④ 확인: https://withpluces.com/.well-known/assetlinks.json 에 값이 보이면 완료
+      (지문은 공개되는 값이라 채팅으로 알려 주셔도 괜찮습니다)
+
+6. 스토어 등록 정보
+   같은 폴더의 「스토어_등록정보.txt」 내용과 그림 파일을 Play Console '기본 스토어 등록정보'에 넣습니다.
