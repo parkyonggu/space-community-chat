@@ -35,6 +35,9 @@
     , "CONTACT_EMAIL": "dragon600120@gmail.com"
     , "NEWSLETTER_SENDER": "(주)위드플러시아"
     , "NEWSLETTER_DAILY_LIMIT": "300"
+    // Claude 예약 작업 브리핑(주간·월간 시장동향)을 스페이스 레터로 보낼 대상: operator(운영자 시험 발송) | subscribers(구독자 전체)
+    // 비밀값은 따로: npx wrangler secret put BRIEFING_MCP_SECRET (24자 이상)
+    , "SPACELETTER_AUTO_AUDIENCE": "operator"
     // Google Play 앱(com.withpluces.community) 서명 지문 — 공개 값. Play Console 앱 서명 키 지문을 받으면 쉼표로 이어 붙인다.
     , "ANDROID_CERT_SHA256": "F6:24:74:25:4F:7B:A4:F7:AE:A3:63:F6:81:D7:FC:2E:68:A1:E7:66:8E:31:4C:C9:41:1A:B2:B7:1F:8E:EF:11"
   }

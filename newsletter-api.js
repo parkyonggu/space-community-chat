@@ -745,6 +745,67 @@ function createNewsletterApi(dataDirectory, {
     }
   }
 
+  // ---------- 자동 브리핑(주간·월간 시장동향 등)을 스페이스 레터로 보내기 ----------
+  // Claude 예약 작업이 브리핑 커넥터(/api/mcp/…)로 부른다. 받는 사람은 서버 설정(audience)으로만 정한다.
+  //   operator    운영자(ADMIN_EMAILS)에게만 [검토용] 시험 메일 1통 — 기본값
+  //   subscribers 구독 확인한 구독자 전체 — 기존 발송 대기열(하루 한도·수신거부·열람 통계·지난 레터 보관)을 그대로 쓴다
+  // 같은 dedupeKey는 한 번만 처리한다(예약 작업이 다시 실행돼도 두 번 보내지 않음).
+  const AUTO_KEY = /^[a-z0-9][a-z0-9._-]{2,79}$/;
+  const AUTO_SENDER = { nickname: '자동 브리핑' };
+
+  async function autoStatus(audience = 'operator') {
+    await ensureMigrated();
+    const store = await readStore();
+    const base = summary(store);
+    const busy = store.campaigns.find(entry => entry.status === 'sending' || entry.status === 'scheduled');
+    const admins = adminEmails.map(entry => entry.trim().toLowerCase()).filter(entry => EMAIL.test(entry));
+    return {
+      audience, mailConfigured: base.mailConfigured, dailyLimit: base.dailyLimit, sentToday: base.sentToday,
+      confirmedSubscribers: base.subscribers.confirmed, operatorRecipients: admins.length,
+      recipients: audience === 'subscribers' ? base.subscribers.confirmed : admins.length,
+      busy: busy ? { subject: busy.subject, status: busy.status, sendAt: busy.sendAt || null } : null,
+    };
+  }
+
+  async function autoBriefing({ subject: rawSubject, body: rawBody, dedupeKey, audience = 'operator' }) {
+    await ensureMigrated();
+    if (!mailReady()) throw new NewsletterError(503, '메일 발송이 설정되지 않았습니다.');
+    if (!['operator', 'subscribers'].includes(audience)) throw new NewsletterError(500, '발송 대상 설정(audience)이 올바르지 않습니다.');
+    const key = typeof dedupeKey === 'string' ? dedupeKey.trim().toLowerCase() : '';
+    if (!AUTO_KEY.test(key)) throw new NewsletterError(400, "중복 방지 키(dedupe_key)를 영문 소문자·숫자·-로 3~80자 넣어 주세요. 예: weekly-2026-10-30");
+    const content = compose({ subject: rawSubject, body: rawBody, ad: false });
+    assertFinished(content);
+    const metaId = `auto:${audience}:${key}`;
+    const before = await readStore();
+    const done = before.meta.find(entry => entry.id === metaId);
+    if (done) return { duplicate: true, audience, at: done.at, campaignId: done.campaignId || null, recipients: done.recipients || 0 };
+
+    if (audience === 'operator') {
+      const admins = [...new Set(adminEmails.map(entry => entry.trim().toLowerCase()).filter(entry => EMAIL.test(entry)))];
+      if (!admins.length) throw new NewsletterError(500, '운영자 메일 주소(ADMIN_EMAILS)가 설정되지 않았습니다.');
+      const email = buildEmail({ ...content });
+      let sent = 0;
+      const errors = [];
+      for (const to of admins) {
+        try {
+          await deliver(to, { ...email, subject: `[검토용] ${email.subject}` });
+          sent += 1;
+        } catch (error) {
+          errors.push(mailError(error));
+        }
+      }
+      if (!sent) throw new NewsletterError(502, `운영자 시험 메일을 보내지 못했습니다 — ${errors[0] || 'error'}`);
+      await updateStore(store => { store.meta.push({ id: metaId, at: iso(), recipients: sent }); });
+      return { duplicate: false, audience, recipients: sent, failed: errors.length };
+    }
+
+    const campaign = await createCampaign('newsletter', AUTO_SENDER, content);
+    await updateStore(store => { store.meta.push({ id: metaId, at: iso(), campaignId: campaign.id, recipients: campaign.recipients.length }); });
+    return { duplicate: false, audience, campaignId: campaign.id, recipients: campaign.recipients.length, dailyLimit };
+  }
+
+  handleNewsletterApi.autoStatus = autoStatus;
+  handleNewsletterApi.autoBriefing = autoBriefing;
   handleNewsletterApi.processQueue = processQueue;
   handleNewsletterApi.generateWeekly = generateWeekly;
   // 지난 레터 페이지(withpluces.com/letter/발행일)용: 발송을 마친 레터 전체, 최신순

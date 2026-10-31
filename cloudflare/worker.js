@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import auth from '../auth-api.js';
 import community from '../community-api.js';
 import board from '../board-api.js';
@@ -12,6 +12,7 @@ import androidApp from '../android-app.js';
 import slackNotify from '../slack-notify.js';
 import audit from '../audit-api.js';
 import guard from '../content-guard.js';
+import briefingMcp from '../briefing-mcp.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -154,6 +155,12 @@ export class CommunityService extends DurableObject {
       senderName: env.NEWSLETTER_SENDER || '(주)위드플러시아', contactEmail: env.CONTACT_EMAIL || '',
       adminEmails, ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', highlights: since => this.board.highlights(since),
     });
+    // Claude 예약 작업의 시장동향 브리핑 → 스페이스 레터. 받는 사람은 SPACELETTER_AUTO_AUDIENCE(operator|subscribers)로만 정한다.
+    const autoAudience = env.SPACELETTER_AUTO_AUDIENCE === 'subscribers' ? 'subscribers' : 'operator';
+    this.briefing = briefingMcp.createBriefingMcp({
+      status: () => this.newsletter.autoStatus(autoAudience),
+      send: input => this.newsletter.autoBriefing({ ...input, audience: autoAudience }),
+    });
     this.portal = portal.createPortalApi({
       ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', rateLimit,
       // 공공데이터포털 일반 인증키는 계정마다 하나라서, 따로 넣지 않았으면 정책브리핑 키를 함께 쓴다.
@@ -267,6 +274,15 @@ export class CommunityService extends DurableObject {
     if (pathname === '/internal/newsletter-weekly') {
       const draft = await this.newsletter.generateWeekly({ source: 'auto' });
       return json({ id: draft.id });
+    }
+    // 브리핑 커넥터(MCP): 바깥 /api/mcp/<비밀값> 에서 비밀값을 확인한 요청만 여기로 넘어온다.
+    if (pathname === '/internal/briefing-mcp') {
+      const allowed = await this.rateLimit('briefing-mcp', 60, 60 * 60 * 1000, Date.now());
+      if (!allowed) return json({ error: '요청이 많습니다. 잠시 후 다시 시도해 주세요.' }, 429);
+      let input = null;
+      try { input = JSON.parse(body ? body.toString('utf8') : ''); } catch { input = null; }
+      const output = await this.briefing(request.method, input);
+      return output.body === undefined ? new Response(null, { status: output.status }) : json(output.body, output.status);
     }
     if (pathname === '/internal/public-post') {
       return json(await this.board.publicPost(url.searchParams.get('no')));
@@ -567,6 +583,9 @@ async function postDailyBriefing(env) {
 }
 
 const communityStub = env => env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1'));
+// 비밀값 비교(길이·내용이 달라도 걸리는 시간이 같도록 해시끼리 비교)
+const sameSecret = (given, expected) => Boolean(expected) && String(expected).length >= 24 &&
+  timingSafeEqual(createHash('sha256').update(String(given)).digest(), createHash('sha256').update(String(expected)).digest());
 const publicPosts = async env => (await (await communityStub(env).fetch('https://internal.invalid/internal/public-posts')).json()).posts;
 const publicLetters = async env => (await (await communityStub(env).fetch('https://internal.invalid/internal/letters')).json()).letters;
 const htmlPage = (request, html, status = 200, maxAge = 300) => new Response(request.method === 'HEAD' ? null : html, { status,
@@ -585,6 +604,15 @@ export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
+      // 브리핑 커넥터(MCP): claude.ai 사용자 지정 커넥터 주소 https://withpluces.com/api/mcp/<BRIEFING_MCP_SECRET>
+      const mcpMatch = /^\/api\/mcp\/([A-Za-z0-9_-]{24,128})\/?$/.exec(url.pathname);
+      if (mcpMatch || url.pathname === '/api/mcp' || url.pathname.startsWith('/api/mcp/')) {
+        if (!mcpMatch || !sameSecret(mcpMatch[1], env.BRIEFING_MCP_SECRET)) return new Response(null, { status: 404 });
+        if (request.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
+        return await communityStub(env).fetch('https://internal.invalid/internal/briefing-mcp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: await request.text(),
+        });
+      }
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
           url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/') || url.pathname === '/api/notify/share' ||
