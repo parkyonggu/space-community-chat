@@ -1,7 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createNewsletterApi } = require('./newsletter-api');
+const { DatabaseSync } = require('node:sqlite');
 const { createBriefingMcp, briefingMarkup } = require('./briefing-mcp');
+const { createBriefingStore, renderBriefingPage, renderBriefingList } = require('./briefing-pages');
+const { renderMarkup } = require('./newsletter-api');
+
+// Durable Object의 sql.exec 와 같은 모양(행 배열을 돌려줌)으로 node:sqlite를 감싼다.
+function memorySql() {
+  const db = new DatabaseSync(':memory:');
+  return { exec(query, ...params) { const statement = db.prepare(query); return /^\s*SELECT/i.test(query) ? statement.all(...params) : (statement.run(...params), []); } };
+}
 
 const token = n => String(n).repeat(48).slice(0, 48);
 function fixture(audience) {
@@ -20,13 +29,16 @@ function fixture(audience) {
     storage, mailer, authenticate: async () => ({ user: null }), siteUrl: 'https://withpluces.com',
     now: () => Date.parse('2026-10-31T00:00:00Z'), adminEmails: ['dragon600120@gmail.com'], batchSize: 10, senderName: '(주)위드플러시아',
   });
+  let clock = Date.parse('2026-10-31T00:00:00Z');
+  const pages = createBriefingStore(memorySql(), () => clock);
   const handle = createBriefingMcp({
     status: () => api.autoStatus(audience),
     send: input => api.autoBriefing({ ...input, audience }),
+    publish: async input => { const saved = pages.upsert(input); return { updated: saved.updated, url: `https://withpluces.com${saved.path}` }; },
   });
   let id = 0;
   const call = async (name, args) => (await handle('POST', { jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).body.result;
-  return { api, handle, call, sent, store: () => store };
+  return { api, handle, call, sent, store: () => store, pages, tick: ms => { clock += ms; } };
 }
 
 const ARGS = {
@@ -42,7 +54,7 @@ test('MCP handshake and tool list', async () => {
   assert.equal(init.body.result.protocolVersion, '2025-06-18');
   assert.equal((await handle('POST', { jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202);
   const list = await handle('POST', { jsonrpc: '2.0', id: 2, method: 'tools/list' });
-  assert.deepEqual(list.body.result.tools.map(tool => tool.name), ['spaceletter_status', 'spaceletter_send_briefing']);
+  assert.deepEqual(list.body.result.tools.map(tool => tool.name), ['briefing_publish', 'spaceletter_status', 'spaceletter_send_briefing']);
   assert.equal((await handle('GET')).status, 405);
 });
 
@@ -94,7 +106,39 @@ test('rejects bad input without sending', async () => {
   assert.equal(sent.length, 0);
 });
 
-test('markup keeps lines and adds the link', () => {
-  const markup = briefingMarkup('제목', 'a\nb', 'https://example.com');
-  assert.equal(markup, '# 제목\n\na\nb\n\n[전문 보기](https://example.com)');
+test('email markup: one line per paragraph, provider line, link at the end', () => {
+  const markup = briefingMarkup('주간 시장동향 (10/26~10/30)', '첫 줄\n· 나스닥 −2.00%\n\n· 코스피 +3.25%', 'https://withpluces.com/briefing/weekly/2026-10-30');
+  assert.equal(markup, '# 주간 시장동향 (10/26~10/30)\n\n제공: 스페이스커뮤니티\n\n첫 줄\n\n▪ 나스닥 −2.00%\n\n▪ 코스피 +3.25%\n\n**전문 보기** → [스페이스커뮤니티에서 전체 분석 읽기](https://withpluces.com/briefing/weekly/2026-10-30)');
+  const html = renderMarkup(markup).html;
+  assert.equal((html.match(/<p /g) || []).length, 5, 'each line is its own paragraph on phones');
+  assert.match(html, /href="https:\/\/withpluces\.com\/briefing\/weekly\/2026-10-30"/);
 });
+
+test('briefing_publish stores weekly and monthly pages separately and renders them', async () => {
+  const { call, pages, tick } = fixture('operator');
+  const body = '## 1. 요약\n나스닥이 내렸습니다.\n\n| 지수 | 종가 | 주간 |\n| --- | --- | --- |\n| 나스닥 | 25,437.00 | −2.00%(−518.34p) |\n\n[출처](https://example.com/a)';
+  let out = await call('briefing_publish', { kind: 'weekly', period: '2026-10-30', title: '주간 시장동향 (10/26~10/30)', summary: '나스닥 −2.00%', body });
+  assert.ok(!out.isError, out.content[0].text);
+  assert.match(out.content[0].text, /게시했습니다: https:\/\/withpluces\.com\/briefing\/weekly\/2026-10-30/);
+  tick(60000);
+  out = await call('briefing_publish', { kind: 'weekly', period: '2026-10-30', title: '주간 시장동향 (10/26~10/30)', body: body + '\n추가' });
+  assert.match(out.content[0].text, /고쳐 올렸습니다/);
+  await call('briefing_publish', { kind: 'monthly', period: '2026-10', title: '월간 시장동향 (2026년 10월)', body: '## 요약\n10월' });
+  assert.equal((await call('briefing_publish', { kind: 'weekly', period: '2026-10', title: 'x', body: 'y' })).isError, true, 'weekly needs a full date');
+  assert.equal((await call('briefing_publish', { kind: 'daily', period: '2026-10-30', title: 'x', body: 'y' })).isError, true);
+
+  const weekly = pages.get('weekly', '2026-10-30');
+  assert.ok(weekly.updatedAt > weekly.publishedAt);
+  assert.equal(pages.list('weekly').length, 1);
+  assert.equal(pages.list('monthly').length, 1);
+  const html = renderBriefingPage({ report: weekly, others: pages.list('weekly') });
+  assert.match(html, /<table/);
+  assert.match(html, /제공 스페이스커뮤니티/);
+  assert.match(html, /주간 시장동향/);
+  assert.doesNotMatch(html, /주간·월간|월간 시장동향 브리핑/);
+  assert.match(html, /투자 판단과 책임은 투자자 본인에게/);
+  assert.match(html, /target="_blank"/);
+  assert.doesNotMatch(html, /target="_blank"[^>]*target=/, 'no duplicate attributes');
+  assert.match(renderBriefingList('monthly', pages.list('monthly')), /월간 시장동향 브리핑/);
+});
+

@@ -3,10 +3,26 @@
 // - MCP 규격(Streamable HTTP, 상태 없음, JSON 응답) 가운데 필요한 부분만 구현한다.
 // - 받는 사람(운영자 시험/구독자 전체)은 서버 설정 SPACELETTER_AUTO_AUDIENCE 로만 정한다. 이 도구로는 바꿀 수 없다.
 
-const SERVER_INFO = { name: 'space-community-briefing', version: '1.0.0' };
+const SERVER_INFO = { name: 'space-community-briefing', version: '1.1.0' };
 const VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 const TOOLS = [
+  {
+    name: 'briefing_publish',
+    description: "시장동향 브리핑 전문을 스페이스커뮤니티 사이트에 공개 페이지로 올리고 주소를 돌려줍니다. 주간은 kind='weekly', period='YYYY-MM-DD'(금요일), 월간은 kind='monthly', period='YYYY-MM'. 같은 kind·period로 다시 올리면 내용을 고칩니다. 본문은 게시판 글 규칙: '## 소제목', '| 칸 | 칸 |' 표, **굵게**, [글](https://주소). 이메일의 '전문 보기' 링크에는 여기서 받은 주소를 쓰세요.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['weekly', 'monthly'], description: "'weekly'(주간) 또는 'monthly'(월간)" },
+        period: { type: 'string', description: "주간: 금요일 날짜 'YYYY-MM-DD', 월간: 'YYYY-MM'" },
+        title: { type: 'string', description: "페이지 제목. 예: '주간 시장동향 (10/26~10/30)'" },
+        summary: { type: 'string', description: '(선택) 목록·검색에 보일 한두 문장 요약' },
+        body: { type: 'string', description: '전문(게시판 글 규칙의 일반 텍스트)' },
+      },
+      required: ['kind', 'period', 'title', 'body'],
+      additionalProperties: false,
+    },
+  },
   {
     name: 'spaceletter_status',
     description: '스페이스 레터 자동 브리핑의 현재 발송 대상(operator=운영자 시험 발송, subscribers=구독자 전체), 받는 인원, 오늘 보낸 수와 하루 한도, 진행 중인 발송이 있는지 알려 줍니다. 보내기 전에 먼저 확인하세요.',
@@ -19,8 +35,8 @@ const TOOLS = [
       type: 'object',
       properties: {
         subject: { type: 'string', description: "메일 제목(150자 이내). 예: '주간시장동향분석 및 전망 (10/26~10/30)'" },
-        body: { type: 'string', description: "본문(일반 텍스트). 빈 줄로 문단을 나누고, '- '로 시작하는 줄은 목록이 됩니다." },
-        link_url: { type: 'string', description: "(선택) 본문 끝 '전문 보기' 링크" },
+        body: { type: 'string', description: '본문(일반 텍스트). 한 줄이 한 문단으로 보이도록 자동으로 띄어 씁니다.' },
+        link_url: { type: 'string', description: "(선택) 본문 끝 '전문 보기' 링크 — briefing_publish가 돌려준 스페이스커뮤니티 주소" },
         dedupe_key: { type: 'string', description: "중복 방지 키(영문 소문자·숫자·-). 예: 'weekly-2026-10-30', 'monthly-2026-10'" },
       },
       required: ['subject', 'body', 'dedupe_key'],
@@ -35,9 +51,16 @@ const text = (value, isError = false) => ({ content: [{ type: 'text', text: valu
 const httpUrl = value => /^https?:\/\/[^\s"'<>()]+$/i.test(value);
 
 // 일반 텍스트 본문 + 링크를 스페이스 레터 표기(newsletter-api renderMarkup)로 바꾼다.
+// 휴대폰에서 읽기 쉽도록 한 줄을 한 문단으로 띄우고, 맨 위에 '제공 스페이스커뮤니티'를 밝힌다.
 function briefingMarkup(subject, body, linkUrl) {
-  const clean = String(body).replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-  return [`# ${subject}`, clean, linkUrl ? `[전문 보기](${linkUrl})` : ''].filter(Boolean).join('\n\n');
+  const lines = String(body).replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(Boolean)
+    .map(line => line.replace(/^[·•]\s*/, '▪ '));
+  return [
+    `# ${subject}`,
+    '제공: 스페이스커뮤니티',
+    ...lines,
+    linkUrl ? `**전문 보기** → [스페이스커뮤니티에서 전체 분석 읽기](${linkUrl})` : '',
+  ].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -45,8 +68,13 @@ function briefingMarkup(subject, body, linkUrl) {
  * @param {() => Promise<object>} o.status
  * @param {(input:{subject:string, body:string, dedupeKey:string}) => Promise<object>} o.send
  */
-function createBriefingMcp({ status, send }) {
+function createBriefingMcp({ status, send, publish }) {
   async function callTool(name, args) {
+    if (name === 'briefing_publish') {
+      if (typeof publish !== 'function') return text('브리핑 페이지 게시가 설정되지 않았습니다.', true);
+      const outcome = await publish({ kind: args.kind, period: args.period, title: args.title, summary: args.summary, body: args.body });
+      return text(`${outcome.updated ? '고쳐 올렸습니다' : '게시했습니다'}: ${outcome.url}`);
+    }
     if (name === 'spaceletter_status') return text(JSON.stringify(await status(), null, 2));
     if (name === 'spaceletter_send_briefing') {
       const subject = String(args.subject || '').trim();
@@ -74,7 +102,7 @@ function createBriefingMcp({ status, send }) {
         });
       }
       if (message.method === 'ping') return notification ? null : result(message.id, {});
-      if (message.method === 'tools/list') return result(message.id, { tools: TOOLS });
+      if (message.method === 'tools/list') return result(message.id, { tools: TOOLS.filter(tool => tool.name !== 'briefing_publish' || typeof publish === 'function') });
       if (message.method === 'tools/call') {
         const output = await callTool(message.params?.name, message.params?.arguments || {});
         return output ? result(message.id, output) : failure(message.id, -32602, `알 수 없는 도구: ${message.params?.name}`);

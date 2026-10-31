@@ -13,6 +13,7 @@ import slackNotify from '../slack-notify.js';
 import audit from '../audit-api.js';
 import guard from '../content-guard.js';
 import briefingMcp from '../briefing-mcp.js';
+import briefingPages from '../briefing-pages.js';
 export { ChatService } from './chat-service.js';
 
 const json = (body, status = 200) => Response.json(body, {
@@ -157,9 +158,15 @@ export class CommunityService extends DurableObject {
     });
     // Claude 예약 작업의 시장동향 브리핑 → 스페이스 레터. 받는 사람은 SPACELETTER_AUTO_AUDIENCE(operator|subscribers)로만 정한다.
     const autoAudience = env.SPACELETTER_AUTO_AUDIENCE === 'subscribers' ? 'subscribers' : 'operator';
+    // 브리핑 전문 페이지(withpluces.com/briefing/weekly/…, /briefing/monthly/…)
+    this.briefings = briefingPages.createBriefingStore(sql);
     this.briefing = briefingMcp.createBriefingMcp({
       status: () => this.newsletter.autoStatus(autoAudience),
       send: input => this.newsletter.autoBriefing({ ...input, audience: autoAudience }),
+      publish: async input => {
+        const saved = this.briefings.upsert(input);
+        return { updated: saved.updated, url: `${env.SITE_URL || 'https://withpluces.com'}${saved.path}` };
+      },
     });
     this.portal = portal.createPortalApi({
       ecosKey: env.ECOS_API_KEY || '', rebKey: env.REB_API_KEY || '', molitKey: env.MOLIT_API_KEY || '', policyKey: env.POLICY_NEWS_KEY || '', rateLimit,
@@ -283,6 +290,12 @@ export class CommunityService extends DurableObject {
       try { input = JSON.parse(body ? body.toString('utf8') : ''); } catch { input = null; }
       const output = await this.briefing(request.method, input);
       return output.body === undefined ? new Response(null, { status: output.status }) : json(output.body, output.status);
+    }
+    if (pathname === '/internal/briefing') {
+      const kind = url.searchParams.get('kind') || '';
+      const slug = url.searchParams.get('slug') || '';
+      if (!briefingPages.KINDS[kind]) return json({ report: null, others: [] });
+      return json({ report: slug ? this.briefings.get(kind, slug) : null, others: this.briefings.list(kind) });
     }
     if (pathname === '/internal/public-post') {
       return json(await this.board.publicPost(url.searchParams.get('no')));
@@ -677,6 +690,18 @@ export default {
         const html = postPage.LIST_BOARDS.includes(boardMatch[1]) && page
           ? postPage.renderBoardPage({ board: boardMatch[1], posts: await publicPosts(env), page }, siteUrl) : null;
         return html ? htmlPage(request, html) : htmlPage(request, postPage.renderMissingPage(404, siteUrl, '게시판이나 페이지를 찾을 수 없습니다. 커뮤니티 홈에서 찾아 주세요.'), 404);
+      }
+      // 시장동향 브리핑 전문: 주간 /briefing/weekly(/2026-10-30), 월간 /briefing/monthly(/2026-10)
+      const briefingMatch = /^\/briefing\/(weekly|monthly)(?:\/(\d{4}-\d{2}(?:-\d{2})?))?\/?$/.exec(url.pathname);
+      if ((briefingMatch || url.pathname === '/briefing' || url.pathname === '/briefing/') && readable) {
+        const siteUrl = env.SITE_URL || url.origin;
+        if (!briefingMatch) return Response.redirect(`${siteUrl}/briefing/weekly`, 302);
+        const [, kind, slug] = briefingMatch;
+        const query = new URLSearchParams({ kind, slug: slug || '' });
+        const { report, others } = await (await communityStub(env).fetch(`https://internal.invalid/internal/briefing?${query}`)).json();
+        if (!slug) return htmlPage(request, briefingPages.renderBriefingList(kind, others, siteUrl));
+        if (!report) return htmlPage(request, postPage.renderMissingPage(404, siteUrl, '브리핑을 찾을 수 없습니다. 목록에서 찾아 주세요.'), 404);
+        return htmlPage(request, briefingPages.renderBriefingPage({ report, others }, siteUrl));
       }
       // 지난 스페이스 레터: 목록 /letter, 한 호 /letter/발행일. 예전 주소 /letter?id=…는 새 주소로 옮긴다.
       const letterMatch = /^\/letter(?:\/([0-9]{4}-[0-9]{2}-[0-9]{2}(?:-[0-9]{1,2})?)?)?\/?$/.exec(url.pathname);

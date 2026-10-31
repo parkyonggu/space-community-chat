@@ -378,4 +378,4 @@ function renderSitemap(posts, siteUrl = 'https://withpluces.com', today = new Da
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
 }
 
-module.exports = { renderPostPage, renderMissingPage, renderSitemap, renderBoardPage, renderLetterList, renderLetterPage, injectLatestPosts, headlineOf, summaryOf, bodyHtml, LIST_BOARDS, PAGE_SIZE };
+module.exports = { shell, LIST_STYLE, renderPostPage, renderMissingPage, renderSitemap, renderBoardPage, renderLetterList, renderLetterPage, injectLatestPosts, headlineOf, summaryOf, bodyHtml, LIST_BOARDS, PAGE_SIZE };
