@@ -142,3 +142,31 @@ test('briefing_publish stores weekly and monthly pages separately and renders th
   assert.match(renderBriefingList('monthly', pages.list('monthly')), /월간 시장동향 브리핑/);
 });
 
+
+test('publish reports the 스페이스톡 result, and briefing_post_talk re-posts a missed briefing once', async () => {
+  const pages = createBriefingStore(memorySql());
+  const posted = new Set();
+  const toTalk = report => {
+    const key = `${report.kind}:${report.slug}`;
+    if (posted.has(key)) return { status: 'skipped' };
+    posted.add(key);
+    return { status: 'posted', subscribers: 3, channel: '📈 시장동향 브리핑' };
+  };
+  const handle = createBriefingMcp({
+    status: async () => ({}), send: async () => ({}),
+    publish: async input => { const saved = pages.upsert(input); return { updated: saved.updated, url: `https://withpluces.com${saved.path}`, talk: toTalk(saved) }; },
+    postTalk: async ({ kind, period }) => { const report = pages.get(kind, period); return report ? { found: true, url: 'u', talk: toTalk(report) } : { found: false }; },
+  });
+  const call = async (name, args) => (await handle('POST', { jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name, arguments: args } })).body.result;
+  const list = await handle('POST', { jsonrpc: '2.0', id: 1, method: 'tools/list' });
+  assert.ok(list.body.result.tools.some(tool => tool.name === 'briefing_post_talk'));
+  const first = await call('briefing_publish', { kind: 'monthly', period: '2026-10', title: '월간 시장동향 (2026년 10월)', body: '## 1. 요약\n내용' });
+  assert.match(first.content[0].text, /채널에 올렸습니다\(받는 사람 3명\)/);
+  const again = await call('briefing_publish', { kind: 'monthly', period: '2026-10', title: '월간 시장동향 (2026년 10월)', body: '## 1. 요약\n고친 내용' });
+  assert.match(again.content[0].text, /고쳐 올렸습니다.*이미 올라간/);
+  posted.clear();
+  const missed = await call('briefing_post_talk', { kind: 'monthly', period: '2026-10' });
+  assert.match(missed.content[0].text, /채널에 올렸습니다/);
+  const none = await call('briefing_post_talk', { kind: 'weekly', period: '2026-10-23' });
+  assert.equal(none.isError, true);
+});

@@ -166,17 +166,16 @@ export class CommunityService extends DurableObject {
       publish: async input => {
         const saved = this.briefings.upsert(input);
         const url = `${env.SITE_URL || 'https://withpluces.com'}${saved.path}`;
-        // 새 브리핑이면 스페이스톡 '📈 시장동향 브리핑' 채널에 요약과 전문 주소를 자동으로 보낸다(같은 브리핑은 한 번만).
-        if (!saved.updated && env.TALK) {
-          try {
-            await env.TALK.get(env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/market-briefing', {
-              method: 'POST', body: JSON.stringify({ kind: saved.kind, slug: saved.slug, title: saved.title, summary: saved.summary, url }),
-            });
-          } catch (error) { console.error('Market briefing talk post failed:', error.message); }
-        }
-        // 운영자 슬랙에도 새 브리핑을 알린다(웹훅이 없으면 건너뜀).
-        if (!saved.updated) this.later(() => this.slack.marketBriefing({ kind: saved.kind, title: saved.title, summary: saved.summary, url }));
-        return { updated: saved.updated, url };
+        // 스페이스톡 '📈 시장동향 브리핑' 채널에 요약과 전문 주소를 보낸다. 고쳐 올린 경우에도 아직 안 올라간 브리핑이면 올린다(같은 브리핑은 한 번만).
+        const talk = await this.marketBriefingToTalk(saved, url);
+        return { updated: saved.updated, url, talk };
+      },
+      // 이미 게시된 브리핑을 스페이스톡 채널에 올린다(놓친 브리핑 다시 올리기용, 같은 브리핑은 한 번만).
+      postTalk: async ({ kind, period }) => {
+        const report = this.briefings.get(kind, String(period || '').trim());
+        if (!report) return { found: false };
+        const url = `${env.SITE_URL || 'https://withpluces.com'}${briefingPages.pathOf(report.kind, report.slug)}`;
+        return { found: true, url, talk: await this.marketBriefingToTalk(report, url) };
       },
     });
     this.portal = portal.createPortalApi({
@@ -194,6 +193,24 @@ export class CommunityService extends DurableObject {
         return (await response.json()).online;
       },
     });
+  }
+
+  // 시장동향 브리핑 → 스페이스톡 채널(+ 처음 올라갈 때 운영자 슬랙 알림). 결과: posted | skipped | error 문구
+  async marketBriefingToTalk(report, url) {
+    if (!this.env.TALK) return { status: 'error', message: '스페이스톡이 연결되지 않았습니다.' };
+    try {
+      const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/market-briefing', {
+        method: 'POST', body: JSON.stringify({ kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, url }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) return { status: 'error', message: data.error || `HTTP ${response.status}` };
+      if (data.skipped) return { status: 'skipped' };
+      this.later(() => this.slack.marketBriefing({ kind: report.kind, title: report.title, summary: report.summary, url }));
+      return { status: 'posted', subscribers: data.subscribers, channel: data.channel };
+    } catch (error) {
+      console.error('Market briefing talk post failed:', error.message);
+      return { status: 'error', message: error.message };
+    }
   }
 
   // ---------- 양산 주민감사청구 (지방자치법 제21조) ----------

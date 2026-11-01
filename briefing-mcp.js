@@ -3,7 +3,7 @@
 // - MCP 규격(Streamable HTTP, 상태 없음, JSON 응답) 가운데 필요한 부분만 구현한다.
 // - 받는 사람(운영자 시험/구독자 전체)은 서버 설정 SPACELETTER_AUTO_AUDIENCE 로만 정한다. 이 도구로는 바꿀 수 없다.
 
-const SERVER_INFO = { name: 'space-community-briefing', version: '1.1.0' };
+const SERVER_INFO = { name: 'space-community-briefing', version: '1.2.0' };
 const VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 const TOOLS = [
@@ -20,6 +20,19 @@ const TOOLS = [
         body: { type: 'string', description: '전문(게시판 글 규칙의 일반 텍스트)' },
       },
       required: ['kind', 'period', 'title', 'body'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'briefing_post_talk',
+    description: "이미 사이트에 게시된 시장동향 브리핑의 요약과 전문 주소를 스페이스톡 '📈 시장동향 브리핑' 채널에 올립니다(briefing_publish가 새 브리핑을 자동으로 올리므로 보통은 필요 없고, 놓친 브리핑을 다시 올릴 때 씁니다). 같은 브리핑은 한 번만 올라갑니다.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['weekly', 'monthly'], description: "'weekly'(주간) 또는 'monthly'(월간)" },
+        period: { type: 'string', description: "주간: 금요일 날짜 'YYYY-MM-DD', 월간: 'YYYY-MM'" },
+      },
+      required: ['kind', 'period'],
       additionalProperties: false,
     },
   },
@@ -68,12 +81,25 @@ function briefingMarkup(subject, body, linkUrl) {
  * @param {() => Promise<object>} o.status
  * @param {(input:{subject:string, body:string, dedupeKey:string}) => Promise<object>} o.send
  */
-function createBriefingMcp({ status, send, publish }) {
+const talkText = talk => {
+  if (!talk) return '';
+  if (talk.status === 'posted') return ` / 스페이스톡 '${talk.channel || '📈 시장동향 브리핑'}' 채널에 올렸습니다(받는 사람 ${talk.subscribers ?? 0}명).`;
+  if (talk.status === 'skipped') return " / 스페이스톡: 이미 올라간 브리핑이라 다시 올리지 않았습니다.";
+  return ` / 스페이스톡 게시 실패: ${talk.message || '알 수 없는 오류'}`;
+};
+
+function createBriefingMcp({ status, send, publish, postTalk }) {
   async function callTool(name, args) {
     if (name === 'briefing_publish') {
       if (typeof publish !== 'function') return text('브리핑 페이지 게시가 설정되지 않았습니다.', true);
       const outcome = await publish({ kind: args.kind, period: args.period, title: args.title, summary: args.summary, body: args.body });
-      return text(`${outcome.updated ? '고쳐 올렸습니다' : '게시했습니다'}: ${outcome.url}`);
+      return text(`${outcome.updated ? '고쳐 올렸습니다' : '게시했습니다'}: ${outcome.url}${talkText(outcome.talk)}`);
+    }
+    if (name === 'briefing_post_talk') {
+      if (typeof postTalk !== 'function') return text('스페이스톡 게시가 설정되지 않았습니다.', true);
+      const outcome = await postTalk({ kind: args.kind, period: args.period });
+      if (!outcome.found) return text(`게시된 브리핑이 없습니다: ${args.kind} ${args.period}. 먼저 briefing_publish로 올리세요.`, true);
+      return text(`${outcome.url}${talkText(outcome.talk)}`, outcome.talk?.status === 'error');
     }
     if (name === 'spaceletter_status') return text(JSON.stringify(await status(), null, 2));
     if (name === 'spaceletter_send_briefing') {
@@ -102,7 +128,7 @@ function createBriefingMcp({ status, send, publish }) {
         });
       }
       if (message.method === 'ping') return notification ? null : result(message.id, {});
-      if (message.method === 'tools/list') return result(message.id, { tools: TOOLS.filter(tool => tool.name !== 'briefing_publish' || typeof publish === 'function') });
+      if (message.method === 'tools/list') return result(message.id, { tools: TOOLS.filter(tool => (tool.name !== 'briefing_publish' || typeof publish === 'function') && (tool.name !== 'briefing_post_talk' || typeof postTalk === 'function')) });
       if (message.method === 'tools/call') {
         const output = await callTool(message.params?.name, message.params?.arguments || {});
         return output ? result(message.id, output) : failure(message.id, -32602, `알 수 없는 도구: ${message.params?.name}`);
