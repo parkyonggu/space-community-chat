@@ -234,8 +234,8 @@ function addAccountControls(parent, isGuide = false) {
   });
   const admin = document.createElement('a');
   admin.className = 'auth-secondary';
-  admin.href = '/newsletter-admin';
-  admin.textContent = '뉴스레터 관리';
+  admin.href = '/newsletter-admin#approval';
+  admin.textContent = '⚙️ 운영자 관리 · 발송승인';
   admin.hidden = true;
   admin.style.textDecoration = 'none';
   const rename = document.createElement('button');

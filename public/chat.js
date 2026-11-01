@@ -1584,6 +1584,8 @@
     try {
       const me = await api('/api/chat/me');
       state.me = { ...me.user, admin: Boolean(member && session.user.admin) };
+      window.spaceTalkAdmin = state.me.admin;
+      window.spaceAdminShortcut?.show(state.me.admin);
       if (state.me.guest) document.body.classList.add('guest-mode');
       state.vapidKey = me.vapidPublicKey;
       state.retentionDays = me.retentionDays;

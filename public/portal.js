@@ -503,8 +503,8 @@
       talk.href = '/chat';
       actions.replaceChildren(write, row, talk);
       if (user.admin) {
-        const admin = make('a', 'btn btn-outline', '뉴스레터 관리');
-        admin.href = '/newsletter-admin';
+        const admin = make('a', 'btn btn-outline', '⚙️ 운영자 관리 · 발송승인');
+        admin.href = '/newsletter-admin#approval';
         actions.appendChild(admin);
       }
     }
