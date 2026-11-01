@@ -414,6 +414,37 @@
     card.appendChild(row);
     return card;
   }
+  function publishedTable(list) {
+    const table = document.createElement('table');
+    const head = document.createElement('tr');
+    ['종류', '제목', '발행', ''].forEach(text => { const th = document.createElement('th'); th.textContent = text; head.appendChild(th); });
+    table.appendChild(head);
+    list.forEach(entry => {
+      const tr = document.createElement('tr');
+      const titleCell = document.createElement('td');
+      const link = document.createElement('a');
+      link.href = entry.previewUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = entry.title; link.style.color = '#c8dbff';
+      titleCell.appendChild(link);
+      const action = document.createElement('td');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '📈 스페이스톡에 올리기';
+      button.addEventListener('click', async () => {
+        if (!confirm(`'${entry.title}'을(를) 스페이스톡 '📈 시장동향 브리핑' 채널에 올릴까요?`)) return;
+        button.disabled = true;
+        setStatus('talk-status', '올리는 중입니다…');
+        try {
+          const result = await api('/api/admin/briefing/talk', { kind: entry.kind, slug: entry.slug });
+          setStatus('talk-status', `올렸습니다: ${entry.title} (받는 사람 ${result.talk.subscribers ?? 0}명)`);
+        } catch (error) { setStatus('talk-status', error.message, true); }
+        button.disabled = false;
+      });
+      action.appendChild(button);
+      tr.append(cell(KIND_NAME[entry.kind]), titleCell, cell(when(entry.publishedAt)), action);
+      table.appendChild(tr);
+    });
+    return table;
+  }
   async function loadApprovals() {
     try {
       const data = await api('/api/admin/briefing');
@@ -422,6 +453,7 @@
       const empty = text => { const p = document.createElement('p'); p.className = 'muted'; p.textContent = text; return p; };
       $('approval-pending').replaceChildren(...(data.pending.length ? data.pending.map(entry => approvalCard(entry, true, audience)) : [empty('승인을 기다리는 브리핑이 없습니다.')]));
       $('approval-done').replaceChildren(...(data.done.length ? data.done.map(entry => approvalCard(entry, false, audience)) : [empty('아직 없습니다.')]));
+      $('approval-published').replaceChildren(...(data.published?.length ? [publishedTable(data.published)] : [empty('공개된 브리핑이 없습니다.')]));
       $('approval-count').hidden = !data.pending.length;
       $('approval-count').textContent = String(data.pending.length);
       return data.pending.length;

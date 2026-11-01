@@ -128,7 +128,8 @@ export class ChatService extends DurableObject {
         if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
         if (typeof text !== 'string' || !announcement.kindOf(text) || text.length > 2000) throw new ChatError(400, '모임안내·초청장·정보안내 형식의 메시지가 아닙니다.');
         const key = `event-announcement:${sourceId}`;
-        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        // force: 운영자가 관리 화면에서 '스페이스톡에 다시 올리기'를 눌렀을 때만(같은 브리핑을 한 번 더 올린다)
+        if (this.core.meta(key) && force !== true) return json({ ok: true, skipped: 'already posted' });
         const info = announcement.kindOf(text).id === 'info';
         const channelId = info ? INFO_CHANNEL : EVENT_CHANNEL;
         const channelName = info ? INFO_CHANNEL_NAME : EVENT_CHANNEL_NAME;
@@ -147,10 +148,11 @@ export class ChatService extends DurableObject {
         return json({ ok: true, subscribers: result.memberIds.length, channel: channelName });
       }
       if (path === '/internal/market-briefing' && request.method === 'POST') {
-        const { kind, slug, title, summary, url } = await request.json();
+        const { kind, slug, title, summary, url, force } = await request.json();
         if (!['weekly', 'monthly'].includes(kind) || !/^\d{4}-\d{2}(-\d{2})?$/.test(String(slug || '')) || !/^https:\/\/\S+\/briefing\/(weekly|monthly)\/\S+$/.test(String(url || ''))) throw new ChatError(400, '브리핑 정보가 올바르지 않습니다.');
         const key = `market-briefing:${kind}:${slug}`;
-        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        // force: 운영자가 관리 화면에서 '스페이스톡에 다시 올리기'를 눌렀을 때만(같은 브리핑을 한 번 더 올린다)
+        if (this.core.meta(key) && force !== true) return json({ ok: true, skipped: 'already posted' });
         // 처음 쓸 때 정보안내 채널 구독자를 함께 받아 보게 한다(한 번만).
         if (!this.core.meta('market-channel-seeded')) {
           this.core.copyChannelMembers(INFO_CHANNEL, MARKET_CHANNEL, MARKET_CHANNEL_NAME);
@@ -168,7 +170,8 @@ export class ChatService extends DurableObject {
         if (!/^\d{10,15}-[a-z0-9]{6,16}$/.test(String(sourceId || ''))) throw new ChatError(400, '광장 메시지 식별자가 올바르지 않습니다.');
         if (typeof text !== 'string' || !text.trim() || text.length > 2200) throw new ChatError(400, '보낼 글이 없거나 너무 깁니다.');
         const key = `general-message:${sourceId}`;
-        if (this.core.meta(key)) return json({ ok: true, skipped: 'already posted' });
+        // force: 운영자가 관리 화면에서 '스페이스톡에 다시 올리기'를 눌렀을 때만(같은 브리핑을 한 번 더 올린다)
+        if (this.core.meta(key) && force !== true) return json({ ok: true, skipped: 'already posted' });
         // 보통메시지 채널을 처음 쓸 때 모임안내 구독자를 함께 받아 보게 한다(한 번만).
         if (!this.core.meta('general-channel-seeded')) {
           this.core.copyChannelMembers(EVENT_CHANNEL, GENERAL_CHANNEL, GENERAL_CHANNEL_NAME);

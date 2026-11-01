@@ -217,11 +217,11 @@ export class CommunityService extends DurableObject {
   }
 
   // 시장동향 브리핑 → 스페이스톡 채널(+ 처음 올라갈 때 운영자 슬랙 알림). 결과: posted | skipped | error 문구
-  async marketBriefingToTalk(report, url) {
+  async marketBriefingToTalk(report, url, { force = false } = {}) {
     if (!this.env.TALK) return { status: 'error', message: '스페이스톡이 연결되지 않았습니다.' };
     try {
       const response = await this.env.TALK.get(this.env.TALK.idFromName('talk-v1')).fetch('https://internal.invalid/internal/market-briefing', {
-        method: 'POST', body: JSON.stringify({ kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, url }),
+        method: 'POST', body: JSON.stringify({ kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, url, force }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.ok === false) return { status: 'error', message: data.error || `HTTP ${response.status}` };
@@ -263,7 +263,7 @@ export class CommunityService extends DurableObject {
       if (!user?.admin) return json({ error: '운영자만 이용할 수 있습니다.' }, 403);
       const siteUrl = this.env.SITE_URL || 'https://withpluces.com';
       const shape = report => ({
-        kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, updatedAt: report.updatedAt, approvedAt: report.approvedAt,
+        kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, publishedAt: report.publishedAt, updatedAt: report.updatedAt, approvedAt: report.approvedAt,
         previewUrl: `${siteUrl}${briefingPages.pathOf(report.kind, report.slug)}${report.status === 'pending' ? `?preview=${report.previewToken}` : ''}`,
         mail: report.mail ? { subject: report.mail.subject, body: report.mail.body } : null, result: report.result,
       });
@@ -271,7 +271,9 @@ export class CommunityService extends DurableObject {
         const { pending, done } = this.briefings.approvals();
         let audience = null;
         try { audience = await this.newsletter.autoStatus(this.autoAudience); } catch { audience = null; }
-        return json({ approval: this.briefingApproval, audience, pending: pending.map(shape), done: done.map(shape) });
+        // 공개된 브리핑(주간·월간 최근 6건씩): 스페이스톡에 다시 올리기용
+        const published = ['monthly', 'weekly'].flatMap(kind => this.briefings.list(kind, 6)).map(shape);
+        return json({ approval: this.briefingApproval, audience, pending: pending.map(shape), done: done.map(shape), published });
       }
       if (pathname === '/api/admin/briefing/approve' && request.method === 'POST') {
         let input = {};
@@ -280,6 +282,17 @@ export class CommunityService extends DurableObject {
         const outcome = await this.approveBriefing(input.kind, input.slug);
         if (outcome.error) return json({ error: outcome.error }, outcome.status);
         return json({ ok: true, ...outcome });
+      }
+      // 공개된 브리핑을 스페이스톡 '📈 시장동향 브리핑' 채널에 (다시) 올린다
+      if (pathname === '/api/admin/briefing/talk' && request.method === 'POST') {
+        let input = {};
+        try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { input = {}; }
+        if (!briefingPages.KINDS[input.kind] || !/^\d{4}-\d{2}(-\d{2})?$/.test(String(input.slug || ''))) return json({ error: '브리핑 정보가 올바르지 않습니다.' }, 400);
+        const report = this.briefings.get(input.kind, input.slug);
+        if (!report) return json({ error: '공개된 브리핑이 아닙니다(승인 대기 중이면 먼저 승인해 주세요).' }, 404);
+        const talk = await this.marketBriefingToTalk(report, `${siteUrl}${briefingPages.pathOf(report.kind, report.slug)}`, { force: true });
+        if (talk.status === 'error') return json({ error: `스페이스톡 게시 실패: ${talk.message}` }, 502);
+        return json({ ok: true, talk });
       }
       return json({ error: '지원하지 않는 요청입니다.' }, 404);
     } catch (error) {
