@@ -58,7 +58,7 @@ const kindNav = current => `<nav class="briefing-kinds" aria-label="브리핑 �
 
 const NOTE = '이 브리핑은 공개된 시장 자료를 바탕으로 스페이스커뮤니티가 제공하는 정보이며, 특정 종목의 매수·매도를 권유하지 않습니다. 투자 판단과 책임은 투자자 본인에게 있습니다. 자료 수집·정리에는 AI 도구를 활용했습니다.';
 
-function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluces.com') {
+function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluces.com', { preview = false } = {}) {
   const info = KINDS[report.kind];
   const url = `${siteUrl}${pathOf(report.kind, report.slug)}`;
   const description = report.summary || `${info.name} · ${report.title} — 스페이스커뮤니티 제공`;
@@ -69,7 +69,7 @@ function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluc
   };
   const list = others.filter(entry => entry.slug !== report.slug).slice(0, 8);
   return shell({
-    title: `${report.title} | ${info.name} · 스페이스커뮤니티`, description, canonical: url, siteUrl,
+    title: `${preview ? '[검토 중] ' : ''}${report.title} | ${info.name} · 스페이스커뮤니티`, description, canonical: url, siteUrl, noindex: preview,
     head: `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>${LIST_STYLE}${PAGE_STYLE}`,
     body: `
   <header class="page-head">
@@ -82,6 +82,7 @@ function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluc
   <main class="page-wrap page-body">
     <article class="page-card">
       <div class="fs-tools" aria-label="글자 크기"><span>글자 크기</span><button type="button" data-fs="down" aria-label="글자 작게">가−</button><button type="button" data-fs="reset" aria-pressed="true">보통</button><button type="button" data-fs="up" aria-label="글자 크게">가+</button></div>
+      ${preview ? '<p class="briefing-note" style="margin:0 0 18px;font-weight:700">🔒 운영자 검토용 미리보기입니다. 아직 공개·발송되지 않았습니다. 뉴스레터 관리 화면의 \'발송승인\' 탭에서 승인하면 공개되고 스페이스톡·이메일·슬랙으로 나갑니다.</p>' : ''}
       <p class="briefing-source"><strong>스페이스커뮤니티 ${info.name} 브리핑</strong> · 수치마다 출처 링크를 달았습니다.</p>
       <div class="post-body briefing-body">
 ${richText.toHtml(report.body)}
@@ -126,24 +127,64 @@ function renderBriefingList(kind, reports, siteUrl = 'https://withpluces.com') {
 }
 
 // SQLite(Durable Object)에 브리핑을 보관한다.
-function createBriefingStore(sql, now = Date.now) {
+// 발송승인: 승인 모드에서 새로 올라온 브리핑은 status='pending'(목록·검색에 안 보이고 미리보기 토큰으로만 열림).
+// 운영자가 관리 화면 '발송승인' 탭에서 승인하면 'approved'가 되어 공개되고 스페이스톡·메일·슬랙으로 나간다.
+function createBriefingStore(sql, now = Date.now, newToken = () => crypto.randomUUID().replace(/-/g, '')) {
   sql.exec('CREATE TABLE IF NOT EXISTS briefings (kind TEXT NOT NULL, slug TEXT NOT NULL, title TEXT NOT NULL, summary TEXT NOT NULL, body TEXT NOT NULL, published_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kind, slug))');
-  const view = row => ({ kind: row.kind, slug: row.slug, title: row.title, summary: row.summary, body: row.body, publishedAt: row.published_at, updatedAt: row.updated_at });
+  let columns = null;
+  try { columns = new Set([...sql.exec('PRAGMA table_info(briefings)')].map(row => row.name)); } catch { columns = null; }
+  const addColumn = (name, definition) => {
+    if (columns && columns.has(name)) return;
+    try { sql.exec(`ALTER TABLE briefings ADD COLUMN ${name} ${definition}`); } catch (error) { if (columns) throw error; /* 이미 있는 칸 */ }
+  };
+  addColumn('status', "TEXT NOT NULL DEFAULT 'approved'");
+  addColumn('preview_token', "TEXT NOT NULL DEFAULT ''");
+  addColumn('mail', "TEXT NOT NULL DEFAULT ''");
+  addColumn('approved_at', 'INTEGER');
+  addColumn('result', "TEXT NOT NULL DEFAULT ''");
+  const parse = value => { try { return value ? JSON.parse(value) : null; } catch { return null; } };
+  const view = row => ({
+    kind: row.kind, slug: row.slug, title: row.title, summary: row.summary, body: row.body, publishedAt: row.published_at, updatedAt: row.updated_at,
+    status: row.status || 'approved', previewToken: row.preview_token || '', mail: parse(row.mail), approvedAt: row.approved_at ?? null, result: parse(row.result),
+  });
+  const one = (kind, slug) => { const row = [...sql.exec('SELECT * FROM briefings WHERE kind = ? AND slug = ?', kind, slug)][0]; return row ? view(row) : null; };
   return {
-    upsert(input) {
+    upsert(input, { pending = false } = {}) {
       const entry = normalize(input);
       const at = now();
-      const existing = [...sql.exec('SELECT published_at FROM briefings WHERE kind = ? AND slug = ?', entry.kind, entry.slug)][0];
+      const existing = one(entry.kind, entry.slug);
       if (existing) sql.exec('UPDATE briefings SET title = ?, summary = ?, body = ?, updated_at = ? WHERE kind = ? AND slug = ?', entry.title, entry.summary, entry.body, at, entry.kind, entry.slug);
-      else sql.exec('INSERT INTO briefings VALUES (?, ?, ?, ?, ?, ?, ?)', entry.kind, entry.slug, entry.title, entry.summary, entry.body, at, at);
-      return { ...entry, updated: Boolean(existing), path: pathOf(entry.kind, entry.slug) };
+      else sql.exec('INSERT INTO briefings (kind, slug, title, summary, body, published_at, updated_at, status, preview_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        entry.kind, entry.slug, entry.title, entry.summary, entry.body, at, at, pending ? 'pending' : 'approved', pending ? newToken() : '');
+      const saved = one(entry.kind, entry.slug);
+      return { ...entry, updated: Boolean(existing), path: pathOf(entry.kind, entry.slug), status: saved.status, previewToken: saved.previewToken };
     },
-    get(kind, slug) {
-      const row = [...sql.exec('SELECT * FROM briefings WHERE kind = ? AND slug = ?', kind, slug)][0];
-      return row ? view(row) : null;
+    // 승인 전 브리핑은 미리보기 토큰이 맞을 때만 돌려준다.
+    get(kind, slug, { preview = '', includePending = false } = {}) {
+      const report = one(kind, slug);
+      if (!report) return null;
+      if (report.status !== 'approved' && !includePending && !(preview && preview === report.previewToken)) return null;
+      return report;
     },
     list(kind, limit = 60) {
-      return [...sql.exec('SELECT kind, slug, title, summary, published_at, updated_at, \'\' AS body FROM briefings WHERE kind = ? ORDER BY slug DESC LIMIT ?', kind, limit)].map(view);
+      return [...sql.exec("SELECT kind, slug, title, summary, published_at, updated_at, status, '' AS body, '' AS preview_token, '' AS mail, approved_at, '' AS result FROM briefings WHERE kind = ? AND status = 'approved' ORDER BY slug DESC LIMIT ?", kind, limit)].map(view);
+    },
+    // 발송승인 탭: 승인 대기 전부 + 최근 승인 몇 건
+    approvals(recent = 6) {
+      const pending = [...sql.exec("SELECT * FROM briefings WHERE status = 'pending' ORDER BY updated_at DESC")].map(view);
+      const done = [...sql.exec("SELECT * FROM briefings WHERE status = 'approved' AND approved_at IS NOT NULL ORDER BY approved_at DESC LIMIT ?", recent)].map(view);
+      return { pending, done };
+    },
+    setMail(kind, slug, mail) {
+      sql.exec('UPDATE briefings SET mail = ? WHERE kind = ? AND slug = ?', JSON.stringify(mail), kind, slug);
+    },
+    approve(kind, slug) {
+      const at = now();
+      sql.exec("UPDATE briefings SET status = 'approved', approved_at = ?, published_at = ? WHERE kind = ? AND slug = ? AND status = 'pending'", at, at, kind, slug);
+      return one(kind, slug);
+    },
+    setResult(kind, slug, result) {
+      sql.exec('UPDATE briefings SET result = ? WHERE kind = ? AND slug = ?', JSON.stringify(result), kind, slug);
     },
   };
 }

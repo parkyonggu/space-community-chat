@@ -93,6 +93,7 @@ function createBriefingMcp({ status, send, publish, postTalk }) {
     if (name === 'briefing_publish') {
       if (typeof publish !== 'function') return text('브리핑 페이지 게시가 설정되지 않았습니다.', true);
       const outcome = await publish({ kind: args.kind, period: args.period, title: args.title, summary: args.summary, body: args.body });
+      if (outcome.pending) return text(`발송승인 대기로 ${outcome.updated ? '고쳐 저장했습니다' : '저장했습니다'}(아직 비공개): 승인 후 공개될 주소 ${outcome.url} / 운영자가 https://withpluces.com/newsletter-admin#approval '발송승인' 탭에서 승인하면 공개되고 스페이스톡·구독자 메일·슬랙으로 나갑니다. 이 주소를 메일과 텍스트 파일의 '전문 보기' 링크로 쓰세요.`);
       return text(`${outcome.updated ? '고쳐 올렸습니다' : '게시했습니다'}: ${outcome.url}${talkText(outcome.talk)}`);
     }
     if (name === 'briefing_post_talk') {
@@ -108,6 +109,7 @@ function createBriefingMcp({ status, send, publish, postTalk }) {
       const link = String(args.link_url || '').trim();
       if (link && !httpUrl(link)) return text('link_url 형식이 올바르지 않습니다(https://…).', true);
       const outcome = await send({ subject, body: briefingMarkup(subject, body, link), dedupeKey: String(args.dedupe_key || '') });
+      if (outcome.held) return text('발송승인 대기: 메일 내용을 저장했습니다. 운영자가 \'발송승인\' 탭에서 승인하면 그때 보냅니다(지금은 아무에게도 보내지 않았습니다).');
       if (outcome.duplicate) return text(`이미 처리한 브리핑입니다(dedupe_key 중복). 처리 시각: ${outcome.at}, 대상: ${outcome.audience}, 인원: ${outcome.recipients}`);
       if (outcome.audience === 'operator') return text(`운영자 시험 발송 완료: [검토용] 메일 ${outcome.recipients}통${outcome.failed ? `, 실패 ${outcome.failed}통` : ''}. 구독자에게는 보내지 않았습니다(서버 설정 operator).`);
       return text(`구독자 발송을 시작했습니다: 확인된 구독자 ${outcome.recipients}명. 하루 ${outcome.dailyLimit}통 이내로 나누어 보내며, 결과는 뉴스레터 관리 화면 발송 기록에서 볼 수 있습니다.`);

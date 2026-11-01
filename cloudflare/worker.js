@@ -160,21 +160,42 @@ export class CommunityService extends DurableObject {
     const autoAudience = env.SPACELETTER_AUTO_AUDIENCE === 'subscribers' ? 'subscribers' : 'operator';
     // 브리핑 전문 페이지(withpluces.com/briefing/weekly/…, /briefing/monthly/…)
     this.briefings = briefingPages.createBriefingStore(sql);
+    // 발송승인: 켜져 있으면(기본) 새 브리핑은 승인 대기로 두고, 운영자가 '발송승인' 탭에서 승인할 때 공개·발송한다. BRIEFING_APPROVAL=off 로만 끈다.
+    this.briefingApproval = env.BRIEFING_APPROVAL !== 'off';
+    this.autoAudience = autoAudience;
+    const siteUrl = env.SITE_URL || 'https://withpluces.com';
+    const briefingOf = dedupeKey => {
+      const match = /^(weekly|monthly)-(\d{4}-\d{2}(?:-\d{2})?)$/.exec(String(dedupeKey || ''));
+      return match ? this.briefings.get(match[1], match[2], { includePending: true }) : null;
+    };
     this.briefing = briefingMcp.createBriefingMcp({
-      status: () => this.newsletter.autoStatus(autoAudience),
-      send: input => this.newsletter.autoBriefing({ ...input, audience: autoAudience }),
+      status: async () => ({ ...(await this.newsletter.autoStatus(autoAudience)), approval: this.briefingApproval ? 'on' : 'off' }),
+      send: async input => {
+        // 승인 모드: 브리핑이 승인 대기 중이면 메일 내용만 저장해 두고, 승인할 때 보낸다.
+        const report = this.briefingApproval ? briefingOf(input.dedupeKey) : null;
+        if (report && report.status === 'pending') {
+          this.briefings.setMail(report.kind, report.slug, { subject: input.subject, body: input.body, dedupeKey: input.dedupeKey });
+          return { held: true };
+        }
+        return this.newsletter.autoBriefing({ ...input, audience: autoAudience });
+      },
       publish: async input => {
-        const saved = this.briefings.upsert(input);
-        const url = `${env.SITE_URL || 'https://withpluces.com'}${saved.path}`;
+        const saved = this.briefings.upsert(input, { pending: this.briefingApproval });
+        const url = `${siteUrl}${saved.path}`;
+        if (saved.status === 'pending') {
+          if (!saved.updated) this.later(() => this.slack.briefingPending({ kind: saved.kind, title: saved.title, summary: saved.summary }));
+          return { updated: saved.updated, url, pending: true };
+        }
         // 스페이스톡 '📈 시장동향 브리핑' 채널에 요약과 전문 주소를 보낸다. 고쳐 올린 경우에도 아직 안 올라간 브리핑이면 올린다(같은 브리핑은 한 번만).
         const talk = await this.marketBriefingToTalk(saved, url);
         return { updated: saved.updated, url, talk };
       },
-      // 이미 게시된 브리핑을 스페이스톡 채널에 올린다(놓친 브리핑 다시 올리기용, 같은 브리핑은 한 번만).
+      // 이미 게시된 브리핑을 스페이스톡 채널에 올린다(놓친 브리핑 다시 올리기용, 같은 브리핑은 한 번만). 승인 대기 중이면 올리지 않는다.
       postTalk: async ({ kind, period }) => {
-        const report = this.briefings.get(kind, String(period || '').trim());
+        const report = this.briefings.get(kind, String(period || '').trim(), { includePending: true });
         if (!report) return { found: false };
-        const url = `${env.SITE_URL || 'https://withpluces.com'}${briefingPages.pathOf(report.kind, report.slug)}`;
+        const url = `${siteUrl}${briefingPages.pathOf(report.kind, report.slug)}`;
+        if (report.status === 'pending') return { found: true, url, talk: { status: 'error', message: '운영자 발송승인 전이라 올리지 않았습니다.' } };
         return { found: true, url, talk: await this.marketBriefingToTalk(report, url) };
       },
     });
@@ -210,6 +231,60 @@ export class CommunityService extends DurableObject {
     } catch (error) {
       console.error('Market briefing talk post failed:', error.message);
       return { status: 'error', message: error.message };
+    }
+  }
+
+  // ---------- 시장동향 브리핑 발송승인 (운영자 전용: 뉴스레터 관리 화면 '발송승인' 탭) ----------
+  async approveBriefing(kind, slug) {
+    const before = this.briefings.get(kind, slug, { includePending: true });
+    if (!before) return { error: '브리핑을 찾을 수 없습니다.', status: 404 };
+    if (before.status !== 'pending') return { error: '이미 승인된 브리핑입니다.', status: 409 };
+    const report = this.briefings.approve(kind, slug);
+    const url = `${this.env.SITE_URL || 'https://withpluces.com'}${briefingPages.pathOf(kind, slug)}`;
+    const talk = await this.marketBriefingToTalk(report, url);
+    let mail = { status: 'none', message: '저장된 메일 내용이 없어 메일은 보내지 않았습니다.' };
+    if (report.mail) {
+      try {
+        const outcome = await this.newsletter.autoBriefing({ ...report.mail, audience: this.autoAudience });
+        mail = outcome.duplicate ? { status: 'skipped', message: '이미 보낸 메일입니다.' }
+          : { status: 'sent', audience: outcome.audience, recipients: outcome.recipients, message: outcome.audience === 'operator' ? `운영자 시험 발송 ${outcome.recipients}통` : `구독자 ${outcome.recipients}명에게 발송 시작` };
+      } catch (error) { mail = { status: 'error', message: error.message }; }
+    }
+    const result = { at: Date.now(), talk, mail, slack: talk.status === 'posted' ? 'sent' : 'not-sent' };
+    this.briefings.setResult(kind, slug, result);
+    return { result, url };
+  }
+
+  async briefingAdminApi(request, source, body, pathname) {
+    try {
+      const write = request.method !== 'GET';
+      const { user, error } = await this.auth.authenticate(source, { csrf: write });
+      if (error) return json({ error: error.message }, error.status);
+      if (!user?.admin) return json({ error: '운영자만 이용할 수 있습니다.' }, 403);
+      const siteUrl = this.env.SITE_URL || 'https://withpluces.com';
+      const shape = report => ({
+        kind: report.kind, slug: report.slug, title: report.title, summary: report.summary, updatedAt: report.updatedAt, approvedAt: report.approvedAt,
+        previewUrl: `${siteUrl}${briefingPages.pathOf(report.kind, report.slug)}${report.status === 'pending' ? `?preview=${report.previewToken}` : ''}`,
+        mail: report.mail ? { subject: report.mail.subject, body: report.mail.body } : null, result: report.result,
+      });
+      if (pathname === '/api/admin/briefing' && request.method === 'GET') {
+        const { pending, done } = this.briefings.approvals();
+        let audience = null;
+        try { audience = await this.newsletter.autoStatus(this.autoAudience); } catch { audience = null; }
+        return json({ approval: this.briefingApproval, audience, pending: pending.map(shape), done: done.map(shape) });
+      }
+      if (pathname === '/api/admin/briefing/approve' && request.method === 'POST') {
+        let input = {};
+        try { input = JSON.parse(body ? body.toString('utf8') : '{}'); } catch { input = {}; }
+        if (!briefingPages.KINDS[input.kind] || !/^\d{4}-\d{2}(-\d{2})?$/.test(String(input.slug || ''))) return json({ error: '브리핑 정보가 올바르지 않습니다.' }, 400);
+        const outcome = await this.approveBriefing(input.kind, input.slug);
+        if (outcome.error) return json({ error: outcome.error }, outcome.status);
+        return json({ ok: true, ...outcome });
+      }
+      return json({ error: '지원하지 않는 요청입니다.' }, 404);
+    } catch (error) {
+      console.error('Briefing admin failed:', error);
+      return json({ error: '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.' }, 500);
     }
   }
 
@@ -323,7 +398,7 @@ export class CommunityService extends DurableObject {
       const kind = url.searchParams.get('kind') || '';
       const slug = url.searchParams.get('slug') || '';
       if (!briefingPages.KINDS[kind]) return json({ report: null, others: [] });
-      return json({ report: slug ? this.briefings.get(kind, slug) : null, others: this.briefings.list(kind) });
+      return json({ report: slug ? this.briefings.get(kind, slug, { preview: url.searchParams.get('preview') || '' }) : null, others: this.briefings.list(kind) });
     }
     if (pathname === '/internal/public-post') {
       return json(await this.board.publicPost(url.searchParams.get('no')));
@@ -358,6 +433,7 @@ export class CommunityService extends DurableObject {
       this.later(() => this.slack.share({ title: String(input.title || '').slice(0, 200), url: String(input.url || '').slice(0, 500) }));
       return json({ ok: true, configured: true });
     }
+    if (pathname === '/api/admin/briefing' || pathname.startsWith('/api/admin/briefing/')) return this.briefingAdminApi(request, source, body, pathname);
     if (pathname === '/api/audit' || pathname.startsWith('/api/audit/')) return this.auditApi(request, source, body, pathname);
     const handler = pathname.startsWith('/api/auth/') ? this.auth :
       pathname === '/api/board' || pathname.startsWith('/api/board/') ? this.board :
@@ -657,7 +733,7 @@ export default {
       if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/board' || url.pathname.startsWith('/api/board/') ||
           url.pathname.startsWith('/api/newsletter') || url.pathname.startsWith('/api/admin/newsletter') || url.pathname.startsWith('/n/') ||
           url.pathname === '/api/comments' || url.pathname === '/api/portal' || url.pathname.startsWith('/api/portal/') || url.pathname === '/api/notify/share' ||
-          url.pathname.startsWith('/api/audit/')) {
+          url.pathname.startsWith('/api/audit/') || url.pathname === '/api/admin/briefing' || url.pathname.startsWith('/api/admin/briefing/')) {
         if (url.pathname === '/api/notify/share' && request.headers.get('Origin') !== env.SITE_URL) return json({ ok: true });
         return await env.COMMUNITY.get(env.COMMUNITY.idFromName('community-v1')).fetch(request);
       }
@@ -735,11 +811,14 @@ export default {
         const siteUrl = env.SITE_URL || url.origin;
         if (!briefingMatch) return Response.redirect(`${siteUrl}/briefing/weekly`, 302);
         const [, kind, slug] = briefingMatch;
-        const query = new URLSearchParams({ kind, slug: slug || '' });
+        const preview = url.searchParams.get('preview') || '';
+        const query = new URLSearchParams({ kind, slug: slug || '', preview });
         const { report, others } = await (await communityStub(env).fetch(`https://internal.invalid/internal/briefing?${query}`)).json();
         if (!slug) return htmlPage(request, briefingPages.renderBriefingList(kind, others, siteUrl));
-        if (!report) return htmlPage(request, postPage.renderMissingPage(404, siteUrl, '브리핑을 찾을 수 없습니다. 목록에서 찾아 주세요.'), 404);
-        return htmlPage(request, briefingPages.renderBriefingPage({ report, others }, siteUrl));
+        // 승인 전후로 바뀌므로 없는 페이지·검토용 미리보기는 캐시하지 않는다.
+        if (!report) return htmlPage(request, postPage.renderMissingPage(404, siteUrl, '브리핑을 찾을 수 없습니다. 목록에서 찾아 주세요.'), 404, 0);
+        const previewing = report.status === 'pending';
+        return htmlPage(request, briefingPages.renderBriefingPage({ report, others }, siteUrl, { preview: previewing }), 200, previewing ? 0 : 300);
       }
       // 지난 스페이스 레터: 목록 /letter, 한 호 /letter/발행일. 예전 주소 /letter?id=…는 새 주소로 옮긴다.
       const letterMatch = /^\/letter(?:\/([0-9]{4}-[0-9]{2}-[0-9]{2}(?:-[0-9]{1,2})?)?)?\/?$/.exec(url.pathname);

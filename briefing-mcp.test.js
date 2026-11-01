@@ -170,3 +170,42 @@ test('publish reports the 스페이스톡 result, and briefing_post_talk re-post
   const none = await call('briefing_post_talk', { kind: 'weekly', period: '2026-10-23' });
   assert.equal(none.isError, true);
 });
+
+test('발송승인: 승인 대기 브리핑은 목록·공개 조회에 안 보이고 미리보기 토큰으로만 열리며, 승인하면 공개된다', () => {
+  let clock = 1000;
+  const pages = createBriefingStore(memorySql(), () => clock, () => 'tok123');
+  const saved = pages.upsert({ kind: 'weekly', period: '2026-11-06', title: '주간 시장동향 (11/02~11/06)', summary: '요약', body: '## 1. 요약\n내용' }, { pending: true });
+  assert.equal(saved.status, 'pending');
+  assert.equal(pages.list('weekly').length, 0);
+  assert.equal(pages.get('weekly', '2026-11-06'), null);
+  assert.equal(pages.get('weekly', '2026-11-06', { preview: 'wrong' }), null);
+  assert.equal(pages.get('weekly', '2026-11-06', { preview: 'tok123' }).status, 'pending');
+  pages.setMail('weekly', '2026-11-06', { subject: 's', body: 'b', dedupeKey: 'weekly-2026-11-06' });
+  assert.equal(pages.approvals().pending[0].mail.subject, 's');
+  // 고쳐 올려도 승인 대기 그대로
+  assert.equal(pages.upsert({ kind: 'weekly', period: '2026-11-06', title: '주간 시장동향 (11/02~11/06)', body: '고침' }, { pending: true }).status, 'pending');
+  clock = 5000;
+  const approved = pages.approve('weekly', '2026-11-06');
+  assert.equal(approved.status, 'approved');
+  assert.equal(approved.publishedAt, 5000);
+  assert.equal(pages.list('weekly').length, 1);
+  assert.equal(pages.approvals().pending.length, 0);
+  assert.equal(pages.approvals().done.length, 1);
+  // 예전 브리핑(승인 모드 이전)은 그대로 공개
+  pages.upsert({ kind: 'monthly', period: '2026-10', title: '월간 시장동향 (2026년 10월)', body: 'x' });
+  assert.equal(pages.get('monthly', '2026-10').status, 'approved');
+  const html = renderBriefingPage({ report: pages.get('weekly', '2026-11-06') }, 'https://withpluces.com', { preview: true });
+  assert.match(html, /운영자 검토용 미리보기/);
+  assert.match(html, /noindex/);
+});
+
+test('발송승인: 커넥터는 승인 대기를 알려 주고 메일은 보류한다', async () => {
+  const handle = createBriefingMcp({
+    status: async () => ({}),
+    send: async () => ({ held: true }),
+    publish: async () => ({ updated: false, url: 'https://withpluces.com/briefing/weekly/2026-11-06', pending: true }),
+  });
+  const call = async (name, args) => (await handle('POST', { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } })).body.result.content[0].text;
+  assert.match(await call('briefing_publish', { kind: 'weekly', period: '2026-11-06', title: 't', body: 'b' }), /발송승인 대기로 저장했습니다/);
+  assert.match(await call('spaceletter_send_briefing', { subject: 's', body: 'b', dedupe_key: 'weekly-2026-11-06' }), /아무에게도 보내지 않았습니다/);
+});

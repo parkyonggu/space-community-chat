@@ -51,6 +51,8 @@ function createSlackNotifier({ webhookUrl: rawUrl = '', siteUrl = 'https://withp
     dailyBriefing: text => send(`📰 *오늘의 정책브리핑* (스페이스 톡 정책브리핑 채널과 같은 내용)\n${escape(String(text ?? '').replace(/\r/g, '').trim().slice(0, 2800))}`),
     // 사이트에 새 시장동향 브리핑(주간·월간)이 게시되면 운영자 슬랙에 제목·요약·전문 주소를 알린다.
     marketBriefing: ({ kind, title, summary, url } = {}) => send(`${kind === 'monthly' ? '📅 *월간 시장동향 브리핑*' : '📈 *주간 시장동향 브리핑*'} 게시\n*${escape(clip(title, 120))}*\n${escape(clip(summary, 400))}\n<${String(url || site)}|전문 보기>`),
+    // 발송승인 대기: 운영자가 관리 화면에서 읽고 승인해야 공개·발송된다.
+    briefingPending: ({ kind, title, summary } = {}) => send(`🕒 *${kind === 'monthly' ? '월간' : '주간'} 시장동향 브리핑 발송승인 대기*\n*${escape(clip(title, 120))}*\n${escape(clip(summary, 300))}\n<${site}/newsletter-admin#approval|발송승인 탭 열기>`),
     signup: user => send(`🙋 *새 회원가입* · ${escape(clip(user?.nickname, 40))}${user?.email ? ` (${escape(maskEmail(user.email))})` : ''}`),
     comment: comment => send(`💬 *새 댓글* · 독자 소통 공간\n*${escape(clip(comment?.name, 40))}*: ${escape(clip(comment?.text, 200))}\n<${site}/#reader-section|댓글 보러 가기>`),
     post: post => {

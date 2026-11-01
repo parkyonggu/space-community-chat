@@ -335,6 +335,98 @@
     });
   }
 
+
+  // ---------- 발송승인 탭: 시장동향 브리핑을 읽고 승인하면 공개·발송 ----------
+  const KIND_NAME = { weekly: '주간', monthly: '월간' };
+  const when = ms => ms ? new Date(ms).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  // 메일 본문(스페이스레터 표기)을 읽기 쉬운 글로: 링크 표기·굵게 표시를 걷어 낸다.
+  const plainMail = text => String(text || '').replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '$1 ($2)').replace(/\*\*/g, '').replace(/^# /gm, '');
+  function showTab(name) {
+    document.querySelectorAll('[data-tab]').forEach(section => { section.hidden = section.dataset.tab !== name; });
+    $('tab-approval').setAttribute('aria-selected', String(name === 'approval'));
+    $('tab-newsletter').setAttribute('aria-selected', String(name === 'newsletter'));
+    try { history.replaceState(null, '', name === 'approval' ? '#approval' : location.pathname); } catch { /* ignore */ }
+  }
+  function resultText(result) {
+    if (!result) return '';
+    const talk = result.talk || {};
+    const talkLine = talk.status === 'posted' ? `스페이스톡 게시(받는 사람 ${talk.subscribers ?? 0}명)` : talk.status === 'skipped' ? '스페이스톡: 이미 게시됨' : `스페이스톡 실패: ${talk.message || ''}`;
+    const mail = result.mail || {};
+    const mailLine = mail.status === 'sent' ? `메일: ${mail.message}` : mail.status === 'error' ? `메일 실패: ${mail.message}` : `메일: ${mail.message || '없음'}`;
+    return `${talkLine} · ${mailLine} · 슬랙 ${result.slack === 'sent' ? '알림' : '알림 없음'}`;
+  }
+  function approvalCard(entry, pending, audience) {
+    const card = document.createElement('article');
+    card.className = 'approval-card';
+    const tag = document.createElement('span');
+    tag.className = `badge ${pending ? 'scheduled' : 'done'}`;
+    tag.textContent = pending ? `${KIND_NAME[entry.kind]} · 승인 대기` : `${KIND_NAME[entry.kind]} · ${when(entry.approvedAt)} 승인`;
+    const title = document.createElement('h3');
+    title.textContent = entry.title;
+    const summaryLine = document.createElement('p');
+    summaryLine.className = 'muted';
+    summaryLine.textContent = entry.summary || '(요약 없음)';
+    card.append(tag, title, summaryLine);
+    if (pending) {
+      const meta = document.createElement('p');
+      meta.className = 'muted';
+      meta.textContent = `작성: ${when(entry.updatedAt)}`;
+      card.appendChild(meta);
+      const mailTitle = document.createElement('p');
+      mailTitle.style.margin = '10px 0 0';
+      mailTitle.innerHTML = '<b>스페이스톡·메일로 나갈 내용</b>';
+      const mail = document.createElement('div');
+      mail.className = 'mail';
+      mail.textContent = entry.mail ? `제목: ${entry.mail.subject}\n\n${plainMail(entry.mail.body)}` : '아직 메일 내용이 저장되지 않았습니다(작성 작업이 끝나면 채워집니다). 이대로 승인하면 메일은 보내지 않고 스페이스톡·슬랙만 나갑니다.';
+      card.append(mailTitle, mail);
+    } else if (entry.result) {
+      const done = document.createElement('p');
+      done.className = 'muted';
+      done.textContent = resultText(entry.result);
+      card.appendChild(done);
+    }
+    const row = document.createElement('div');
+    row.className = 'row';
+    const link = document.createElement('a');
+    link.href = entry.previewUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = pending ? '전문 미리보기(새 창) →' : '공개 페이지 보기 →';
+    row.appendChild(link);
+    if (pending) {
+      const approve = document.createElement('button');
+      approve.type = 'button';
+      approve.className = 'primary';
+      const who = audience ? (audience.audience === 'subscribers' ? `구독자 ${audience.confirmedSubscribers}명` : '운영자(시험 발송)') : '메일 대상';
+      approve.textContent = '✅ 승인하고 발송';
+      approve.addEventListener('click', async () => {
+        if (!confirm(`'${entry.title}'을(를) 공개하고 스페이스톡·${who} 메일·슬랙으로 보냅니다. 보낸 메일은 되돌릴 수 없습니다. 승인할까요?`)) return;
+        approve.disabled = true;
+        setStatus('approval-status', '승인하고 보내는 중입니다…');
+        try {
+          const result = await api('/api/admin/briefing/approve', { kind: entry.kind, slug: entry.slug });
+          setStatus('approval-status', `승인했습니다. ${resultText(result.result)}`);
+          loadApprovals();
+        } catch (error) { approve.disabled = false; setStatus('approval-status', error.message, true); }
+      });
+      row.appendChild(approve);
+    }
+    card.appendChild(row);
+    return card;
+  }
+  async function loadApprovals() {
+    try {
+      const data = await api('/api/admin/briefing');
+      const audience = data.audience;
+      $('approval-note').textContent = `${data.approval ? '발송승인 사용 중' : '발송승인 꺼짐(자동 발송)'} · 메일 대상: ${audience ? (audience.audience === 'subscribers' ? `구독자 전체(현재 ${audience.confirmedSubscribers}명)` : '운영자 시험 발송') : '확인 못 함'}`;
+      const empty = text => { const p = document.createElement('p'); p.className = 'muted'; p.textContent = text; return p; };
+      $('approval-pending').replaceChildren(...(data.pending.length ? data.pending.map(entry => approvalCard(entry, true, audience)) : [empty('승인을 기다리는 브리핑이 없습니다.')]));
+      $('approval-done').replaceChildren(...(data.done.length ? data.done.map(entry => approvalCard(entry, false, audience)) : [empty('아직 없습니다.')]));
+      $('approval-count').hidden = !data.pending.length;
+      $('approval-count').textContent = String(data.pending.length);
+      return data.pending.length;
+    } catch (error) { setStatus('approval-status', error.message, true); return 0; }
+  }
   async function init() {
     try {
       const session = await api('/api/auth/session');
@@ -355,6 +447,10 @@
     }
     $('gate').hidden = true;
     $('app').hidden = false;
+    $('tab-approval').addEventListener('click', () => { showTab('approval'); loadApprovals(); });
+    $('tab-newsletter').addEventListener('click', () => showTab('newsletter'));
+    showTab(location.hash === '#approval' ? 'approval' : 'newsletter');
+    loadApprovals().then(count => { if (count && location.hash !== '#approval') showTab('approval'); });
     try {
       const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
       if (draft) {
