@@ -53,7 +53,7 @@ const PAGE_STYLE = `<style>
     }
   </style>`;
 
-const kindNav = current => `<nav class="briefing-kinds" aria-label="브리핑 종류">${Object.entries(KINDS).map(([kind, info]) => kind === current
+const kindNav = current => `<nav class="briefing-kinds" aria-label="브리핑 종류"><a href="/briefing">전체</a>${Object.entries(KINDS).map(([kind, info]) => kind === current
   ? `<span aria-current="page">${info.name}</span>` : `<a href="${pathOf(kind)}">${info.name}</a>`).join('')}</nav>`;
 
 const NOTE = '이 브리핑은 공개된 시장 자료를 바탕으로 스페이스커뮤니티가 제공하는 정보이며, 특정 종목의 매수·매도를 권유하지 않습니다. 투자 판단과 책임은 투자자 본인에게 있습니다. 자료 수집·정리에는 AI 도구를 활용했습니다.';
@@ -74,7 +74,7 @@ function renderBriefingPage({ report, others = [] }, siteUrl = 'https://withpluc
     body: `
   <header class="page-head">
     <div class="page-wrap">
-      <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › <a href="${pathOf(report.kind)}">${info.name}</a></p>
+      <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › <a href="/briefing">시장동향 브리핑</a> › <a href="${pathOf(report.kind)}">${info.name}</a></p>
       <h1 class="post-title">${escapeHtml(report.title)}</h1>
       <p class="post-meta"><span class="tag">${info.name}</span>${kstDate(report.publishedAt)} 발행 · 제공 스페이스커뮤니티</p>
     </div>
@@ -111,7 +111,7 @@ function renderBriefingList(kind, reports, siteUrl = 'https://withpluces.com') {
     body: `
   <header class="page-head">
     <div class="page-wrap">
-      <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › ${info.name}</p>
+      <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › <a href="/briefing">시장동향 브리핑</a> › ${info.name}</p>
       <h1>${info.name} 브리핑</h1>
       <p class="post-meta">제공 스페이스커뮤니티</p>
       ${kindNav(kind)}
@@ -122,6 +122,43 @@ function renderBriefingList(kind, reports, siteUrl = 'https://withpluces.com') {
       ${list}
       <p class="briefing-note">${escapeHtml(NOTE)}</p>
     </section>
+  </main>`,
+  });
+}
+
+
+// 시장동향 브리핑 첫 화면(/briefing): 월간과 주간을 한 화면에 나눠 보여 준다(섞지 않고 칸을 따로 둔다).
+function renderBriefingHub({ weekly = [], monthly = [] }, siteUrl = 'https://withpluces.com') {
+  const block = (kind, reports, limit) => {
+    const info = KINDS[kind];
+    const items = reports.slice(0, limit);
+    const list = items.length ? `<ul class="entry-list">${items.map(entry => `
+          <li><h3><a href="${pathOf(entry.kind, entry.slug)}">${escapeHtml(entry.title)}</a></h3>${entry.summary ? `<p>${escapeHtml(entry.summary)}</p>` : ''}<small>${kstDate(entry.publishedAt)} 발행</small></li>`).join('')}
+        </ul>` : `<p>아직 발행된 ${info.name} 브리핑이 없습니다.</p>`;
+    const more = reports.length > limit ? `<p class="hub-more"><a href="${pathOf(kind)}">${info.name} 전체 보기 ›</a></p>` : '';
+    return `<section class="page-card hub-block" id="${kind}">
+      <h2>${kind === 'monthly' ? '📅' : '📈'} ${info.name}</h2>
+      <p class="post-meta">${kind === 'monthly' ? '매월 1일 아침 · 지난 한 달 시장 흐름' : '매주 토요일 아침 · 지난 한 주 시장 흐름'}</p>
+      ${list}${more}
+    </section>`;
+  };
+  return shell({
+    title: '시장동향 브리핑 | 스페이스커뮤니티', canonical: `${siteUrl}/briefing`, siteUrl, noindex: !weekly.length && !monthly.length,
+    description: '스페이스커뮤니티가 제공하는 월간·주간 시장동향 브리핑을 한곳에서 볼 수 있습니다.',
+    head: `${LIST_STYLE}${PAGE_STYLE}<style>.hub-block h2{margin:0 0 4px;font-size:1.25rem}.hub-block h3{margin:0 0 4px;font-size:1.05rem}.hub-block+.hub-block{margin-top:18px}.hub-more a{font-weight:800}</style>`,
+    body: `
+  <header class="page-head">
+    <div class="page-wrap">
+      <p class="crumbs"><a href="/">스페이스 커뮤니티</a> › 시장동향 브리핑</p>
+      <h1>시장동향 브리핑</h1>
+      <p class="post-meta">제공 스페이스커뮤니티</p>
+      <nav class="briefing-kinds" aria-label="브리핑 종류"><a href="#monthly">📅 월간 시장동향</a><a href="#weekly">📈 주간 시장동향</a></nav>
+    </div>
+  </header>
+  <main class="page-wrap page-body">
+    ${block('monthly', monthly, 3)}
+    ${block('weekly', weekly, 6)}
+    <section class="page-card"><p class="briefing-note">${escapeHtml(NOTE)}</p></section>
   </main>`,
   });
 }
@@ -189,4 +226,4 @@ function createBriefingStore(sql, now = Date.now, newToken = () => crypto.random
   };
 }
 
-module.exports = { KINDS, BriefingError, normalize, pathOf, renderBriefingPage, renderBriefingList, createBriefingStore };
+module.exports = { KINDS, BriefingError, normalize, pathOf, renderBriefingPage, renderBriefingList, renderBriefingHub, createBriefingStore };

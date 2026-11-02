@@ -2314,7 +2314,6 @@
       link.href = item.path;
       small.textContent = '최근: ' + item.title;
     });
-    // 위쪽 메뉴·바로가기의 「시장동향 브리핑」은 가장 최근 주간 브리핑을 바로 연다.
-    if (data.weekly) ['nav-market', 'tile-market'].forEach(function (id) { var el = document.getElementById(id); if (el) el.href = data.weekly.path; });
+    // 위쪽 메뉴·바로가기의 「시장동향 브리핑」은 주간·월간을 함께 보여 주는 /briefing 으로 간다(바꾸지 않음).
   }).catch(function () { /* 기본 안내 그대로 */ });
 })();

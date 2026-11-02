@@ -209,3 +209,16 @@ test('발송승인: 커넥터는 승인 대기를 알려 주고 메일은 보류
   assert.match(await call('briefing_publish', { kind: 'weekly', period: '2026-11-06', title: 't', body: 'b' }), /발송승인 대기로 저장했습니다/);
   assert.match(await call('spaceletter_send_briefing', { subject: 's', body: 'b', dedupe_key: 'weekly-2026-11-06' }), /아무에게도 보내지 않았습니다/);
 });
+
+test('시장동향 브리핑 첫 화면(/briefing)은 월간과 주간을 함께 보여 준다', () => {
+  const { renderBriefingHub } = require('./briefing-pages');
+  const html = renderBriefingHub({
+    monthly: [{ kind: 'monthly', slug: '2026-10', title: '월간 시장동향 (2026년 10월)', summary: '월간 요약', publishedAt: Date.UTC(2026, 10, 1) }],
+    weekly: [{ kind: 'weekly', slug: '2026-10-30', title: '주간 시장동향 (10/26~10/30)', summary: '주간 요약', publishedAt: Date.UTC(2026, 9, 31) }],
+  });
+  assert.match(html, /월간 시장동향 \(2026년 10월\)/);
+  assert.match(html, /\/briefing\/monthly\/2026-10/);
+  assert.match(html, /주간 시장동향 \(10\/26~10\/30\)/);
+  assert.ok(html.indexOf('id="monthly"') < html.indexOf('id="weekly"'), '월간을 먼저 보여 준다');
+  assert.match(renderBriefingHub({}), /아직 발행된 월간 시장동향 브리핑이 없습니다/);
+});

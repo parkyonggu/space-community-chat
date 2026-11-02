@@ -822,7 +822,12 @@ export default {
       const briefingMatch = /^\/briefing\/(weekly|monthly)(?:\/(\d{4}-\d{2}(?:-\d{2})?))?\/?$/.exec(url.pathname);
       if ((briefingMatch || url.pathname === '/briefing' || url.pathname === '/briefing/') && readable) {
         const siteUrl = env.SITE_URL || url.origin;
-        if (!briefingMatch) return Response.redirect(`${siteUrl}/briefing/weekly`, 302);
+        // /briefing: 월간·주간을 한 화면에
+        if (!briefingMatch) {
+          const load = async kind => (await (await communityStub(env).fetch(`https://internal.invalid/internal/briefing?${new URLSearchParams({ kind, slug: '' })}`)).json()).others || [];
+          const [weekly, monthly] = await Promise.all([load('weekly'), load('monthly')]);
+          return htmlPage(request, briefingPages.renderBriefingHub({ weekly, monthly }, siteUrl), 200, 60);
+        }
         const [, kind, slug] = briefingMatch;
         const preview = url.searchParams.get('preview') || '';
         const query = new URLSearchParams({ kind, slug: slug || '', preview });
