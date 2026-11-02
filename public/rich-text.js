@@ -101,7 +101,7 @@
     return parts.join('');
   }
 
-  const NUMERIC = /^[+\-−±]?\s*(?:HK\$|US\$|\$|₩|€|¥)?\s*[\d,.]+\s*(?:%|%p|원|위안|달러|엔|배|건|명|개)?(?:\s*\(.*\))?$/;
+  const NUMERIC = /^[+\-−±]?\s*(?:HK\$|US\$|NT\$|\$|₩|€|¥)?\s*[\d,.]+\s*(?:%|%p|원|위안|달러|엔|배|건|명|개)?(?:\s*\(.*\))?$/;
   function tableHtml(rows, pipe = false) {
     const width = Math.max(...rows.map(row => row.length));
     const padded = rows.map(row => [...row, ...Array(width - row.length).fill('')]);
@@ -109,7 +109,12 @@
     const hasNumber = row => row.some(cell => NUMERIC.test(cell));
     // 칸을 | 로 나눈 표(📋 표 넣기 포함)는 첫 줄이 늘 머리줄이다.
     const header = padded.length >= 2 && !hasNumber(padded[0]) && (pipe || padded.slice(1).some(hasNumber));
-    const cell = (tag, value) => `<${tag}${tag === 'td' && NUMERIC.test(value) ? ' class="num"' : ''}>${inline(value)}</${tag}>`;
+    // 숫자 칸의 괄호 부분(예: −5.30%(−1,424.06p))은 따로 감싸 둔다. 좁은 화면(시장동향 브리핑)에서는 괄호 부분만 다음 줄로 내린다.
+    const numCell = value => {
+      const split = /^(.*?)(\(.*\))$/.exec(value);
+      return split && split[1].trim() ? `${inline(split[1])}<span class="num-sub">${inline(split[2])}</span>` : inline(value);
+    };
+    const cell = (tag, value) => tag === 'td' && NUMERIC.test(value) ? `<td class="num">${numCell(value)}</td>` : `<${tag}>${inline(value)}</${tag}>`;
     const head = header ? `<thead><tr>${padded[0].map(value => cell('th', value)).join('')}</tr></thead>` : '';
     const body = (header ? padded.slice(1) : padded).map(row => `<tr>${row.map(value => cell('td', value)).join('')}</tr>`).join('');
     return `<div class="rt-table"><table>${head}<tbody>${body}</tbody></table></div>`;

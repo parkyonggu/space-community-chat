@@ -48,8 +48,11 @@ const PAGE_STYLE = `<style>
     .briefing-body .rt-table td.num { white-space:nowrap; }
     .briefing-body .rt-table th:first-child, .briefing-body .rt-table td:first-child { min-width:6em; }
     @media (max-width: 560px) {
-      .briefing-body .rt-table table { font-size:calc(13.5px * var(--fs, 1)); }
-      .briefing-body .rt-table th, .briefing-body .rt-table td { padding:6px 7px; }
+      .briefing-body .rt-table table { font-size:calc(13px * var(--fs, 1)); }
+      .briefing-body .rt-table th, .briefing-body .rt-table td { padding:6px 6px; }
+      /* 휴대폰: 숫자는 한 줄로, 괄호 속 포인트·금액만 아랫줄로 */
+      .briefing-body .rt-table td.num .num-sub { display:block; font-size:.92em; color:#4a5568; }
+      .briefing-body .rt-table th { white-space:normal; word-break:keep-all; }
     }
   </style>`;
 
