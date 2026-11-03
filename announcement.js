@@ -4,17 +4,17 @@
 //   (카카오톡 메시지의 '보낸 사람'은 공유한 사람으로 정해져 있어, 카드 안에 스페이스 커뮤니티 로고와 이름을 싣는다.)
 
 const KINDS = [
-  { tag: '[모임안내]', id: 'meeting', label: '📣 모임안내', image: '/share/announcement.png' },
-  { tag: '[초청장]', id: 'invitation', label: '💌 초청장', image: '/share/invitation.png' },
+  { tag: '[모임안내]', id: 'meeting', label: '📣 모임안내', image: '/share/announcement.png?v=20261103' },
+  { tag: '[초청장]', id: 'invitation', label: '💌 초청장', image: '/share/invitation.png?v=20261103' },
   // 정보안내: 주간 시장분석·정책 정보처럼 운영자가 정리한 정보를 알릴 때
-  { tag: '[정보안내]', id: 'info', label: '📊 정보안내', image: '/share/info.png' },
+  { tag: '[정보안내]', id: 'info', label: '📊 정보안내', image: '/share/info.png?v=20261103' },
 ];
 const ID = /^\d{10,15}-[a-z0-9]{6,16}$/;
 
 const kindOf = text => KINDS.find(kind => typeof text === 'string' && text.trim().startsWith(kind.tag)) || null;
 // 보통메시지: 스페이스톡 '💬 보통메시지' 채널 글의 공유 주소(/e/번호) 페이지에만 쓰는 종류.
 // kindOf에는 넣지 않는다(광장의 [표시] 글이 모임안내 채널로 가는 규칙은 그대로 두기 위해).
-const GENERAL = { tag: '[보통메시지]', id: 'general', label: '💬 보통메시지', image: '/share/announcement.png' };
+const GENERAL = { tag: '[보통메시지]', id: 'general', label: '💬 보통메시지', image: '/share/announcement.png?v=20261103' };
 const pageKindOf = text => kindOf(text) || (typeof text === 'string' && text.trim().startsWith(GENERAL.tag) ? GENERAL : null);
 
 // 첫 줄(표시 뒤)을 제목, 나머지를 본문으로 나눈다.
@@ -73,7 +73,7 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">`}
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="icon" href="/icons/icon-192.png?v=20261103">
   <style>
     :root { --navy:#0e1730; --gold:#f5b941; --ink:#0e1730; --text:#2b3550; --muted:#5d6680; --line:#e3e6ef; }
     * { box-sizing:border-box; }
@@ -127,12 +127,12 @@ function renderAnnouncementPage(record, siteUrl = 'https://withpluces.com') {
   <main class="messages">
     <div class="day"><span>${escapeHtml(dayText)}</span></div>
     <div class="msg">
-      <img class="avatar" src="/icons/icon-192.png" alt="">
+      <img class="avatar" src="/icons/icon-192.png?v=20261103" alt="">
       <div class="msg-body">
         <div class="msg-name">스페이스 커뮤니티</div>
         <div class="msg-line">
           <article class="card">
-            <div class="card-head"><img src="/icons/icon-192.png" alt=""><strong>스페이스 커뮤니티</strong><span>${escapeHtml(kind.label)}</span></div>
+            <div class="card-head"><img src="/icons/icon-192.png?v=20261103" alt=""><strong>스페이스 커뮤니티</strong><span>${escapeHtml(kind.label)}</span></div>
             ${poster ? `<a href="${escapeHtml(poster)}" target="_blank" rel="noopener"><img class="poster" src="${escapeHtml(poster)}" alt="${escapeHtml(title)} 안내장"></a>` : ''}
             <h2>${escapeHtml(title)}</h2>
             <div class="body">${bodyHtml}</div>

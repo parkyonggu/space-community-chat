@@ -239,7 +239,7 @@ async function shareAnnouncement(message) {
   const posterUrl = typeof message.image === 'string' && /^[0-9a-f]{32}$/.test(message.image) ? `${location.origin}/api/board/image?id=${message.image}` : '';
   if (info && message.id && window.spaceKakaoShare && await window.spaceKakaoShare({
     title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
-    imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png', '[정보안내]': '/share/info.png' }[info.kind.tag] || '/share/announcement.png'}`, link: url,
+    imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png?v=20261103', '[정보안내]': '/share/info.png?v=20261103' }[info.kind.tag] || '/share/announcement.png?v=20261103'}`, link: url,
     ...(posterUrl ? { poster: posterUrl } : {}), card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
   })) {
     report('카카오톡 공유 창을 열었습니다. 보낼 대화방을 골라 주세요.');
@@ -287,7 +287,7 @@ function announcementCard(message, info) {
   const head = document.createElement('div');
   head.className = 'chat-card-head';
   const logo = document.createElement('img');
-  logo.src = '/icons/icon-192.png';
+  logo.src = '/icons/icon-192.png?v=20261103';
   logo.alt = '';
   const brand = document.createElement('strong');
   brand.textContent = '스페이스 커뮤니티';

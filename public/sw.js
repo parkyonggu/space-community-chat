@@ -26,7 +26,7 @@ self.addEventListener('push', event => {
       }
     } catch (error) { /* offline: show the generic notice */ }
     if (self.navigator.setAppBadge) self.navigator.setAppBadge(total).catch(() => {});
-    await self.registration.showNotification(title, { body, tag, renotify: true, icon: '/icons/icon-512.png', badge: '/icons/icon-512.png', data: { url } });
+    await self.registration.showNotification(title, { body, tag, renotify: true, icon: '/icons/icon-512.png?v=20261103', badge: '/icons/icon-512.png?v=20261103', data: { url } });
   })());
 });
 

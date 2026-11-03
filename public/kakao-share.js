@@ -65,7 +65,7 @@
     // 머리: 남색 띠 + 로고 + 스페이스 커뮤니티 + 종류
     c.fillStyle = '#0e1730';
     c.fillRect(0, 0, W, 200);
-    const logo = await loadImage('/icons/icon-192.png');
+    const logo = await loadImage('/icons/icon-192.png?v=20261103');
     if (logo) {
       c.fillStyle = '#f5b941';
       c.beginPath(); c.roundRect ? c.roundRect(PAD - 6, 44, 124, 124, 30) : c.rect(PAD - 6, 44, 124, 124); c.fill();
@@ -132,7 +132,7 @@
     c.fillRect(0, 0, W, H);
     c.fillStyle = '#0e1730';
     c.fillRect(0, 0, W, HEAD);
-    const logo = await loadImage('/icons/icon-192.png');
+    const logo = await loadImage('/icons/icon-192.png?v=20261103');
     if (logo) {
       c.fillStyle = '#f5b941';
       c.beginPath(); c.roundRect ? c.roundRect(40, 27, 96, 96, 24) : c.rect(40, 27, 96, 96); c.fill();

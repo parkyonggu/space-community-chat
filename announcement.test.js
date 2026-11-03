@@ -14,7 +14,7 @@ test('share page carries the 스페이스 커뮤니티 brand in Open Graph tags'
   const html = renderAnnouncementPage({ id: '1791560000000-abcdef1234', at: Date.parse('2026-10-10T02:00:00Z'), text: '[초청장]\n창립 기념식 <초대>\n11월 1일 오후 3시' }, 'https://withpluces.com');
   assert.match(html, /<meta property="og:site_name" content="스페이스 커뮤니티">/);
   assert.match(html, /<meta property="og:title" content="💌 초청장 창립 기념식 &lt;초대&gt;">/);
-  assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/invitation\.png"/);
+  assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/invitation\.png\?v=20261103"/);
   assert.match(html, /og:url" content="https:\/\/withpluces\.com\/e\/1791560000000-abcdef1234"/);
   assert.ok(!html.includes('<초대>'), 'escaped');
   assert.equal(renderAnnouncementPage({ id: 'x', at: 0, text: '보통 메시지' }), null);
@@ -31,7 +31,7 @@ test('정보안내: 시장분석 같은 정보 글도 공유 카드와 정보안
   assert.equal(kindOf('[정보안내]\n이번 주 시장분석').id, 'info');
   const html = renderAnnouncementPage({ id: '1791560000000-abcdef9999', at: Date.parse('2026-10-16T06:00:00Z'), text: '[정보안내]\n10월 셋째 주 시장분석\n코스피가 하락한 이유를 정리했습니다.' }, 'https://withpluces.com');
   assert.match(html, /og:title" content="📊 정보안내 10월 셋째 주 시장분석"/);
-  assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/info\.png"/);
+  assert.match(html, /og:image" content="https:\/\/withpluces\.com\/share\/info\.png\?v=20261103"/);
 });
 
 test('정보안내 공유 화면: 본문 속 글 주소는 누를 수 있는 링크와 「전체 글 읽기」 단추가 된다', () => {

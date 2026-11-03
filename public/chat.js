@@ -114,7 +114,7 @@
   function avatar(name, key, small = false) {
     if (['channel-event-announcements', 'channel-info-announcements', 'channel-general-messages', 'channel-market-briefing'].includes(key)) {
       const image = make('img', `avatar${small ? ' small' : ''}`);
-      image.src = '/icons/icon-192.png';
+      image.src = '/icons/icon-192.png?v=20261103';
       image.alt = '';
       image.setAttribute('aria-hidden', 'true');
       return image;
@@ -188,7 +188,7 @@
       // 1순위: 카카오톡 공식 공유 카드. 안 되면 공유 창이나 주소 복사.
       if (window.spaceKakaoShare && await window.spaceKakaoShare({
         title, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
-        imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png', '[정보안내]': '/share/info.png' }[info.kind.tag] || '/share/announcement.png'}`, link: info.link,
+        imageUrl: `${location.origin}${{ '[초청장]': '/share/invitation.png?v=20261103', '[정보안내]': '/share/info.png?v=20261103' }[info.kind.tag] || '/share/announcement.png?v=20261103'}`, link: info.link,
         ...(info.poster ? { poster: info.poster } : {}), card: { kindLabel: info.kind.label, cardTitle: info.title, body: info.body },
       })) return;
       await shareText(title, info.link);
@@ -277,7 +277,7 @@
         // 모임안내·정보안내와 같은 방식: 카카오톡 공식 공유 카드(글 전체를 그린 그림 + 「자세히 보기」)로 바로 보낸다.
         if (window.spaceKakaoShare && await window.spaceKakaoShare({
           title: info.title.startsWith('📰') ? info.title : `${roomName} ${info.title}`, description: info.body.replace(/\s+/g, ' ').slice(0, 120) || '스페이스 커뮤니티가 알려 드립니다.',
-          imageUrl: `${location.origin}/share/announcement.png`, link: info.link,
+          imageUrl: `${location.origin}/share/announcement.png?v=20261103`, link: info.link,
           card: { kindLabel: roomName, cardTitle: info.title, body: info.body },
         })) return;
         await shareText(smsText);
@@ -303,7 +303,7 @@
     const card = make('div', 'bubble announce-card');
     const head = make('div', 'announce-head');
     const logo = make('img');
-    logo.src = '/icons/icon-192.png';
+    logo.src = '/icons/icon-192.png?v=20261103';
     logo.alt = '';
     head.append(logo, make('strong', '', '스페이스 커뮤니티'), make('span', '', info.kind.label));
     card.appendChild(head);
@@ -363,7 +363,7 @@
       const kakaoUrl = url.replace('/chat#', '/chat?');
       kakao.disabled = true;
       try {
-        if (card && window.spaceKakaoShare && await window.spaceKakaoShare({ title: card.cardTitle, description: text, imageUrl: `${location.origin}/share/invitation.png`,
+        if (card && window.spaceKakaoShare && await window.spaceKakaoShare({ title: card.cardTitle, description: text, imageUrl: `${location.origin}/share/invitation.png?v=20261103`,
           link: kakaoUrl, button: card.button || '대화방 들어가기', card })) return;
         await shareText(text, url);
       } finally { kakao.disabled = false; }

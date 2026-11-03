@@ -146,7 +146,7 @@ test('announcement channel uses the original mark for list and message avatars',
   for (const small of [false, true]) {
     const face = context.avatar('스페이스 커뮤니티', 'channel-event-announcements', small);
     assert.equal(face.tag, 'img');
-    assert.equal(face.src, '/icons/icon-192.png');
+    assert.equal(face.src, '/icons/icon-192.png?v=20261103');
     assert.equal(face.className, small ? 'avatar small' : 'avatar');
   }
   assert.equal(context.avatar('Member', 'user-id', true).tag, 'span');
@@ -158,7 +158,7 @@ test('KakaoTalk official card is tried first with logo image and page link', asy
   app.context.window.spaceKakaoShare = async value => { card = value; return true; };
   await app.share({ id: '1791560000000-abcdef1234', text: '[초청장]\n창립 기념식\n11월 1일 오후 3시' });
   assert.equal(card.link, 'https://example.test/e/1791560000000-abcdef1234');
-  assert.equal(card.imageUrl, 'https://example.test/share/invitation.png');
+  assert.equal(card.imageUrl, 'https://example.test/share/invitation.png?v=20261103');
   assert.equal(card.title, '💌 초청장 창립 기념식');
   assert.match(app.status.textContent, /카카오톡 공유 창/);
 });

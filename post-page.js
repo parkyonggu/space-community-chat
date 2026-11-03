@@ -53,13 +53,13 @@ const shell = ({ title, description, canonical, head = '', body, siteUrl, noinde
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
   ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${escapeHtml(canonical)}">`}
-  <link rel="icon" href="/icons/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="icon" href="/icons/icon-512.png?v=20261103" type="image/png" sizes="512x512">
   <meta name="theme-color" content="#0e1730">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta property="og:site_name" content="스페이스 커뮤니티">
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
-  <meta property="og:image" content="${escapeHtml(siteUrl)}/icons/icon-512.png">
+  <meta property="og:image" content="${escapeHtml(siteUrl)}/icons/icon-512.png?v=20261103">
   ${canonical ? `<meta property="og:url" content="${escapeHtml(canonical)}">` : ''}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,7 +121,7 @@ ${body}
   <script>(function(){var S=[0.9,1,1.15,1.3,1.5,1.75],K='postFontScale',i=1;try{var v=parseFloat(localStorage.getItem(K));if(S.indexOf(v)>=0)i=S.indexOf(v);}catch(e){}function set(n){i=Math.max(0,Math.min(S.length-1,n));document.documentElement.style.setProperty('--fs',S[i]);var r=document.querySelector('.fs-tools [data-fs=reset]');if(r)r.setAttribute('aria-pressed',S[i]===1?'true':'false');try{localStorage.setItem(K,S[i]);}catch(e){}}set(i);document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.fs-tools [data-fs]');if(!b)return;var a=b.getAttribute('data-fs');set(a==='up'?i+1:a==='down'?i-1:1);});})();</script>
   <script defer src="/law-ref.js"></script>
   <script defer src="/kakao-share.js"></script>
-  <script>document.addEventListener('click',async function(e){var k=e.target.closest&&e.target.closest('[data-share-kakao]'),c=e.target.closest&&e.target.closest('[data-share-copy]');if(!k&&!c)return;var url=location.origin+location.pathname,title=document.title.replace(/ \| .*$/,'');if(k){if(window.spaceKakaoShare&&await window.spaceKakaoShare({title:title,description:(document.querySelector('meta[name=description]')||{}).content||'',imageUrl:location.origin+'/share/info.png',link:url,button:'글 읽기'}))return;}try{await navigator.clipboard.writeText(title+'\n'+url);c=c||k;var t=c.textContent;c.textContent='✓ 복사했어요';setTimeout(function(){c.textContent=t;},2000);}catch(err){prompt('아래 주소를 복사해 주세요.',url);}});</script>
+  <script>document.addEventListener('click',async function(e){var k=e.target.closest&&e.target.closest('[data-share-kakao]'),c=e.target.closest&&e.target.closest('[data-share-copy]');if(!k&&!c)return;var url=location.origin+location.pathname,title=document.title.replace(/ \| .*$/,'');if(k){if(window.spaceKakaoShare&&await window.spaceKakaoShare({title:title,description:(document.querySelector('meta[name=description]')||{}).content||'',imageUrl:location.origin+'/share/info.png?v=20261103',link:url,button:'글 읽기'}))return;}try{await navigator.clipboard.writeText(title+'\n'+url);c=c||k;var t=c.textContent;c.textContent='✓ 복사했어요';setTimeout(function(){c.textContent=t;},2000);}catch(err){prompt('아래 주소를 복사해 주세요.',url);}});</script>
   <script defer src="/agency-links.js"></script>
   <footer class="site-footer">
     <div class="wrap footer-inner">
