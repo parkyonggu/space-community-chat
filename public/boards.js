@@ -77,7 +77,7 @@
       card.appendChild(titleInput);
       const textarea = make('textarea');
       textarea.dataset.placeholder = `${dept.name} 관련 의견을 작성하세요`;
-      textarea.maxLength = 30000;
+      textarea.maxLength = 80000;
       const button = make('button', 'submitPolicy', '제안 등록');
       button.dataset.dept = dept.id;
       const output = make('div', 'policy-output');
@@ -88,11 +88,11 @@
       const tableButton = make('button', 'like-btn table-add', '📋 표 넣기');
       tableButton.type = 'button';
       tableButton.addEventListener('click', () => openTableMaker(textarea));
-      tools.append(tableButton, make('span', 'photo-note', '소제목은 줄 앞에 ## 또는 ■ · 밑줄은 __글자__ · 3만 자까지'));
+      tools.append(tableButton, make('span', 'photo-note', '소제목은 줄 앞에 ## 또는 ■ · 밑줄은 __글자__ · 8만 자까지'));
       const cardStatus = make('p', 'form-status policy-status');
       cardStatus.setAttribute('role', 'status');
       card.append(textarea, tools, button, cardStatus, output);
-      // 붙여넣은 글이 3만 자를 넘으면 브라우저가 뒤쪽을 잘라 버리므로 바로 알려 준다.
+      // 붙여넣은 글이 8만 자를 넘으면 브라우저가 뒤쪽을 잘라 버리므로 바로 알려 준다.
       textarea.addEventListener('paste', () => setTimeout(() => {
         if (textarea.value.length >= textarea.maxLength) {
           cardStatus.textContent = `글이 ${textarea.maxLength.toLocaleString('ko-KR')}자를 넘어 뒤쪽이 잘렸습니다. 별첨·참고자료 부분을 빼고 본문만 붙여넣어 주세요.`;
@@ -1111,7 +1111,7 @@
     form.appendChild(title);
     const text = make('textarea');
     text.value = post.text;
-    text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 30000 : 5000;
+    text.maxLength = post.board === 'research' ? 50000 : post.board === 'policy' ? 80000 : 5000;
     text.setAttribute('aria-label', '글 내용');
     const status = make('p', 'form-status');
     status.setAttribute('role', 'status');

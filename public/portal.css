@@ -27,7 +27,7 @@ a { color:var(--primary); }
 .logo-link { display:flex; align-items:center; gap:12px; color:#fff; text-decoration:none; }
 .logo-mark { width:44px; height:44px; border-radius:12px; border:2px solid var(--gold); background:var(--navy-2); object-fit:cover; }
 .logo h1 { margin:0; font-size:22px; font-weight:800; letter-spacing:-.03em; line-height:1.2; }
-.logo-tagline { display:block; margin:2px 0 0; font-size:12.5px; color:#b9c2dd; }
+.logo-tagline { display:block; margin:2px 0 0; font-size:12.5px; color:#b9c2dd; font-style:italic; letter-spacing:.2px; }
 .search-bar { display:flex; flex:1 1 300px; max-width:520px; border:2px solid var(--gold); border-radius:999px; overflow:hidden; background:#fff; order:2; }
 .search-bar input { flex:1; min-width:0; border:0; padding:11px 18px; color:var(--ink); background:#fff; outline:none; }
 .search-bar button { border:0; background:var(--gold); color:var(--navy); padding:0 18px; display:flex; align-items:center; gap:6px; font-weight:800; }
